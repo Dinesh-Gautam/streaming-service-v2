@@ -10,8 +10,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/icons-material": "^5.15.21",
+    "@mui/material": "^5.15.21",
     "classnames": "^2.5.1",
     "framer-motion": "^11.2.10",
+    "lite-youtube-embed": "^0.3.2",
     "next": "14.2.4",
     "react": "^18",
     "react-dom": "^18",
@@ -19,11 +24,14 @@
     "tmdb-js-web": "^1.2.0"
   },
   "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.3.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/youtube": "^0.0.50",
     "eslint": "^8",
     "eslint-config-next": "14.2.4",
+    "prettier": "^3.3.2",
     "sass": "^1.77.5",
     "typescript": "^5"
   }

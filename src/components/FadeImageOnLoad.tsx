@@ -1,32 +1,38 @@
-"use client"
+'use client';
 
-import { getImageUrl } from "@/utils/tmdb";
-import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
-import { HTMLAttributes, useState } from "react";
-import Suspense from "./Suspense";
+import { HTMLAttributes, PropsWithChildren, useState } from 'react';
+import Image, { ImageProps } from 'next/image';
+
+import Suspense from '@/components/Suspense';
+import { getImageUrl } from '@/utils/tmdb';
+import { AnimatePresence, motion, MotionProps } from 'framer-motion';
 
 type FadeImageOnLoad = {
-  loadingBackground: boolean,
-  ambientMode: boolean,
-  imageSrc: string,
-  rawImageSrc: string,
-  duration: number,
-  attr: {
-    imageContainer: ReturnType<typeof motion.div>,
-    image: HTMLAttributes<HTMLImageElement>,
-  },
-  ambientOptions: {
-    opacity?: number,
-    blur: number,
-    saturation: number,
-    brightness: number,
-    scale: number,
-  }
-  children: React.ReactNode,
-}
+  loadingBackground: boolean;
+  ambientMode: boolean;
+  imageSrc: string;
+  rawImageSrc?: string;
+  positionAbsolute: boolean;
+  imageContainer: HTMLAttributes<HTMLDivElement> & MotionProps;
+  image: Partial<ImageProps>;
+  duration?: number;
+  opacity?: number;
+  blur?: number;
+  saturation?: number;
+  brightness?: number;
+  scale?: number;
+  ambientOptions?: React.CSSProperties;
+} & PropsWithChildren;
 
-function FadeImageOnLoad(props: FadeImageOnLoad) {
+function FadeImageOnLoad({
+  duration = 1,
+  opacity = 1,
+  blur = 2,
+  saturation = 1,
+  brightness = 1,
+  scale = 2,
+  ...props
+}: FadeImageOnLoad) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const initialVariant = {
@@ -45,14 +51,13 @@ function FadeImageOnLoad(props: FadeImageOnLoad) {
     animateVariant: {
       opacity: 1,
       transition: {
-        type: "ease",
-        ease: "easeOut",
+        type: 'ease',
+        ease: 'easeOut',
         delay: 0.2,
-        duration: props.duration || 1,
+        duration: duration,
       },
     },
   };
-
 
   return (
     <>
@@ -63,40 +68,33 @@ function FadeImageOnLoad(props: FadeImageOnLoad) {
         initial="initialVariant"
         animate="animateVariant"
         variants={!imageLoaded ? initialVariant : imageLoadedVariant}
-        {...props.attr.imageContainer}
+        {...props.imageContainer}
       >
         {
           <>
             {props.ambientMode && (
               <Image
+                {...props.image}
                 src={getImageUrl(props.imageSrc)}
                 alt={props.imageSrc}
                 style={{
-                  filter: `blur(${props.ambientOptions?.blur || 24
-                    }px) saturate(${props.ambientOptions?.saturation ?? 1
-                    }) brightness(${props.ambientOptions?.brightness ?? 1})`,
-                  opacity: 0.7,
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: `translate(-50%,-50%) scale(${props.ambientOptions?.scale || 2
-                    })`,
-                  ...props.ambientOptions,
+                  filter: `blur(${blur}px) saturate(${saturation}) brightness(${brightness})`,
+                  opacity: opacity,
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: `translate(-50%,-50%) scale(${scale})`,
                   zIndex: -100,
+                  ...props.ambientOptions,
                 }}
-                {...props.attr.image}
               />
             )}
             {(props.imageSrc || props.rawImageSrc) && (
               <Image
-                src={
-                  !props.imageSrc
-                    ? props.rawImageSrc
-                    : getImageUrl(props.imageSrc)
-                }
+                {...props.image}
+                src={props.rawImageSrc ?? getImageUrl(props.imageSrc)}
                 onLoad={() => setImageLoaded(true)}
                 alt={props.imageSrc}
-                {...props.attr.image}
               />
             )}
           </>

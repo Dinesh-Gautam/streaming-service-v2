@@ -14,4 +14,7 @@ export const TmdbV3 = new TMDBWebAPI(process.env.TMDB_API_KEY).v3;
  */
 export const getPopularMovies = createCachedMovieMethod(TmdbV3.movies.getPopular);
 
+export const getMovieVideos = createCachedMovieMethod(TmdbV3.movies.getVideos);
+
+export const getTvVideos = createCachedMovieMethod(TmdbV3.tv.getVideos);
 
