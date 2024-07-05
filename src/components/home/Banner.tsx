@@ -21,7 +21,7 @@ import { MoviesGetPopularResult } from 'tmdb-js-web';
 type ButtonTypes = 'next' | 'prev';
 
 type PopularMoviesProps = {
-  media_type: MediaType;
+  media_type?: MediaType;
   popularMovies: MoviesGetPopularResult[];
 };
 

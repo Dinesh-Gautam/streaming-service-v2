@@ -1,5 +1,6 @@
-import React, { ReactNode } from "react";
-import { motion } from "framer-motion";
+import React, { ReactNode } from 'react';
+
+import { motion } from 'framer-motion';
 
 function FadeInOnMount({ children }: { children: ReactNode }) {
   return (

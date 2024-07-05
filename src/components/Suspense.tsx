@@ -1,5 +1,6 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React from 'react';
+
+import { motion } from 'framer-motion';
 
 function Suspense() {
   return (
@@ -14,11 +15,11 @@ function Suspense() {
         opacity: 0,
       }}
       style={{
-        background: "rgba(255,255,255,0.1)",
-        height: "100%",
-        width: "100%",
+        background: 'rgba(255,255,255,0.1)',
+        height: '100%',
+        width: '100%',
         borderRadius: 12,
-        position: "absolute",
+        position: 'absolute',
         top: 0,
         left: 0,
       }}
