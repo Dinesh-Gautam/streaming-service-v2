@@ -1,0 +1,73 @@
+import React, { createContext, useContext, useReducer, useState, ReactNode, Dispatch } from "react";
+
+interface SearchState {
+  value: string;
+}
+
+interface State {
+  search: SearchState;
+  searchSuggestions: SearchState | null;
+}
+
+interface Action {
+  type: "search" | "searchSuggestions";
+  payload?: any;
+}
+
+const INTIAL_STATE: State = {
+  search: { value: "" },
+  searchSuggestions: null,
+};
+
+interface ContextProps {
+  data: State;
+  dataDispatch: Dispatch<Action>;
+  videosData: any[];
+  setVideosData: React.Dispatch<React.SetStateAction<any[]>>;
+  moreInfoData: any[];
+  setMoreInfoData: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+const stateContext = createContext<Partial<ContextProps>>({});
+
+export function useData() {
+  return useContext(stateContext);
+}
+
+function reducer(state: State, action: Action): State {
+  function updateState(field: keyof State, value?: any): State {
+    return {
+      ...state,
+      [field]: value ?? { value },
+    };
+  }
+
+  switch (action.type) {
+    case "search":
+      return updateState("search", state.search);
+    case "searchSuggestions":
+      return updateState("searchSuggestions", action.payload);
+    default:
+      return state;
+  }
+}
+
+interface ContextProviderProps {
+  children: ReactNode;
+}
+
+export function ContextProvider({ children }: ContextProviderProps) {
+  const [data, dataDispatch] = useReducer(reducer, INTIAL_STATE);
+  const [videosData, setVideosData] = useState<any[]>([]);
+  const [moreInfoData, setMoreInfoData] = useState<any[]>([]);
+  const value: ContextProps = {
+    data,
+    dataDispatch,
+    videosData,
+    setVideosData,
+    moreInfoData,
+    setMoreInfoData,
+  };
+
+  return <stateContext.Provider value={value}>{children}</stateContext.Provider>;
+}

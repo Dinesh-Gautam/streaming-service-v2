@@ -1,0 +1,26 @@
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1000;
+  transition: opacity 0.5s ease-in-out;
+  contain: layout paint;
+
+  lite-youtube {
+    height: 300%;
+    width: 100%;
+    button {
+      display: none;
+    }
+  }
+  iframe {
+    height: 100%;
+    width: 100%;
+  }
+}
