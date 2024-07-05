@@ -3,6 +3,7 @@
 import { PropsWithChildren } from 'react';
 
 import { MediaType } from '@/lib/types';
+import LiteYTEmbed from 'lite-youtube-embed';
 
 import { MoviesGetVideosResult, TVGetVideosResult } from 'tmdb-js-web';
 
@@ -29,7 +30,3 @@ export type YoutubeVideoPlayerProviderProps = {
   id: number;
   media_type: MediaType;
 } & PropsWithChildren<{}>;
-
-export interface LiteYoutubeElement extends HTMLElement {
-  getYTPlayer: () => Promise<YT.Player | undefined>;
-}

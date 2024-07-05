@@ -6,7 +6,7 @@ import React, { useEffect, useRef } from 'react';
 
 import styles from '@/styles/components/youtubePlayer.module.scss';
 
-import type { LiteYoutubeElement } from '@/components/youtube/types';
+import type LiteYTEmbed from 'lite-youtube-embed';
 
 import { useYoutubePlayer } from './context';
 
@@ -20,7 +20,7 @@ const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({
   const { videosData, ytPlayerRef, playerState, id, setVideoPlayerReady } =
     useYoutubePlayer();
 
-  const playerRef = useRef<LiteYoutubeElement | null>(null);
+  const playerRef = useRef<LiteYTEmbed | null>(null);
 
   useEffect(() => {
     (async () => {

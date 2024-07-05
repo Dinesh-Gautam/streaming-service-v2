@@ -10,3 +10,16 @@ declare namespace JSX {
     };
   }
 }
+
+declare module 'lite-youtube-embed' {
+  export default class LiteYTEmbed extends HTMLElement {
+    fetchYTPlayerApi(): void;
+    getYTPlayer(): Promise<YT.Player | undefined>;
+    upgradePosterImage(): void;
+    createBasicIframe(): HTMLIFrameElement;
+    addNoscriptIframe(): void;
+    getParams(): URLSearchParams;
+    activate(): Promise<void>;
+    addYTPlayerIframe(): Promise<void>;
+  }
+}
