@@ -10,7 +10,3 @@ declare namespace JSX {
     };
   }
 }
-
-interface LiteYoutubeElement extends HTMLElement {
-  getYTPlayer: () => Promise<YT.Player>;
-}

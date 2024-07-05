@@ -3,7 +3,7 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
     ],
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,

@@ -6,6 +6,8 @@ import React, { useEffect, useRef } from 'react';
 
 import styles from '@/styles/components/youtubePlayer.module.scss';
 
+import type { LiteYoutubeElement } from '@/components/youtube/types';
+
 import { useYoutubePlayer } from './context';
 
 interface YoutubeVideoPlayerProps {
@@ -23,12 +25,15 @@ const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({
   useEffect(() => {
     (async () => {
       if (!playerRef.current) return;
+
       const ytplayer = await playerRef.current.getYTPlayer();
 
+      if (!ytplayer) return;
+      /* it may be deprecated in the future */
       ytplayer.setSize(1920, 1080);
-      /* 
+      /*
       youtube lite api autoplays the video by default,
-      to prevent that we stop the video 
+      to prevent that we stop the video
       */
       ytplayer.stopVideo();
 

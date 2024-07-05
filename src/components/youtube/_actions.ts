@@ -6,10 +6,9 @@ import { type MediaType } from '@/lib/types';
 import { getMovieVideos, getTvVideos } from '@/server/tmdb';
 
 export async function getVideos(videoId: number, type: MediaType) {
-  console.log('getting videos for', videoId, type);
   const data = await getVideosData(videoId, type);
 
-  if (!data) return;
+  if (!data) throw new Error('No videos found');
 
   return data.results
     .filter((video) => video.official && video.type === 'Trailer')

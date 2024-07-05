@@ -29,3 +29,7 @@ export type YoutubeVideoPlayerProviderProps = {
   id: number;
   media_type: MediaType;
 } & PropsWithChildren<{}>;
+
+export interface LiteYoutubeElement extends HTMLElement {
+  getYTPlayer: () => Promise<YT.Player | undefined>;
+}
