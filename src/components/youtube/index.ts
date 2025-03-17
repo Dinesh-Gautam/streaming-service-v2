@@ -5,10 +5,10 @@
 import dynamic from 'next/dynamic';
 
 const YoutubeVideoPlayerProvider = dynamic(() => import('./context'), {
-  ssr: false,
+  // ssr: false,
 });
 const YoutubeControlButtons = dynamic(() => import('./controls'), {
-  ssr: false,
+  // ssr: false,
 });
 const YoutubeVideoPlayer = dynamic(() => import('./player'), { ssr: false });
 

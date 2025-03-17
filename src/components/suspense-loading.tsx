@@ -2,7 +2,10 @@ import React from 'react';
 
 import { motion } from 'framer-motion';
 
-function Suspense() {
+/**
+ * Suspense component to display when loading data
+ */
+function Suspense({ ...props }) {
   return (
     <motion.div
       initial={{
@@ -23,6 +26,7 @@ function Suspense() {
         top: 0,
         left: 0,
       }}
+      {...props}
     ></motion.div>
   );
 }

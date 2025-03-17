@@ -3,27 +3,79 @@
 import { HTMLAttributes, PropsWithChildren, useState } from 'react';
 import Image, { ImageProps } from 'next/image';
 
-import Suspense from '@/components/Suspense';
-import { getImageUrl } from '@/utils/tmdb';
 import { AnimatePresence, motion, MotionProps } from 'framer-motion';
 
+import Suspense from '@/components/suspense-loading';
+import { getImageUrl } from '@/utils/tmdb';
+
 type FadeImageOnLoad = {
-  loadingBackground: boolean;
-  ambientMode: boolean;
+  /**
+   * Whether to show a loading background or not
+   */
+  loadingBackground?: boolean;
+  /**
+   * Whether to show the image in ambient mode or not, addes a glow effect to the image
+   */
+  ambientMode?: boolean;
+  /**
+   * Image source to load
+   */
   imageSrc: string;
+  /**
+   * directly load this url, don't use the `getImageUrl` function @see getImageUrl
+   */
   rawImageSrc?: string;
-  positionAbsolute: boolean;
-  imageContainer: HTMLAttributes<HTMLDivElement> & MotionProps;
+  /**
+   * Whether to position the image absolutely or not
+   */
+  positionAbsolute?: boolean;
+  /**
+   * Attributes for the container for the image
+   */
+  imageContainer: HTMLAttributes<HTMLDivElement> &
+    MotionProps &
+    Partial<{
+      'data-index': number;
+      'data-middle': boolean;
+      'data-type': string;
+    }>;
+  /**
+   * props for the image component
+   */
   image: Partial<ImageProps>;
+  /**
+   * Duration of the fade in animation
+   */
   duration?: number;
+  /**
+   * Opacity of the image
+   */
   opacity?: number;
+  /**
+   * amout of blur of the image glow effect
+   */
   blur?: number;
+  /**
+   * saturation of the image glow effect
+   */
   saturation?: number;
+  /**
+   * determines how bright the image glow effect is
+   */
   brightness?: number;
+  /**
+   * scale of the image glow effect
+   */
   scale?: number;
+  /**
+   * More options for the glow/ambinet effect
+   */
   ambientOptions?: React.CSSProperties;
 } & PropsWithChildren;
 
+/**
+ * Fades in an image when it is loaded.
+ */
 function FadeImageOnLoad({
   duration = 1,
   opacity = 1,
@@ -60,15 +112,18 @@ function FadeImageOnLoad({
   };
 
   return (
-    <>
+    <motion.div {...props.imageContainer}>
       <AnimatePresence>
         {props.loadingBackground && !imageLoaded && <Suspense />}
       </AnimatePresence>
       <motion.div
+        style={{
+          height: '100%',
+          width: '100%',
+        }}
         initial="initialVariant"
         animate="animateVariant"
         variants={!imageLoaded ? initialVariant : imageLoadedVariant}
-        {...props.imageContainer}
       >
         {
           <>
@@ -101,7 +156,7 @@ function FadeImageOnLoad({
         }
         {props.children}
       </motion.div>
-    </>
+    </motion.div>
   );
 }
 

@@ -3,25 +3,36 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-import styles from '@/styles/components/banner.module.scss';
+import styles from '@/styles/modules/banner.module.scss';
 
-import FadeImageOnLoad from '@/components/FadeImageOnLoad';
-import FadeInOnMount from '@/components/FadeInOnMount';
+import classNames from 'classnames';
+import { AnimatePresence } from 'framer-motion';
+
+import { MoviesGetPopularResult } from 'tmdb-js-web';
+
+import FadeImageOnLoad from '@/components/fade-image-on-load';
+import FadeInOnMount from '@/components/fade-on-load';
 import {
   YoutubeControlButtons,
   YoutubeVideoPlayer,
   YoutubeVideoPlayerProvider,
 } from '@/components/youtube';
 import { MediaType } from '@/lib/types';
-import classNames from 'classnames';
-import { AnimatePresence } from 'framer-motion';
+import { getTitlePathForBanner } from '@/utils/url';
 
-import { MoviesGetPopularResult } from 'tmdb-js-web';
-
+/**
+ * Banner `next/prev` button types
+ */
 type ButtonTypes = 'next' | 'prev';
 
 type PopularMoviesProps = {
+  /**
+   * Type of media to display, either 'movie' or 'tv'
+   */
   media_type?: MediaType;
+  /**
+   * List of popular movies to display
+   */
   popularMovies: MoviesGetPopularResult[];
 };
 
@@ -29,17 +40,30 @@ const PopularMoviesBanner = ({
   media_type = 'movie',
   popularMovies,
 }: PopularMoviesProps) => {
+  /*
+   the current index of the banner,
+   the main banner will be displayed based on this index
+  */
   const [currentIndex, setCurrentIndex] = useState(1);
 
+  // previous and next ndex based on current index
   const prevIndex =
     currentIndex < 1 ? popularMovies.length - 1 : currentIndex - 1;
   const nextIndex =
     currentIndex >= popularMovies.length - 1 ? 0 : currentIndex + 1;
 
+  /* whether the buttons(next/prev) are disabled or not */
   const [disable, setDisable] = useState(false);
 
+  /**
+   * Get the next or previous index based on the current index
+   * @param prev - previous index
+   * @param type - type of button clicked
+   * @returns next or previous index
+   */
   function getIndex(prev: number, type: ButtonTypes) {
     const index = type === 'next' ? prev + 1 : prev - 1;
+
     if (type === 'prev') {
       if (index < 0) {
         return popularMovies.length - 1;
@@ -52,7 +76,9 @@ const PopularMoviesBanner = ({
     return index;
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleBannerChangeClickHandler = (
+    e: React.MouseEvent<HTMLButtonElement>,
+  ) => {
     const type = e.currentTarget.dataset.type as ButtonTypes;
     setDisable(true);
     setCurrentIndex((i) => getIndex(i, type));
@@ -80,10 +106,15 @@ const PopularMoviesBanner = ({
                   ),
                 )}
               >
-                <Link href={getLinkHref(movie.id)}>
+                <Link href={getTitlePathForBanner(movie.id)}>
                   <BackgroundImage
                     id={movie.id}
                     imgSrc={popularMovies[index].backdrop_path}
+                    priority={
+                      index === currentIndex ||
+                      index === nextIndex ||
+                      index === prevIndex
+                    }
                   />
                 </Link>
                 <AnimatePresence>
@@ -111,7 +142,7 @@ const PopularMoviesBanner = ({
             data-type="prev"
             disabled={disable}
             className={styles.leftButton}
-            onClick={handleClick}
+            onClick={handleBannerChangeClickHandler}
           >
             Previous
           </button>
@@ -119,7 +150,7 @@ const PopularMoviesBanner = ({
             data-type="next"
             disabled={disable}
             className={styles.rightButton}
-            onClick={handleClick}
+            onClick={handleBannerChangeClickHandler}
           >
             Next
           </button>
@@ -129,7 +160,15 @@ const PopularMoviesBanner = ({
   );
 };
 
-function BackgroundImage({ id, imgSrc }: { id: number; imgSrc: string }) {
+function BackgroundImage({
+  id,
+  imgSrc,
+  priority,
+}: {
+  id: number;
+  imgSrc: string;
+  priority: boolean;
+}) {
   return (
     <FadeImageOnLoad
       loadingBackground
@@ -146,17 +185,22 @@ function BackgroundImage({ id, imgSrc }: { id: number; imgSrc: string }) {
         className: styles.bannerImageContainer,
       }}
       image={{
-        height: 400 / 2,
-        width: 400,
+        priority: priority,
+        height: 800 / 2,
+        width: 800,
       }}
     />
   );
 }
 
-function getLinkHref(id: number) {
-  return '/title?id=' + id + '&type=' + 'movie' + '&t=banner';
-}
-
+/**
+ * Get the position class name based on the index
+ * @param index - index of the banner
+ * @param nextIndex - next index
+ * @param prevIndex - previous index
+ * @param currentIndex - current index
+ * @returns - class name based on the index
+ */
 function getPositionClassName(
   index: number,
   nextIndex: number,

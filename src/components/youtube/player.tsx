@@ -4,7 +4,7 @@ import 'lite-youtube-embed';
 
 import React, { useEffect, useRef } from 'react';
 
-import styles from '@/styles/components/youtubePlayer.module.scss';
+import styles from '@/styles/modules/youtubePlayer.module.scss';
 
 import type LiteYTEmbed from 'lite-youtube-embed';
 

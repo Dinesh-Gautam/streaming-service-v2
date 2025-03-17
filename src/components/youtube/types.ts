@@ -2,10 +2,11 @@
 
 import { PropsWithChildren } from 'react';
 
-import { MediaType } from '@/lib/types';
 import LiteYTEmbed from 'lite-youtube-embed';
 
 import { MoviesGetVideosResult, TVGetVideosResult } from 'tmdb-js-web';
+
+import { MediaType } from '@/lib/types';
 
 export interface VideoData {
   id: number;

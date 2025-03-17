@@ -1,4 +1,4 @@
-const TMDB_IMAGE_URL = 'https://image.tmdb.org';
+import { TMDB_IMAGE_URL } from '@/constants/config';
 
 /**
  * Gives the `TMDB` image url for the given image path

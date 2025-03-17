@@ -15,6 +15,12 @@ export const getPopularMovies = createCachedMovieMethod(
   TmdbV3.movies.getPopular,
 );
 
+/**
+ * Get trailer videos of movie
+ */
 export const getMovieVideos = createCachedMovieMethod(TmdbV3.movies.getVideos);
 
+/**
+ * Get the trailer videos of a TV series
+ */
 export const getTvVideos = createCachedMovieMethod(TmdbV3.tv.getVideos);

@@ -1,15 +1,16 @@
 'use client';
 
-import styles from '@/styles/components/youtubeControlButtons.module.scss';
+import styles from '@/styles/modules/youtubeControlButtons.module.scss';
 
-import FadeInOnMount from '@/components/FadeInOnMount';
+import { AnimatePresence } from 'framer-motion';
+
+import FadeInOnMount from '@/components/fade-on-load';
 import {
   Pause,
   PlayArrow,
   VolumeOff,
   VolumeUpRounded,
 } from '@mui/icons-material';
-import { AnimatePresence } from 'framer-motion';
 
 import { useYoutubePlayer } from './context';
 
@@ -75,11 +76,9 @@ function MuteButton({ size }: ButtonProps) {
         }));
       }}
     >
-      {playerState.muted ? (
+      {playerState.muted ?
         <VolumeOff fontSize={size} />
-      ) : (
-        <VolumeUpRounded fontSize={size} />
-      )}
+      : <VolumeUpRounded fontSize={size} />}
     </button>
   );
 }
@@ -105,9 +104,9 @@ function PlayButton({ size }: ButtonProps) {
       onClick={() => {
         if (!ytPlayerRef.current) return;
 
-        !playerState.playing
-          ? ytPlayerRef.current.playVideo()
-          : ytPlayerRef.current.pauseVideo();
+        !playerState.playing ?
+          ytPlayerRef.current.playVideo()
+        : ytPlayerRef.current.pauseVideo();
 
         setPlayerState((prev) => ({
           ...prev,
@@ -115,11 +114,9 @@ function PlayButton({ size }: ButtonProps) {
         }));
       }}
     >
-      {playerState.playing ? (
+      {playerState.playing ?
         <Pause fontSize={size || 'small'} />
-      ) : (
-        <PlayArrow fontSize={size || 'small'} />
-      )}
+      : <PlayArrow fontSize={size || 'small'} />}
     </button>
   );
 }

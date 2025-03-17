@@ -1,7 +1,8 @@
 {
   "useTabs": false,
   "singleQuote": true,
-  "trailingComm": "all",
+  "trailingComma": "all",
+  "semi": true,
   "singleAttributePerLine": true,
   "printWidth": 80,
   "tabWidth": 2,
@@ -21,6 +22,8 @@
     "",
     ".webp?$",
     ".mp4?$",
+    "",
+    "^@.*",
     "",
     "^[$]",
     "^[../]",

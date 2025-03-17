@@ -2,6 +2,9 @@ import React, { ReactNode } from 'react';
 
 import { motion } from 'framer-motion';
 
+/**
+ * Fades in children on mount.
+ */
 function FadeInOnMount({ children }: { children: ReactNode }) {
   return (
     <motion.div

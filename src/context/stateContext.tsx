@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useReducer, useState, ReactNode, Dispatch } from "react";
+import React, {
+  createContext,
+  Dispatch,
+  ReactNode,
+  useContext,
+  useReducer,
+  useState,
+} from 'react';
 
 interface SearchState {
   value: string;
@@ -10,12 +17,12 @@ interface State {
 }
 
 interface Action {
-  type: "search" | "searchSuggestions";
+  type: 'search' | 'searchSuggestions';
   payload?: any;
 }
 
 const INTIAL_STATE: State = {
-  search: { value: "" },
+  search: { value: '' },
   searchSuggestions: null,
 };
 
@@ -43,10 +50,10 @@ function reducer(state: State, action: Action): State {
   }
 
   switch (action.type) {
-    case "search":
-      return updateState("search", state.search);
-    case "searchSuggestions":
-      return updateState("searchSuggestions", action.payload);
+    case 'search':
+      return updateState('search', state.search);
+    case 'searchSuggestions':
+      return updateState('searchSuggestions', action.payload);
     default:
       return state;
   }
@@ -69,5 +76,7 @@ export function ContextProvider({ children }: ContextProviderProps) {
     setMoreInfoData,
   };
 
-  return <stateContext.Provider value={value}>{children}</stateContext.Provider>;
+  return (
+    <stateContext.Provider value={value}>{children}</stateContext.Provider>
+  );
 }
