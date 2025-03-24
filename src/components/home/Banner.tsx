@@ -6,7 +6,7 @@ import Link from 'next/link';
 import styles from '@/styles/modules/banner.module.scss';
 
 import classNames from 'classnames';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 
 import { MoviesGetPopularResult } from 'tmdb-js-web';
 
@@ -18,6 +18,7 @@ import {
   YoutubeVideoPlayerProvider,
 } from '@/components/youtube';
 import { MediaType } from '@/lib/types';
+import { Logger } from '@/utils/logger';
 import { getTitlePathForBanner } from '@/utils/url';
 
 /**
@@ -35,6 +36,8 @@ type PopularMoviesProps = {
    */
   popularMovies: MoviesGetPopularResult[];
 };
+
+const logger = new Logger('Popular_movies_banner');
 
 const PopularMoviesBanner = ({
   media_type = 'movie',
@@ -84,6 +87,8 @@ const PopularMoviesBanner = ({
     setCurrentIndex((i) => getIndex(i, type));
   };
 
+  logger.log('diableValue', disable);
+
   return (
     <YoutubeVideoPlayerProvider
       id={popularMovies[currentIndex].id}
@@ -120,17 +125,15 @@ const PopularMoviesBanner = ({
                 <AnimatePresence>
                   {!disable && currentIndex === index && (
                     <FadeInOnMount>
-                      <>
-                        <div className={styles.bottom}>
-                          <h1>{movie.title}</h1>
-                          <div className={styles.videoControls}>
-                            <YoutubeControlButtons />
-                          </div>
+                      <div className={styles.bottom}>
+                        <h1>{movie.title}</h1>
+                        <div className={styles.videoControls}>
+                          <YoutubeControlButtons />
                         </div>
-                        {index === currentIndex && (
-                          <YoutubeVideoPlayer roundedBorder />
-                        )}
-                      </>
+                      </div>
+                      {index === currentIndex && (
+                        <YoutubeVideoPlayer roundedBorder />
+                      )}
                     </FadeInOnMount>
                   )}
                 </AnimatePresence>

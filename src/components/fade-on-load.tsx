@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 /**
  * Fades in children on mount.

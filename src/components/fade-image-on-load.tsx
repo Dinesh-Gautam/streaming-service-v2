@@ -3,7 +3,7 @@
 import { HTMLAttributes, PropsWithChildren, useState } from 'react';
 import Image, { ImageProps } from 'next/image';
 
-import { AnimatePresence, motion, MotionProps } from 'framer-motion';
+import { AnimatePresence, motion, MotionProps } from 'motion/react';
 
 import Suspense from '@/components/suspense-loading';
 import { getImageUrl } from '@/utils/tmdb';

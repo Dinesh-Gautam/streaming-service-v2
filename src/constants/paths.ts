@@ -3,7 +3,7 @@
   It is a good practice to keep all the paths in a single file to avoid any confusion.
 */
 
-const PATHS = {
+export const PATHS = {
   /**
    * Home page path
    */

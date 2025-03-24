@@ -1,3 +1,5 @@
+import { PATHS } from '@/constants/paths';
+
 /**
  * Get the link to the title page for the banner
  * @param id - id of the media

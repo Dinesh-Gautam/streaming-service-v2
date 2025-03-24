@@ -2,7 +2,7 @@
 
 import styles from '@/styles/modules/youtubeControlButtons.module.scss';
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 
 import FadeInOnMount from '@/components/fade-on-load';
 import {
