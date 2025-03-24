@@ -1,6 +1,6 @@
 import { TMDBWebAPI } from 'tmdb-js-web';
 
-import { createCachedMovieMethod } from './utils';
+import { createCachedFunction } from './utils';
 
 if (process.env.TMDB_API_KEY === undefined) {
   throw new Error('TMDB_API_KEY is not defined');
@@ -11,28 +11,32 @@ export const TmdbV3 = new TMDBWebAPI(process.env.TMDB_API_KEY).v3;
 /**
  * Give the list of popular Movies
  */
-export const getPopularMovies = createCachedMovieMethod(
+export const cachedGetPopularMovies = createCachedFunction(
   TmdbV3.movies.getPopular,
 );
 
 /**
  * Get the list of now playing movies
  */
-export const getNowPlayingMovies = createCachedMovieMethod(
+export const cachedGetNowPlayingMovies = createCachedFunction(
   TmdbV3.movies.getNowPlaying,
 );
 
 /**
  * Get the list of trending movies or tv series
  */
-export const getTrending = createCachedMovieMethod(TmdbV3.trending.getTrending);
+export const cachedGetTrending = createCachedFunction(
+  TmdbV3.trending.getTrending,
+);
 
 /**
- * Get trailer videos of movie
+ * Get videos of movie
  */
-export const getMovieVideos = createCachedMovieMethod(TmdbV3.movies.getVideos);
+export const cachedGetMoviesVideos = createCachedFunction(
+  TmdbV3.movies.getVideos,
+);
 
 /**
- * Get the trailer videos of a TV series
+ * Get the videos of a TV series
  */
-export const getTvVideos = createCachedMovieMethod(TmdbV3.tv.getVideos);
+export const cachedGetTvVideos = createCachedFunction(TmdbV3.tv.getVideos);

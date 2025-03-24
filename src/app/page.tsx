@@ -2,9 +2,9 @@ import PopularMoviesBanner from '@/components/home/Banner';
 import Slider from '@/components/home/Slider';
 import { DEFAULT_PAGE_REVALIDATION_TIME } from '@/constants/config';
 import {
-  getNowPlayingMovies,
-  getPopularMovies,
-  getTrending,
+  cachedGetNowPlayingMovies,
+  cachedGetPopularMovies,
+  cachedGetTrending,
 } from '@/server/tmdb';
 import { omitResutlsWithNoBannerImage } from '@/utils/tmdb';
 
@@ -14,10 +14,10 @@ export const revalidate = DEFAULT_PAGE_REVALIDATION_TIME;
 export default async function Home() {
   const [popularMovies, nowPlaying, trendingMovies, trendingTv] =
     await Promise.all([
-      getPopularMovies(),
-      getNowPlayingMovies(),
-      getTrending('movie', 'week'),
-      getTrending('tv', 'week'),
+      cachedGetPopularMovies({}),
+      cachedGetNowPlayingMovies(),
+      cachedGetTrending('movie', 'week'),
+      cachedGetTrending('tv', 'week'),
     ]);
 
   return (

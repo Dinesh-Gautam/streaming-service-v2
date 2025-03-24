@@ -1,6 +1,6 @@
 import { cache } from 'react';
 
-export const createCachedMovieMethod = <
+export const createCachedFunction = <
   T extends (...args: any[]) => Promise<any>,
 >(
   method: T,

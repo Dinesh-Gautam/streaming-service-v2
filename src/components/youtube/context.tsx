@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-import { getVideos } from './_actions';
+import { getTitleTrailerVideos } from './_actions';
 import {
   PlayerState,
   VideoData,
@@ -44,7 +44,7 @@ function YoutubeVideoPlayerProvider({
   };
 
   async function getVideosData() {
-    const data = await getVideos(id, media_type);
+    const data = await getTitleTrailerVideos(id, media_type);
 
     if (!data) return;
 

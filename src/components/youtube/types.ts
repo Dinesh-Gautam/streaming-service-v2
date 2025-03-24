@@ -2,8 +2,6 @@
 
 import { PropsWithChildren } from 'react';
 
-import LiteYTEmbed from 'lite-youtube-embed';
-
 import { MoviesGetVideosResult, TVGetVideosResult } from 'tmdb-js-web';
 
 import { MediaType } from '@/lib/types';
