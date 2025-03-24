@@ -2,14 +2,15 @@
  * @class Logger class
  */
 export class Logger {
-  private _name: string;
+  public moduleName: string;
 
+  private _prevMessage: string = '';
   /**
    * Constructor
    * @param moduleName - name of the module
    */
   constructor(moduleName: string) {
-    this._name = moduleName;
+    this.moduleName = moduleName;
   }
 
   /**
@@ -17,8 +18,11 @@ export class Logger {
    * @param message - message to log
    */
   log(...messages: any[]) {
-    const moduleName = this._name.toUpperCase();
+    const moduleName = this.moduleName.toUpperCase();
 
+    if (this._prevMessage === JSON.stringify(messages)) return;
+
+    this._prevMessage = JSON.stringify(messages);
     console.log(`${moduleName}:`, ...messages);
   }
 }

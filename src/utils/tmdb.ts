@@ -1,4 +1,7 @@
-import type { MoviesGetPopularResult } from 'tmdb-js-web';
+import type {
+  MoviesGetPopularResult,
+  TrendingGetTrendingResult,
+} from 'tmdb-js-web';
 
 import { TMDB_IMAGE_URL } from '@/constants/config';
 
@@ -20,8 +23,8 @@ export function getImageUrl(path: string, options?: { size: number }) {
  * @param results
  * @returns results with banner image
  */
-export function omitResutlsWithNoBannerImage(
-  results: MoviesGetPopularResult[],
-) {
+export function omitResutlsWithNoBannerImage<
+  T extends MoviesGetPopularResult | TrendingGetTrendingResult,
+>(results: T[]): T[] {
   return results.filter((result) => result.backdrop_path);
 }

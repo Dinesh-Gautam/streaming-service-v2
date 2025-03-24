@@ -6,7 +6,10 @@ import styles from '@/styles/modules/slider.module.scss';
 
 import classNames from 'classnames';
 
-import type { MoviesGetPopularResult } from 'tmdb-js-web';
+import type {
+  MoviesGetPopularResult,
+  TrendingGetTrendingResult,
+} from 'tmdb-js-web';
 
 import FadeImageOnLoad from '@/components/fade-image-on-load';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -19,7 +22,7 @@ interface SliderProps {
   /**
    * List of data to display in the slider
    */
-  data: MoviesGetPopularResult[];
+  data: (MoviesGetPopularResult | TrendingGetTrendingResult)[];
 }
 
 function Slider({ title, data }: SliderProps) {

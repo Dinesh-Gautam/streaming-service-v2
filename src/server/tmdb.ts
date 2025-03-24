@@ -16,6 +16,18 @@ export const getPopularMovies = createCachedMovieMethod(
 );
 
 /**
+ * Get the list of now playing movies
+ */
+export const getNowPlayingMovies = createCachedMovieMethod(
+  TmdbV3.movies.getNowPlaying,
+);
+
+/**
+ * Get the list of trending movies or tv series
+ */
+export const getTrending = createCachedMovieMethod(TmdbV3.trending.getTrending);
+
+/**
  * Get trailer videos of movie
  */
 export const getMovieVideos = createCachedMovieMethod(TmdbV3.movies.getVideos);
