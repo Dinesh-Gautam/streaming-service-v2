@@ -32,7 +32,7 @@ type FadeImageOnLoad = {
   /**
    * Attributes for the container for the image
    */
-  imageContainer: HTMLAttributes<HTMLDivElement> &
+  imageContainer?: HTMLAttributes<HTMLDivElement> &
     MotionProps &
     Partial<{
       'data-index': number;
@@ -118,6 +118,7 @@ function FadeImageOnLoad({
       </AnimatePresence>
       <motion.div
         style={{
+          pointerEvents: 'none',
           height: '100%',
           width: '100%',
         }}

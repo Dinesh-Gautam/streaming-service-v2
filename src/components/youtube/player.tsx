@@ -49,6 +49,8 @@ const YoutubeVideoPlayer: React.FC<YoutubeVideoPlayerProps> = ({
     setVideoPlayerReady(false);
 
     return () => {
+      setVideoPlayerReady(false);
+
       if (!ytPlayerRef.current) return;
 
       ytPlayerRef.current.destroy();

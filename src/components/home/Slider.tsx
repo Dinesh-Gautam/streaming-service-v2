@@ -23,9 +23,11 @@ interface SliderProps {
    * List of data to display in the slider
    */
   data: (MoviesGetPopularResult | TrendingGetTrendingResult)[];
+
+  id: string;
 }
 
-function Slider({ title, data }: SliderProps) {
+function Slider({ title, data, id }: SliderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   /*
@@ -141,11 +143,13 @@ function Slider({ title, data }: SliderProps) {
                         className: styles.imageContainer,
                         id: 'imageContainer',
                         'data-index': data.indexOf(e),
+                        'data-type': id,
+                        'data-middle': true,
                       }}
                       image={{
                         priority: index < MAX_ITEMS,
-                        height: 200 / 2,
-                        width: 200,
+                        height: 400 / 2,
+                        width: 400,
                       }}
                     />
                     <h1 className={styles.movieName}>
