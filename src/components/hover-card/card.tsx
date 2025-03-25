@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import styles from '@/styles/modules/slider.module.scss';
 
+import { StarRounded } from '@mui/icons-material';
 import { AnimatePresence, motion } from 'motion/react';
 
 import Separator from '@/components/elements/separator';
@@ -143,7 +143,7 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                   <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: 'flex-end',
                       gap: 2,
                     }}
                   >
@@ -158,10 +158,10 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                         ]}
                       />
                     : <>
-                        {/* <Star
+                        <StarRounded
                           color="warning"
                           fontSize="small"
-                        /> */}
+                        />
                         <Separator
                           values={[
                             `${

@@ -1,3 +1,5 @@
+'use client';
+
 import React, {
   createContext,
   Dispatch,
@@ -7,14 +9,18 @@ import React, {
   useState,
 } from 'react';
 
-interface SearchState {
-  value: string;
-}
+import type { cachedMultiSearch } from '@/server/tmdb';
 
-interface State {
+type SearchState = {
+  value: string;
+};
+
+export type State = {
   search: SearchState;
-  searchSuggestions: SearchState | null;
-}
+  searchSuggestions:
+    | Awaited<ReturnType<typeof cachedMultiSearch>>['results']
+    | null;
+};
 
 interface Action {
   type: 'search' | 'searchSuggestions';
@@ -35,23 +41,27 @@ interface ContextProps {
   setMoreInfoData: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-const stateContext = createContext<Partial<ContextProps>>({});
+const stateContext = createContext<ContextProps | null>(null);
 
 export function useData() {
-  return useContext(stateContext);
+  const context = useContext(stateContext);
+
+  if (!context) throw new Error('Use useDate with Context');
+
+  return context;
 }
 
 function reducer(state: State, action: Action): State {
   function updateState(field: keyof State, value?: any): State {
     return {
       ...state,
-      [field]: value ?? { value },
+      [field]: value,
     };
   }
 
   switch (action.type) {
     case 'search':
-      return updateState('search', state.search);
+      return updateState('search', action.payload);
     case 'searchSuggestions':
       return updateState('searchSuggestions', action.payload);
     default:

@@ -40,3 +40,7 @@ export const cachedGetMoviesVideos = createCachedFunction(
  * Get the videos of a TV series
  */
 export const cachedGetTvVideos = createCachedFunction(TmdbV3.tv.getVideos);
+
+export const cachedMultiSearch = createCachedFunction(
+  TmdbV3.search.searchMulti,
+);

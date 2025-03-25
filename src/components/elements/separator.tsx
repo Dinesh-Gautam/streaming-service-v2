@@ -3,7 +3,7 @@ import { Fragment } from 'react';
 import styles from '@/styles/modules/separator.module.scss';
 
 type SeparatorProps = {
-  values: (string | number)[];
+  values: (string | number | undefined)[];
   gap?: number;
 };
 

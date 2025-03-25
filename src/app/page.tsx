@@ -1,8 +1,9 @@
 import PopularMoviesBanner from '@/components/home/Banner';
 import Slider from '@/components/home/Slider';
 import { HoverCardProvider } from '@/components/hover-card/provider';
-import { DEFAULT_PAGE_REVALIDATION_TIME } from '@/constants/config';
+import { Nav } from '@/components/nav';
 import { SLIDER_TITLES, SLIDERS } from '@/constants/sliders';
+import { ContextProvider } from '@/context/stateContext';
 import {
   cachedGetNowPlayingMovies,
   cachedGetPopularMovies,
@@ -34,7 +35,9 @@ export default async function Home() {
   };
 
   return (
-    <>
+    <ContextProvider>
+      {/* // todo: make singedIn dynamic} */}
+      <Nav signedIn={false} />
       <PopularMoviesBanner
         popularMovies={omitResutlsWithNoBannerImage(popularMovies.results)}
       />
@@ -48,6 +51,6 @@ export default async function Home() {
           />
         ))}
       </HoverCardProvider>
-    </>
+    </ContextProvider>
   );
 }

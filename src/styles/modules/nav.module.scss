@@ -1,0 +1,94 @@
+.navContainer {
+  width: 100%;
+  padding: 0.5rem;
+  padding-block: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navLeftContainer {
+  // align-self: flex-end;
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  // padding-inline: 2rem;
+  margin-right: 1rem;
+  position: relative;
+  button {
+    padding: 0;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    position: relative;
+    z-index: 100000;
+  }
+}
+
+.normalButton {
+  border-radius: 12px !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.navRightContainer {
+  align-self: flex-start;
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.userModalContainer {
+  position: absolute;
+  right: 0;
+  bottom: -0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0 1rem;
+  border-radius: 12px;
+  z-index: 10000000;
+  backdrop-filter: blur(64px);
+  transform: translateY(100%);
+  min-width: fit-content;
+  max-width: 10vw;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.9);
+  .userInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding-block: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    h6 {
+      font-weight: normal;
+      margin: 0;
+      padding: 0;
+      line-height: 100%;
+      font-size: 18px;
+    }
+    span {
+      font-size: 14px;
+      opacity: 0.5;
+    }
+  }
+  .buttonsContainer {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    button {
+      background-color: transparent;
+      min-width: fit-content;
+      border-radius: 0;
+      padding-block: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: 16px;
+      width: 100%;
+      span {
+        width: 100%;
+      }
+    }
+  }
+}
