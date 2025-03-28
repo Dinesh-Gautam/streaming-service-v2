@@ -1,10 +1,18 @@
 import { notFound } from 'next/navigation';
 
-import TitleView from '@/components/title';
+import TitleView, {
+  type MovieResult,
+  type Result,
+  type TvResult,
+} from '@/components/title';
 import { YoutubeVideoPlayerProvider } from '@/components/youtube';
 import { ContextProvider } from '@/context/state-context';
 import type { MediaType } from '@/lib/types';
-import { cachedGeMovietDetails, cachedTvDetails } from '@/server/tmdb';
+import {
+  cachedGeMovietDetails,
+  cachedTvDetails,
+  cachedTvSeasonInfo,
+} from '@/server/tmdb';
 
 type TitlePageParams = {
   id: string;
@@ -27,31 +35,35 @@ export default async function TitlePage({ params, searchParams }: Props) {
   const { id, type: media_type } = await params;
   const { t: layout_type, original } = await searchParams;
 
-  let searchResult;
+  let searchResult: Result | null;
+
+  if (isNaN(Number(id))) return notFound();
 
   // if (!original) {
   searchResult =
     media_type === 'movie' ?
-      await cachedGeMovietDetails(Number(id), {
+      ((await cachedGeMovietDetails(Number(id), {
         append_to_response: ['external_ids'],
-      })
+      })) as MovieResult)
     : media_type === 'tv' ?
-      await cachedTvDetails(Number(id), {
+      ((await cachedTvDetails(Number(id), {
         append_to_response: ['external_ids'],
-      })
+      })) as TvResult)
     : null;
 
-  // if (media_type === 'tv') {
-  //   searchResult.seasonInfo = await getDetails(id, media_type, {
-  //     type: 'season',
-  //   });
-  // }
+  if (!searchResult) return notFound();
+
+  if (media_type === 'tv') {
+    (searchResult as TvResult).seasonInfo = await cachedTvSeasonInfo(
+      Number(id),
+      1,
+    );
+  }
+
   // } else {
   //   searchResult = await getOriginalMovieDetails(id);
   //   searchResult.original = Boolean(original);
   // }
-
-  if (!searchResult) return notFound();
 
   return (
     <ContextProvider>

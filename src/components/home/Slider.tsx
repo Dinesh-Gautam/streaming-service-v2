@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import styles from '@/styles/modules/slider.module.scss';
 
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import classNames from 'classnames';
 
 import type {
@@ -12,7 +13,6 @@ import type {
 } from 'tmdb-js-web';
 
 import FadeImageOnLoad from '@/components/fade-image-on-load';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 interface SliderProps {
   /**

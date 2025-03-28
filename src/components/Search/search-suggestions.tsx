@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 
 import styles from '@/styles/modules/search.module.scss';
 
@@ -7,8 +8,8 @@ import { motion } from 'motion/react';
 import Separator from '@/components/elements/separator';
 import FadeImageOnLoad from '@/components/fade-image-on-load';
 import type { State } from '@/context/state-context';
-
-// import { useViewRedirect } from '../../utils';
+import type { MediaType } from '@/lib/types';
+import { getTitlePath } from '@/utils/url';
 
 function Suggestions({
   searchSuggestions,
@@ -17,7 +18,7 @@ function Suggestions({
 }) {
   const mainContainerRef = useRef(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  // const onClick = useViewRedirect();
+
   const [height, setHeight] = useState(0);
 
   const maxHeight = innerHeight / 3;
@@ -63,52 +64,58 @@ function Suggestions({
           {searchSuggestions &&
             searchSuggestions.map((suggestion) => {
               return (
-                <motion.div
-                  layout
-                  transition={{ type: 'ease', duration: 0.5 }}
-                  // onClick={onClick(suggestion)}
-                  className={styles.suggestionResultContainer}
+                <Link
                   key={suggestion.id}
-                >
-                  {suggestion.poster_path && (
-                    <FadeImageOnLoad
-                      imageSrc={suggestion.poster_path}
-                      ambientMode
-                      blur={24}
-                      brightness={2}
-                      scale={2}
-                      ambientOptions={{
-                        top: 0,
-                        left: 0,
-                      }}
-                      imageContainer={{
-                        className: styles.suggestionImageContainer,
-                      }}
-                      image={{ height: 80, width: 60 }}
-                    />
+                  href={getTitlePath(
+                    suggestion.id,
+                    suggestion.media_type as MediaType,
                   )}
-                  <div className={styles.suggestionInfoContainer}>
-                    <h4>
-                      {suggestion.title ||
-                        suggestion.name ||
-                        suggestion.original_title ||
-                        suggestion.original_name}
-                    </h4>
-                    <Separator
-                      gap={4}
-                      values={[
-                        suggestion.media_type,
-                        (suggestion.first_air_date ||
-                          suggestion.release_date) &&
-                          new Date(
-                            suggestion.first_air_date ||
-                              suggestion.release_date ||
-                              '',
-                          ).getFullYear(),
-                      ]}
-                    />
-                  </div>
-                </motion.div>
+                >
+                  <motion.div
+                    layout
+                    transition={{ type: 'ease', duration: 0.5 }}
+                    className={styles.suggestionResultContainer}
+                  >
+                    {suggestion.poster_path && (
+                      <FadeImageOnLoad
+                        imageSrc={suggestion.poster_path}
+                        ambientMode
+                        blur={24}
+                        brightness={2}
+                        scale={2}
+                        ambientOptions={{
+                          top: 0,
+                          left: 0,
+                        }}
+                        imageContainer={{
+                          className: styles.suggestionImageContainer,
+                        }}
+                        image={{ height: 80, width: 60 }}
+                      />
+                    )}
+                    <div className={styles.suggestionInfoContainer}>
+                      <h4>
+                        {suggestion.title ||
+                          suggestion.name ||
+                          suggestion.original_title ||
+                          suggestion.original_name}
+                      </h4>
+                      <Separator
+                        gap={4}
+                        values={[
+                          suggestion.media_type,
+                          (suggestion.first_air_date ||
+                            suggestion.release_date) &&
+                            new Date(
+                              suggestion.first_air_date ||
+                                suggestion.release_date ||
+                                '',
+                            ).getFullYear(),
+                        ]}
+                      />
+                    </div>
+                  </motion.div>
+                </Link>
               );
             })}
         </div>

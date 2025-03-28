@@ -50,3 +50,7 @@ export const cachedGeMovietDetails = createCachedFunction(
 );
 
 export const cachedTvDetails = createCachedFunction(TmdbV3.tv.getDetails);
+
+export const cachedTvSeasonInfo = createCachedFunction(
+  TmdbV3.tvSeasons.getDetails,
+);

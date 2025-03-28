@@ -262,67 +262,46 @@
   flex-direction: column;
   gap: 2rem;
 }
+
 .seasonSelectorContainer {
   // margin: 4rem;
   margin-left: 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .tvContainer {
   position: relative;
   width: calc(150% + 2rem);
   align-items: center;
+}
+
+.episodeScrollButtons {
+  display: flex;
 
   button {
-    top: 3rem;
+    background: transparent;
     display: flex;
     align-items: center;
     color: white;
-    position: absolute;
-    height: 148px;
-    z-index: 100;
     border-radius: 0;
-  }
-  .rightButton {
-    content: '';
-    right: 0;
-    // transform: translateX(100%);
-    width: 1em * 6;
-    // padding-right: 8rem;
-    // justify-content: flex-start;s
-    background: linear-gradient(
-      -90deg,
-      rgba(16, 16, 16, 0.9) 0%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    @include breakpoint(lg, max) {
-      transform: translateX(-50%);
-    }
-    z-index: 100;
-  }
 
-  .leftButton {
-    content: '';
-    left: 0;
-    width: 1rem * 6;
-    // padding-left: 8rem;
-    // justify-content: flex-end;
-    background: linear-gradient(
-      90deg,
-      rgba(16, 16, 16, 0.9) 0%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    z-index: 100;
+    &:disabled {
+      opacity: 0.2;
+    }
   }
 }
 
 .episodesContainer {
-  // position: absolute;
+  position: relative;
   overflow: hidden;
   bottom: 0;
   left: 0;
   max-width: calc(100vw + 4rem);
   scroll-behavior: smooth;
   padding: 3rem 0;
+  top: -3rem;
   position: relative;
 }
 
@@ -386,8 +365,15 @@
     }
   }
 }
+
 .episodeImageContainer {
   display: flex;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.episodeImageContainer img {
+  height: 100%;
+  width: auto;
+  object-fit: cover;
 }

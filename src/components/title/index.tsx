@@ -13,13 +13,16 @@ import Image from 'next/image';
 
 import styles from '@/styles/modules/title.module.scss';
 
+import { ArrowLeft, ArrowRight } from '@mui/icons-material';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import Close from '@mui/icons-material/Close';
 import Star from '@mui/icons-material/Star';
 import { AnimatePresence, motion } from 'motion/react';
 
+import Select from '@/components/elements/custom-select';
 import Separator from '@/components/elements/separator';
 import FadeImageOnLoad from '@/components/fade-image-on-load';
+import { getSeasonInfo } from '@/components/title/_action';
 import { FormatParagraph } from '@/components/utils/paragraph';
 import {
   YoutubeControlButtons,
@@ -27,7 +30,11 @@ import {
 } from '@/components/youtube';
 import { useYoutubePlayer } from '@/components/youtube/context';
 import type { MediaType } from '@/lib/types';
-import type { cachedGeMovietDetails, cachedTvDetails } from '@/server/tmdb';
+import type {
+  cachedGeMovietDetails,
+  cachedTvDetails,
+  cachedTvSeasonInfo,
+} from '@/server/tmdb';
 import { getImageUrl } from '@/utils/tmdb';
 
 const otherElementsAnimation = {
@@ -40,13 +47,20 @@ const otherElementsAnimation = {
   },
 };
 
-export type Result = Awaited<
-  ReturnType<typeof cachedGeMovietDetails | typeof cachedTvDetails>
->;
+export type MediaResult<T extends MediaType> =
+  T extends 'movie' ? Awaited<ReturnType<typeof cachedGeMovietDetails>>
+  : Awaited<ReturnType<typeof cachedTvDetails>> & {
+      seasonInfo: Awaited<ReturnType<typeof cachedTvSeasonInfo>>;
+    };
+
+export type MovieResult = MediaResult<'movie'>;
+export type TvResult = MediaResult<'tv'>;
+
+export type Result = MovieResult | TvResult;
 
 type TitleViewProps = {
   media_type: MediaType;
-  result: Result;
+  result: MovieResult | TvResult;
   layout_type?: string;
   original: boolean;
 };
@@ -61,6 +75,7 @@ function TitleView({
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const { playerState } = useYoutubePlayer();
   const { hideAll, onMouseMove } = useHideUntilMouseInactivity();
+
   return (
     <motion.div
       onAnimationEnd={() => {
@@ -100,7 +115,12 @@ function TitleView({
           />
         </HideWhenPlayerIsPlaying>
         <div>
-          {/* {media_type === 'tv' && <TvSeasonsDrawer result={result} />} */}
+          {media_type === 'tv' && (
+            <TvSeasonsDrawer
+              media_type={media_type}
+              result={result}
+            />
+          )}
           <Buttons
             original={original}
             result={result}
@@ -249,9 +269,17 @@ function ClickableLessInfo({
                     result.number_of_episodes + 'eps') ||
                     null,
                   'episode_run_time' in result &&
-                    result.episode_run_time.join(' - ') + 'min',
-                  'languages' in result && result.languages.join(', '),
-                  'runtime' in result && result.runtime + ' mins',
+                    result.episode_run_time.length > 0 &&
+                    result.episode_run_time.join(' - ') + 'Min',
+                  'languages' in result &&
+                    result.languages
+                      .map((lng) =>
+                        new Intl.DisplayNames('en', { type: 'language' }).of(
+                          lng,
+                        ),
+                      )
+                      .join(', '),
+                  'runtime' in result && result.runtime + ' Mins',
                 ]}
               />
             </div>
@@ -324,7 +352,8 @@ function OpenedMoreInfo({
                         result.number_of_episodes + 'eps') ||
                         null,
                       'episode_run_time' in result &&
-                        result.episode_run_time.join(' - ') + 'min',
+                        result.episode_run_time.length > 0 &&
+                        result.episode_run_time.join(' - ') + 'Min',
                       'languages' in result && result.languages.join(', '),
                       'runtime' in result && result.runtime + ' mins',
                     ]}
@@ -558,160 +587,168 @@ function HideUntilMouseInactive({
   );
 }
 
-// function TvSeasonsDrawer({
-//   media_type,
-//   result,
-// }: {
-//   result: Result;
-//   media_type: MediaType;
-// }) {
-//   const [seasonSelect, setSeasonSelect] = useState(null);
-//   const [seasonInfo, setSeasonInfo] = useState(
-//     media_type === 'tv' ? 'seasonInfo' in result && result.seasonInfo : null,
-//   );
+function TvSeasonsDrawer({
+  media_type,
+  result,
+}: {
+  result: Result;
+  media_type: MediaType;
+}) {
+  const [seasonSelect, setSeasonSelect] = useState<{
+    season_number: number;
+  } | null>(null);
 
-//   const [rightButtonDisplay, setRightButtonDisplay] = useState(false);
+  const [seasonInfo, setSeasonInfo] = useState(
+    media_type === 'tv' ? 'seasonInfo' in result && result.seasonInfo : null,
+  );
 
-//   useEffect(() => {
-//     if (media_type !== 'tv') return;
+  const [rightButtonDisplay, setRightButtonDisplay] = useState(false);
 
-//     console.log('getting season info');
+  useEffect(() => {
+    if (media_type !== 'tv') return;
 
-//     if (seasonSelect) {
-//       (async () => {
-//         const si = await fetch(
-//           '/api/tmdb/season?id=' +
-//             result.id +
-//             '&media_type=' +
-//             result.media_type +
-//             '&season=' +
-//             seasonSelect.season_number,
-//         ).then((e) => e.json());
-//         setSeasonInfo(si);
-//       })();
-//     }
-//   }, [seasonSelect]);
+    console.log('getting season info');
 
-//   const episodeWrapperRef = useRef(null);
-//   const [scrollLeft, setScrollLeft] = useState(0);
+    if (seasonSelect) {
+      (async () => {
+        const info = await getSeasonInfo(result.id, seasonSelect.season_number);
+        setSeasonInfo(info);
+      })();
+    }
+  }, [seasonSelect]);
 
-//   useEffect(() => {
-//     setRightButtonDisplay(
-//       episodeWrapperRef.current &&
-//         (scrollLeft <
-//           Math.floor(
-//             episodeWrapperRef.current?.scrollWidth -
-//               episodeWrapperRef.current?.clientWidth,
-//           ) ||
-//           scrollLeft < 1) &&
-//         episodeWrapperRef.current.clientWidth !==
-//           episodeWrapperRef.current.scrollWidth,
-//     );
-//   }, [episodeWrapperRef, scrollLeft, seasonInfo]);
-//   function rightButtonClick() {
-//     episodeWrapperRef.current.scrollLeft +=
-//       episodeWrapperRef.current.clientWidth / 1.2;
-//     setScrollLeft(
-//       Math.min(
-//         episodeWrapperRef.current.scrollLeft +
-//           episodeWrapperRef.current.clientWidth / 1.2,
-//         episodeWrapperRef.current.scrollWidth -
-//           episodeWrapperRef.current.clientWidth,
-//       ),
-//     );
-//   }
+  const episodeWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
-//   function leftButtonClick() {
-//     episodeWrapperRef.current.scroll({
-//       left: Math.max(
-//         episodeWrapperRef.current.scrollLeft -
-//           episodeWrapperRef.current.clientWidth / 1.2,
-//         0,
-//       ),
-//       behavior: 'smooth',
-//     });
-//     setScrollLeft(
-//       Math.max(
-//         episodeWrapperRef.current.scrollLeft -
-//           episodeWrapperRef.current.clientWidth / 1.2,
-//         0,
-//       ),
-//     );
-//   }
-//   return (
-//     seasonInfo && (
-//       <HideWhenPlayerIsPlaying className={styles.seasonContainer}>
-//         <div className={styles.seasonSelectorContainer}>
-//           <Select
-//             onChange={(option) => {
-//               setSeasonSelect({ season_number: option.value });
-//             }}
-//             defaultValue={1}
-//             options={result.seasons.map((e) => ({
-//               label: e.name,
-//               value: e.season_number,
-//             }))}
-//           />
-//         </div>
-//         <div className={styles.tvContainer}>
-//           <button
-//             style={{
-//               display: scrollLeft > 1 ? 'flex' : 'none',
-//             }}
-//             onClick={leftButtonClick}
-//             className={styles.leftButton}
-//           >
-//             <ArrowLeft fontSize="large" />
-//           </button>
-//           <button
-//             style={{
-//               display: rightButtonDisplay ? 'flex' : 'none',
-//             }}
-//             onClick={rightButtonClick}
-//             className={styles.rightButton}
-//           >
-//             <ArrowRight fontSize="large" />
-//           </button>
-//           <div
-//             ref={(el) => (episodeWrapperRef.current = el)}
-//             className={styles.episodesContainer}
-//           >
-//             <div className={styles.episodeWrapper}>
-//               {seasonInfo.episodes.map(
-//                 (epi, index) =>
-//                   epi.still_path !== null && (
-//                     <div
-//                       key={epi.id}
-//                       className={styles.episode}
-//                     >
-//                       <span className={styles.episodeNumber}>
-//                         {(index + 1 < 10 ? '0' : '') + (index + 1)}
-//                       </span>
-//                       <span className={styles.episodeName}>{epi.name}</span>
-//                       <FadeImageOnLoad
-//                         loadingBackground
-//                         imageSrc={epi.still_path}
-//                         duration={0.5}
-//                         attr={{
-//                           imageContainer: {
-//                             className: styles.episodeImageContainer,
-//                           },
-//                           image: {
-//                             objectFit: 'cover',
-//                             width: 228,
-//                             height: 148,
-//                           },
-//                         }}
-//                       />
-//                     </div>
-//                   ),
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </HideWhenPlayerIsPlaying>
-//     )
-//   );
-// }
+  console.log(result);
+
+  useEffect(() => {
+    if (!episodeWrapperRef.current) return;
+
+    setRightButtonDisplay(
+      (scrollLeft <
+        Math.floor(
+          episodeWrapperRef.current?.scrollWidth -
+            episodeWrapperRef.current?.clientWidth,
+        ) ||
+        scrollLeft < 1) &&
+        episodeWrapperRef.current.clientWidth !==
+          episodeWrapperRef.current.scrollWidth,
+    );
+  }, [episodeWrapperRef, scrollLeft, seasonInfo]);
+
+  function rightButtonClick() {
+    if (!episodeWrapperRef.current) return;
+
+    episodeWrapperRef.current.scrollLeft +=
+      episodeWrapperRef.current.clientWidth / 1.2;
+
+    setScrollLeft(
+      Math.min(
+        episodeWrapperRef.current.scrollLeft +
+          episodeWrapperRef.current.clientWidth / 1.2,
+        episodeWrapperRef.current.scrollWidth -
+          episodeWrapperRef.current.clientWidth,
+      ),
+    );
+  }
+
+  function leftButtonClick() {
+    if (!episodeWrapperRef.current) return;
+
+    episodeWrapperRef.current.scroll({
+      left: Math.max(
+        episodeWrapperRef.current.scrollLeft -
+          episodeWrapperRef.current.clientWidth / 1.2,
+        0,
+      ),
+      behavior: 'smooth',
+    });
+
+    setScrollLeft(
+      Math.max(
+        episodeWrapperRef.current.scrollLeft -
+          episodeWrapperRef.current.clientWidth / 1.2,
+        0,
+      ),
+    );
+  }
+  return (
+    seasonInfo && (
+      <HideWhenPlayerIsPlaying className={styles.seasonContainer}>
+        <div className={styles.seasonSelectorContainer}>
+          <Select
+            onChange={(option) => {
+              setSeasonSelect({ season_number: Number(option.value) });
+            }}
+            defaultValue={1}
+            options={(result as TvResult).seasons.map((e) => ({
+              label: e.name,
+              value: String(e.season_number),
+            }))}
+          />
+          <div className={styles.episodeScrollButtons}>
+            <button
+              disabled={scrollLeft < 1}
+              onClick={leftButtonClick}
+              className={styles.leftButton}
+            >
+              <ArrowLeft fontSize="large" />
+            </button>
+            <button
+              disabled={!rightButtonDisplay}
+              onClick={rightButtonClick}
+              className={styles.rightButton}
+            >
+              <ArrowRight fontSize="large" />
+            </button>
+          </div>
+        </div>
+        <div className={styles.tvContainer}>
+          <div
+            ref={(el) => {
+              episodeWrapperRef.current = el;
+            }}
+            className={styles.episodesContainer}
+          >
+            <div className={styles.episodeWrapper}>
+              {seasonInfo.episodes.map(
+                (epi, index) =>
+                  epi.still_path !== null && (
+                    <div
+                      key={epi.id}
+                      className={styles.episode}
+                    >
+                      <span className={styles.episodeNumber}>
+                        {(index + 1 < 10 ? '0' : '') + (index + 1)}
+                      </span>
+                      <span className={styles.episodeName}>{epi.name}</span>
+                      <FadeImageOnLoad
+                        loadingBackground
+                        imageSrc={epi.still_path}
+                        duration={0.5}
+                        imageContainer={{
+                          className: styles.episodeImageContainer,
+                          style: {
+                            height: 148,
+                            width: 228,
+                            contain: 'size',
+                          },
+                        }}
+                        image={{
+                          width: 228,
+                          height: 148,
+                        }}
+                      />
+                    </div>
+                  ),
+              )}
+            </div>
+          </div>
+        </div>
+      </HideWhenPlayerIsPlaying>
+    )
+  );
+}
 
 export default TitleView;
