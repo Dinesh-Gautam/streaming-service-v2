@@ -44,3 +44,9 @@ export const cachedGetTvVideos = createCachedFunction(TmdbV3.tv.getVideos);
 export const cachedMultiSearch = createCachedFunction(
   TmdbV3.search.searchMulti,
 );
+
+export const cachedGeMovietDetails = createCachedFunction(
+  TmdbV3.movies.getDetails,
+);
+
+export const cachedTvDetails = createCachedFunction(TmdbV3.tv.getDetails);

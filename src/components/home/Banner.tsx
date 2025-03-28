@@ -17,6 +17,7 @@ import {
   YoutubeVideoPlayer,
   YoutubeVideoPlayerProvider,
 } from '@/components/youtube';
+import { useBanner } from '@/context/banner-context';
 import { MediaType } from '@/lib/types';
 import { Logger } from '@/utils/logger';
 import { getTitlePathForBanner } from '@/utils/url';
@@ -47,7 +48,7 @@ const PopularMoviesBanner = ({
    the current index of the banner,
    the main banner will be displayed based on this index
   */
-  const [currentIndex, setCurrentIndex] = useState(1);
+  const { currentIndex, setCurrentIndex } = useBanner();
 
   // previous and next ndex based on current index
   const prevIndex =

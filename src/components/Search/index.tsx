@@ -13,9 +13,9 @@ import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import { AnimatePresence, motion } from 'motion/react';
 
-import { searchSuggest } from '@/components/Search/_action';
-import Suggestions from '@/components/Search/searchSuggestion';
-import { useData } from '@/context/stateContext';
+import { searchSuggest } from '@/components/search/_action';
+import Suggestions from '@/components/search/search-suggestions';
+import { useData } from '@/context/state-context';
 
 // import { useViewRedirect } from "../../Utils";
 

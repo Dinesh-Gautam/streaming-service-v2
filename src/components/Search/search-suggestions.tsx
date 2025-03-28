@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 
 import Separator from '@/components/elements/separator';
 import FadeImageOnLoad from '@/components/fade-image-on-load';
-import type { State } from '@/context/stateContext';
+import type { State } from '@/context/state-context';
 
 // import { useViewRedirect } from '../../utils';
 

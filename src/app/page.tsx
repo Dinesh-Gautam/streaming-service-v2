@@ -3,7 +3,7 @@ import Slider from '@/components/home/Slider';
 import { HoverCardProvider } from '@/components/hover-card/provider';
 import { Nav } from '@/components/nav';
 import { SLIDER_TITLES, SLIDERS } from '@/constants/sliders';
-import { ContextProvider } from '@/context/stateContext';
+import { ContextProvider } from '@/context/state-context';
 import {
   cachedGetNowPlayingMovies,
   cachedGetPopularMovies,

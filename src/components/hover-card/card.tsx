@@ -70,16 +70,17 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
           <motion.div className={styles.hoverCardWrapper}>
             <Link
               href={
-                '/title?id=' +
-                getHoverCardMovie()?.id +
-                '&type=' +
+                '/title/' +
                 (getHoverCardMovie()?.media_type || 'movie') +
-                '&t=hover' +
+                '/' +
+                getHoverCardMovie()?.id +
+                '?t=hover' +
                 '&original=' +
                 (hoverCardPosition?.original === 'true' ? 'true' : 'false')
               }
             >
               <motion.div
+                layoutRoot
                 layoutId={'hover'}
                 style={{
                   minHeight: hoverCardPosition.height,

@@ -3,6 +3,8 @@ import { Poppins } from 'next/font/google';
 
 import '@/styles/global.scss';
 
+import { BannerProvider } from '@/context/banner-context';
+
 const inter = Poppins({
   weight: ['400', '500', '600', '700', '800', '900'],
   subsets: ['latin'],
@@ -20,7 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <BannerProvider>{children}</BannerProvider>
+      </body>
     </html>
   );
 }

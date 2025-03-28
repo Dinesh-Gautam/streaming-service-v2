@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import styles from '@/styles/modules/nav.module.scss';
 
-import Search from '@/components/Search';
+import Search from '@/components/search';
 
 type NavProps = {
   searchInitialValue: string;

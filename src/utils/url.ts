@@ -6,5 +6,5 @@ import { PATHS } from '@/constants/paths';
  * @returns - path to the title page
  */
 export function getTitlePathForBanner(id: number) {
-  return PATHS.TITLE + '?id=' + id + '&type=' + 'movie' + '&t=banner';
+  return [PATHS.TITLE, 'movie', id].join('/') + '?t=banner';
 }

@@ -2,15 +2,15 @@
 
 import styles from '@/styles/modules/youtubeControlButtons.module.scss';
 
-import { AnimatePresence } from 'motion/react';
-
-import FadeInOnMount from '@/components/fade-on-load';
 import {
   Pause,
   PlayArrow,
   VolumeOff,
   VolumeUpRounded,
 } from '@mui/icons-material';
+import { AnimatePresence } from 'motion/react';
+
+import FadeInOnMount from '@/components/fade-on-load';
 
 import { useYoutubePlayer } from './context';
 
@@ -33,8 +33,6 @@ function YoutubeControlButtons({ size = 'small' }: YoutubeControlButtonsProps) {
             <MuteButton size={size} />
           </FadeInOnMount>
         )}
-      </AnimatePresence>
-      <AnimatePresence>
         {hasVideos && videoPlayerReady && (
           <FadeInOnMount>
             <PlayButton size={size} />
