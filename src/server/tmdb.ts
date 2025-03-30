@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+
 import { TMDBWebAPI } from 'tmdb-js-web';
 
 import { createCachedFunction } from './utils';
@@ -53,4 +55,20 @@ export const cachedTvDetails = createCachedFunction(TmdbV3.tv.getDetails);
 
 export const cachedTvSeasonInfo = createCachedFunction(
   TmdbV3.tvSeasons.getDetails,
+);
+
+export const cachedGetGenere = unstable_cache(
+  createCachedFunction(async () => {
+    const combinedPromises = await Promise.all([
+      TmdbV3.genres.getMovieList(),
+
+      TmdbV3.genres.getTVList(),
+    ]);
+
+    const [movieGene, tvGene] = combinedPromises;
+
+    return [...movieGene.genres, ...tvGene.genres];
+  }),
+  ['GENERES'],
+  { revalidate: false },
 );

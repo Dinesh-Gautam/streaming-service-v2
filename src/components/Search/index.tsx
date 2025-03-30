@@ -5,7 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import styles from '@/styles/modules/search.module.scss';
 
@@ -16,8 +16,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { searchSuggest } from '@/components/search/_action';
 import Suggestions from '@/components/search/search-suggestions';
 import { useData } from '@/context/state-context';
-
-// import { useViewRedirect } from "../../Utils";
 
 function Search({ initialValue = '' }) {
   const { data, dataDispatch } = useData();
@@ -31,7 +29,7 @@ function Search({ initialValue = '' }) {
   const [searchInputFocus, setSearchInputFocus] = useState(false);
   const searchInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
-  const searchParam = useSearchParams();
+  const params = useParams();
 
   function inputHandler(event: ChangeEvent<HTMLInputElement>) {
     const target = event.target as HTMLInputElement;
@@ -70,8 +68,8 @@ function Search({ initialValue = '' }) {
       payload: null,
     });
 
-    if (data.search.value && data.search.value !== searchParam.get('q')) {
-      router.push('/search?q=' + data.search.value);
+    if (data.search.value && data.search.value !== params.query) {
+      router.push('/search/' + data.search.value);
     }
   }
 

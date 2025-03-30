@@ -354,7 +354,14 @@ function OpenedMoreInfo({
                       'episode_run_time' in result &&
                         result.episode_run_time.length > 0 &&
                         result.episode_run_time.join(' - ') + 'Min',
-                      'languages' in result && result.languages.join(', '),
+                      'languages' in result &&
+                        result.languages
+                          .map((lng) =>
+                            new Intl.DisplayNames('en', {
+                              type: 'language',
+                            }).of(lng),
+                          )
+                          .join(', '),
                       'runtime' in result && result.runtime + ' mins',
                     ]}
                   />
