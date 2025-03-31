@@ -4,7 +4,7 @@ import 'server-only';
 
 import bycrypt from 'bcrypt';
 
-import type { SignUpUserProps } from '@/app/signup/types';
+import type { SignUpUserProps } from '@/app/(public)/signup/types';
 import User from '@/server/db/schemas/user';
 
 export async function signUpUser({ email, password, name }: SignUpUserProps) {

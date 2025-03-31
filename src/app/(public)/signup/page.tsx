@@ -7,7 +7,7 @@ import styles from '@/styles/modules/auth.module.scss';
 
 import { Info } from '@mui/icons-material';
 
-import { signUpUser } from '@/app/signup/_action';
+import { signUpUser } from '@/app/(public)/signup/_action';
 import { PATHS } from '@/constants/paths';
 
 export const dynamic = 'force-static';

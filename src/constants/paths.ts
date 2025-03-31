@@ -21,4 +21,31 @@ export const PATHS = {
    * Sign up page path
    */
   SIGN_UP: '/signup',
+
+  ADMIN: {
+    /**
+     * Admin panel path
+     */
+    ROOT: '/admin',
+    /**
+     * Admin users page path
+     * Admin edit user page path, must provide the `id` query param.
+     * @example /admin/users/12345
+     */
+    USERS: '/admin/users',
+    /**
+     * Admin movies page path
+     * Admin edit movie page path, must provide the `id` query param.
+     * @example /admin/movies/12345
+     */
+    MOVIES: '/admin/movies',
+    /**
+     * Admin new movie page path
+     */
+    NEW_MOVIE: '/admin/movies/new',
+    /**
+     * Admin new user path
+     */
+    NEW_USER: '/admin/users/new',
+  },
 };

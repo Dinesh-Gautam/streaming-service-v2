@@ -7,7 +7,7 @@ import styles from '@/styles/modules/search-result.module.scss';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { motion } from 'motion/react';
 
-import type { SearchResultDetailPageProps } from '@/app/search/[query]/page';
+import type { SearchResultDetailPageProps } from '@/app/(public)/search/[query]/page';
 import Separator from '@/components/elements/separator';
 import FadeImageOnLoad from '@/components/fade-image-on-load';
 import type { MediaType } from '@/lib/types';
