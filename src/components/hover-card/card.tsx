@@ -178,7 +178,9 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                             new Date(
                               getHoverCardMovie()?.first_air_date ?? '',
                             ).getFullYear(),
-                            getHoverCardMovie()?.original_language,
+                            new Intl.DisplayNames(['en'], {
+                              type: 'language',
+                            }).of(getHoverCardMovie()?.original_language),
                           ]}
                         />
                       </>

@@ -13,4 +13,12 @@ export const PATHS = {
    * @example /title?id=12345
    */
   TITLE: '/title',
+  /**
+   * Sign in page path
+   */
+  SIGN_IN: '/signin',
+  /**
+   * Sign up page path
+   */
+  SIGN_UP: '/signup',
 };

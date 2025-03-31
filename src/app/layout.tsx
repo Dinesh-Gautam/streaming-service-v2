@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google';
 
 import '@/styles/global.scss';
 
+import { AuthProvider } from '@/context/auth-context';
 import { BannerProvider } from '@/context/banner-context';
 
 const inter = Poppins({
@@ -23,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <BannerProvider>{children}</BannerProvider>
+        <AuthProvider>
+          <BannerProvider>{children}</BannerProvider>
+        </AuthProvider>
       </body>
     </html>
   );
