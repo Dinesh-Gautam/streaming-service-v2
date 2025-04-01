@@ -4,10 +4,17 @@ import { PlusCircle } from 'lucide-react';
 
 import { Button } from '@/admin/components/ui/button';
 import { PATHS } from '@/constants/paths';
+import { getAllUsers } from '@/lib/db/users';
 
 import { UsersTable } from './users-table';
 
-export default function UsersPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function UsersPage() {
+  const users = await getAllUsers();
+
+  console.log(users);
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -19,7 +26,7 @@ export default function UsersPage() {
           </Link>
         </Button>
       </div>
-      <UsersTable />
+      <UsersTable users={users} />
     </div>
   );
 }

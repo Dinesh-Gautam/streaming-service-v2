@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/admin/components/ui/table';
 import { PATHS } from '@/constants/paths';
+import type { User } from '@/lib/types';
 
 import { DeleteUserDialog } from './delete-user-dialog';
 
@@ -40,8 +41,9 @@ const initialUsers = [
   },
 ];
 
-export function UsersTable() {
-  const [users, setUsers] = useState(initialUsers);
+export function UsersTable({ users: _users }: { users: User[] }) {
+  const [users, setUsers] = useState(_users);
+
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   const handleDeleteUser = (id: string) => {
@@ -57,6 +59,7 @@ export function UsersTable() {
             <TableRow className="hover:bg-transparent border-b border-muted">
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Creation Date</TableHead>
               <TableHead>Role</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -69,6 +72,7 @@ export function UsersTable() {
               >
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
+                <TableCell>{user.creationDate.toDateString()}</TableCell>
                 <TableCell>{user.role}</TableCell>
                 <TableCell>
                   <DropdownMenu>
