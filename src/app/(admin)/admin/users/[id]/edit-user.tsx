@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/admin/components/ui/select';
-import { userAction } from '@/app/(admin)/admin/users/[id]/_actions';
+import { userAction } from '@/app/(admin)/admin/users/_actions';
 import { PATHS } from '@/constants/paths';
 import { USER_ROLES } from '@/lib/types';
 import {

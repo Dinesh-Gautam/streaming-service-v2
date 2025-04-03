@@ -4,7 +4,7 @@ import type { UserSchemaType } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
 import User from '@/server/db/schemas/user';
 
-dbConnect();
+await dbConnect();
 
 export async function getAllUsers() {
   const users = await User.find({})
@@ -48,6 +48,18 @@ export async function createUser(user: UserSchemaType) {
 
   if (!newUser) {
     throw new Error('Error creating user');
+  }
+
+  return {
+    success: true,
+  };
+}
+
+export async function deleteUser(id: string) {
+  const deletedUser = await User.findByIdAndDelete(id);
+
+  if (!deletedUser) {
+    throw new Error('User not found');
   }
 
   return {
