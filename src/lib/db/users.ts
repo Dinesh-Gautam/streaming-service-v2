@@ -1,4 +1,10 @@
+import bycrypt from 'bcrypt';
+
+import type { UserSchemaType } from '@/lib/validation/schemas';
+import dbConnect from '@/server/db/connect';
 import User from '@/server/db/schemas/user';
+
+dbConnect();
 
 export async function getAllUsers() {
   const users = await User.find({})
@@ -6,10 +12,64 @@ export async function getAllUsers() {
     .limit(20);
 
   return users.map((user) => {
-    const plainUser = user.toObject();
+    const { _id, ...plainUser } = user.toObject();
     return {
       ...plainUser,
-      id: plainUser._id.toString(),
+      id: _id.toString(),
     };
   });
+}
+
+export async function updateUser(user: UserSchemaType, id: string) {
+  const { name, email, role } = user;
+
+  const updatedUser = await User.findByIdAndUpdate(id, { name, email, role });
+
+  if (!updatedUser) {
+    throw new Error('User not found');
+  }
+
+  return {
+    success: true,
+  };
+}
+
+export async function createUser(user: UserSchemaType) {
+  if (!user.password) {
+    throw new Error('Password is required when creating new user');
+  }
+
+  const hashedPassword = await bycrypt.hash(user.password, 10);
+
+  const newUser = await User.create({
+    ...user,
+    hashedPassword,
+  });
+
+  if (!newUser) {
+    throw new Error('Error creating user');
+  }
+
+  return {
+    success: true,
+  };
+}
+
+export async function getUserById(id: string) {
+  const user = await User.findById(id).select({
+    name: true,
+    email: true,
+    role: true,
+    creationDate: true,
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const { _id, ...plainUser } = user.toObject();
+  return {
+    ...plainUser,
+    id: _id.toString(),
+  };
 }

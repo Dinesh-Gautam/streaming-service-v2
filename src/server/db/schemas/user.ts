@@ -1,10 +1,6 @@
 import mongoose from 'mongoose';
 
-import dbConnect from '@/server/db/connect';
-
 const { Schema } = mongoose;
-
-dbConnect();
 
 const userSchema = new Schema({
   name: { type: String, required: true },
