@@ -5,8 +5,12 @@ import type { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const pathName = req.nextUrl.pathname.replace('/api/static/', '');
-  const tempDir = 'tmp';
-  const filePath = join(tempDir, pathName);
+
+  let dir = 'tmp';
+  if (pathName.includes('playback')) {
+    dir = 'converted';
+  }
+  const filePath = join(dir, pathName);
 
   try {
     const stats = await stat(filePath);

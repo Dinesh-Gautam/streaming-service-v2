@@ -59,6 +59,7 @@ import {
 } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
+import { getPlaybackUrl } from '@/utils/url';
 
 const genreItems = [
   { id: 'action', label: 'Action' },
@@ -207,7 +208,7 @@ export default function EditMoviePage({
   }
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(window.location.origin + text);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -495,14 +496,14 @@ export default function EditMoviePage({
                   {OriginalPaths.video && transcodingProgress === 100 && (
                     <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
                       <div className="flex-1 text-sm truncate">
-                        {OriginalPaths.video}
+                        {getPlaybackUrl(id) || ''}
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                          copyToClipboard(OriginalPaths.video || '')
+                          copyToClipboard(getPlaybackUrl(id) || '')
                         }
                       >
                         {isCopied ?

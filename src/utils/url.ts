@@ -13,3 +13,7 @@ export function getTitlePathForBanner(id: number) {
 export function getTitlePath(id: number, mediaType: MediaType) {
   return [PATHS.TITLE, mediaType, id].join('/');
 }
+
+export function getPlaybackUrl(movieId: string) {
+  return [PATHS.PLAYBACK, movieId].join('/');
+}

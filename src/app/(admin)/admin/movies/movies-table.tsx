@@ -37,6 +37,7 @@ import {
 } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import type { MovieSchema } from '@/lib/validation/schemas';
+import { getPlaybackUrl } from '@/utils/url';
 
 import { DeleteMovieDialog } from './delete-movie-dialog';
 
@@ -46,7 +47,7 @@ export type TranscodingProgresses = {
     progress: number;
     transcodingStarted?: boolean;
   };
-} | null;
+};
 
 export function MoviesTable({
   movies: initialMvoies,
@@ -69,7 +70,7 @@ export function MoviesTable({
   };
 
   const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(window.location.origin + text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -217,7 +218,7 @@ export function MoviesTable({
                               className="h-8 w-8"
                               onClick={() =>
                                 copyToClipboard(
-                                  movie.media!.video!.originalPath,
+                                  getPlaybackUrl(movie.id),
                                   movie.id,
                                 )
                               }
@@ -260,10 +261,7 @@ export function MoviesTable({
                             .progress === 100 && (
                             <DropdownMenuItem asChild>
                               <a
-                                href={
-                                  '/api/static/' +
-                                  movie.media.video.originalPath
-                                }
+                                href={getPlaybackUrl(movie.id)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >

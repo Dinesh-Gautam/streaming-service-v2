@@ -92,7 +92,7 @@ export async function processVideo(videoPath: string, id: string) {
   const outputDirName = id;
 
   const targetdir = path.resolve(
-    path.join('converted/mpdVideos', outputDirName),
+    path.join('converted/playback', outputDirName),
   );
 
   const sourcefn = path.resolve('tmp', videoPath);

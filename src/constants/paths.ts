@@ -48,4 +48,9 @@ export const PATHS = {
      */
     NEW_USER: '/admin/users/new',
   },
+  /**
+   * Playback page path, must provide the `movie Id` query param.
+   * @example /playback/12345
+   */
+  PLAYBACK: '/play',
 };
