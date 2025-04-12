@@ -20,4 +20,61 @@ export const UserSchema = z.object({
     .optional(),
 });
 
+export const MovieSchema = z.object({
+  title: z.string().min(2, {
+    message: 'Title must be at least 2 characters.',
+  }),
+  description: z.string().min(10, {
+    message: 'Description must be at least 10 characters.',
+  }),
+  year: z.coerce
+    .number()
+    .int()
+    .min(1900)
+    .max(new Date().getFullYear(), {
+      message: `Year must be between 1900 and ${new Date().getFullYear()}.`,
+    }),
+  genres: z.array(z.string()).min(1, {
+    message: 'Please select at least one genre.',
+  }),
+  status: z.string().min(1, {
+    message: 'Please select a status.',
+  }),
+  media: z
+    .object({
+      video: z
+        .object({
+          originalPath: z.string().min(1, {
+            message: 'Please select a video file.',
+          }),
+          id: z.string().min(1, {
+            message: 'Please select a video file.',
+          }),
+        })
+        .optional(),
+      poster: z
+        .object({
+          originalPath: z.string().min(1, {
+            message: 'Please select a poster image.',
+          }),
+          id: z.string().min(1, {
+            message: 'Please select a poster image.',
+          }),
+        })
+        .optional(),
+      backdrop: z
+        .object({
+          originalPath: z.string().min(1, {
+            message: 'Please select a backdrop image.',
+          }),
+          id: z.string().min(1, {
+            message: 'Please select a backdrop image.',
+          }),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
 export type UserSchemaType = z.infer<typeof UserSchema>;
+export type MovieSchemaType = z.infer<typeof MovieSchema>;

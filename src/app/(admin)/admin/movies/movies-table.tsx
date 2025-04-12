@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { Copy, Edit, MoreHorizontal, Play, Trash } from 'lucide-react';
+import type { z } from 'zod';
 
 import { Badge } from '@/admin/components/ui/badge';
 import { Button } from '@/admin/components/ui/button';
@@ -30,87 +31,41 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/admin/components/ui/tooltip';
+import {
+  deleteMovie,
+  getTranscodingProgress,
+} from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
+import type { MovieSchema } from '@/lib/validation/schemas';
 
 import { DeleteMovieDialog } from './delete-movie-dialog';
 
-// Mock data for movies
-const initialMovies = [
-  {
-    id: '1',
-    title: 'The Shawshank Redemption',
-    description:
-      'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
-    year: 1994,
-    genres: ['Drama'],
-    status: 'Published',
-    videoUrl: 'https://example.com/videos/shawshank.mpd',
-    posterUrl: '/placeholder.svg?height=600&width=400',
-    backdropUrl: '/placeholder.svg?height=1080&width=1920',
-    transcodingProgress: 100,
-  },
-  {
-    id: '2',
-    title: 'The Godfather',
-    description:
-      'The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.',
-    year: 1972,
-    genres: ['Crime', 'Drama'],
-    status: 'Published',
-    videoUrl: 'https://example.com/videos/godfather.mpd',
-    posterUrl: '/placeholder.svg?height=600&width=400',
-    backdropUrl: '/placeholder.svg?height=1080&width=1920',
-    transcodingProgress: 100,
-  },
-  {
-    id: '3',
-    title: 'The Dark Knight',
-    description:
-      'When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.',
-    year: 2008,
-    genres: ['Action', 'Crime', 'Drama'],
-    status: 'Published',
-    videoUrl: 'https://example.com/videos/dark-knight.mpd',
-    posterUrl: '/placeholder.svg?height=600&width=400',
-    backdropUrl: '/placeholder.svg?height=1080&width=1920',
-    transcodingProgress: 100,
-  },
-  {
-    id: '4',
-    title: 'Pulp Fiction',
-    description:
-      'The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.',
-    year: 1994,
-    genres: ['Crime', 'Drama'],
-    status: 'Draft',
-    videoUrl: 'https://example.com/videos/pulp-fiction.mpd',
-    posterUrl: '/placeholder.svg?height=600&width=400',
-    backdropUrl: '/placeholder.svg?height=1080&width=1920',
-    transcodingProgress: 75,
-  },
-  {
-    id: '5',
-    title: 'Fight Club',
-    description:
-      'An insomniac office worker and a devil-may-care soapmaker form an underground fight club that evolves into something much, much more.',
-    year: 1999,
-    genres: ['Drama'],
-    status: 'Draft',
-    videoUrl: '',
-    posterUrl: '/placeholder.svg?height=600&width=400',
-    backdropUrl: '/placeholder.svg?height=1080&width=1920',
-    transcodingProgress: 0,
-  },
-];
+export type Movie = z.infer<typeof MovieSchema> & { id: string };
+export type TranscodingProgresses = {
+  [key: string]: {
+    progress: number;
+    transcodingStarted?: boolean;
+  };
+} | null;
 
-export function MoviesTable() {
-  const [movies, setMovies] = useState(initialMovies);
+export function MoviesTable({
+  movies: initialMvoies,
+  transcodingProgresses,
+}: {
+  movies: Movie[];
+  transcodingProgresses: TranscodingProgresses;
+}) {
+  const [movies, setMovies] = useState(initialMvoies);
   const [movieToDelete, setMovieToDelete] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleDeleteMovie = (id: string) => {
-    setMovies(movies.filter((movie) => movie.id !== id));
-    setMovieToDelete(null);
+  const handleDeleteMovie = async (id: string) => {
+    const res = await deleteMovie(id);
+
+    if (res.success) {
+      setMovies(movies.filter((movie) => movie.id !== id));
+      setMovieToDelete(null);
+    }
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -118,6 +73,49 @@ export function MoviesTable() {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+  const [transcodignProgress, setTranscodingProgress] =
+    useState<TranscodingProgresses>(transcodingProgresses);
+
+  useEffect(() => {
+    if (!transcodingProgresses) return;
+
+    const videoIds = Object.entries(transcodingProgresses).filter(
+      ([key, value]) => value.transcodingStarted,
+    );
+
+    if (videoIds.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const res = await getTranscodingProgress(videoIds.map(([key]) => key));
+
+      if (
+        !res ||
+        res.length === 0 ||
+        !res.some((item) => item.transcodingStarted)
+      ) {
+        clearInterval(interval);
+        return;
+      }
+
+      setTranscodingProgress((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          res.map((item) => [
+            item.id,
+            {
+              progress: item.progress || 0,
+              transcodingStarted: item.transcodingStarted,
+            },
+          ]),
+        ),
+      }));
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <TooltipProvider>
@@ -165,19 +163,32 @@ export function MoviesTable() {
                 </TableCell>
                 <TableCell>
                   {(
-                    movie.transcodingProgress < 100 &&
-                    movie.transcodingProgress > 0
+                    movie.media?.video?.id &&
+                    transcodignProgress &&
+                    transcodignProgress[movie.media?.video?.id]!.progress <
+                      100 &&
+                    transcodignProgress[movie.media?.video?.id]!.progress > 0
                   ) ?
                     <div className="w-full max-w-24">
                       <Progress
-                        value={movie.transcodingProgress}
+                        value={
+                          transcodignProgress[movie.media?.video?.id]!.progress
+                        }
                         className="h-2"
                       />
                       <div className="text-xs text-right mt-1">
-                        {movie.transcodingProgress}%
+                        {transcodignProgress[
+                          movie.media?.video?.id
+                        ]!.progress.toFixed(1)}
+                        %
                       </div>
                     </div>
-                  : movie.transcodingProgress === 100 ?
+                  : (
+                    movie.media?.video?.id &&
+                    transcodignProgress &&
+                    transcodignProgress[movie.media?.video?.id]!.progress ===
+                      100
+                  ) ?
                     <Badge
                       variant="outline"
                       className="bg-green-500/10 text-green-500 border-green-500/20"
@@ -194,29 +205,35 @@ export function MoviesTable() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-2">
-                    {movie.videoUrl && movie.transcodingProgress === 100 && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              copyToClipboard(movie.videoUrl, movie.id)
-                            }
-                          >
-                            {copiedId === movie.id ?
-                              <Badge className="h-5 w-5 p-0 flex items-center justify-center">
-                                ✓
-                              </Badge>
-                            : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Copy video URL</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                    {movie.media?.video?.originalPath &&
+                      transcodignProgress &&
+                      transcodignProgress[movie.media?.video?.id]!.progress ===
+                        100 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                copyToClipboard(
+                                  movie.media!.video!.originalPath,
+                                  movie.id,
+                                )
+                              }
+                            >
+                              {copiedId === movie.id ?
+                                <Badge className="h-5 w-5 p-0 flex items-center justify-center">
+                                  ✓
+                                </Badge>
+                              : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Copy video URL</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -238,11 +255,15 @@ export function MoviesTable() {
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        {movie.videoUrl &&
-                          movie.transcodingProgress === 100 && (
+                        {movie.media?.video?.originalPath &&
+                          transcodignProgress?.[movie.media.video.id]
+                            .progress === 100 && (
                             <DropdownMenuItem asChild>
                               <a
-                                href={movie.videoUrl}
+                                href={
+                                  '/api/static/' +
+                                  movie.media.video.originalPath
+                                }
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
