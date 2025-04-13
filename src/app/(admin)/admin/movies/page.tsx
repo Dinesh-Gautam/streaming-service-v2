@@ -24,19 +24,19 @@ export default async function MoviesPage() {
     .map((movie) => movie.media?.video?.id)
     .filter(Boolean) as string[];
 
-  if (videoIds.length === 0) {
-    return;
+  let transcodingProgresses;
+
+  if (videoIds.length) {
+    const res = await getTranscodingProgress(videoIds);
+
+    transcodingProgresses = res.reduce((acc, item) => {
+      acc[item.id] = {
+        progress: item.progress || 0,
+        transcodingStarted: item.transcodingStarted,
+      };
+      return acc;
+    }, {} as TranscodingProgresses);
   }
-
-  const res = await getTranscodingProgress(videoIds);
-
-  const transcodingProgresses = res.reduce((acc, item) => {
-    acc[item.id] = {
-      progress: item.progress || 0,
-      transcodingStarted: item.transcodingStarted,
-    };
-    return acc;
-  }, {} as TranscodingProgresses);
 
   return (
     <div className="p-6">
@@ -49,12 +49,12 @@ export default async function MoviesPage() {
           </Link>
         </Button>
       </div>
-      {movies.length > 0 ?
+      {movies.length > 0 && transcodingProgresses ?
         <MoviesTable
           movies={movies}
           transcodingProgresses={transcodingProgresses}
         />
-      : <p className="text-gray-500">No movies found.</p>}
+      : <p className="text-muted-foreground">No movies found.</p>}
     </div>
   );
 }

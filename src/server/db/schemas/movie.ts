@@ -5,6 +5,8 @@ const { Schema } = mongoose;
 const videoTranscodingProgressSchema = new Schema({
   videoId: { type: String, required: true },
   progress: { type: Number, required: true },
+  error: { type: Boolean },
+  errorMessage: { type: String },
 });
 
 const MovieSchema = new Schema({

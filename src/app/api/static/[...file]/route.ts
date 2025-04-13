@@ -1,15 +1,18 @@
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { join } from 'path';
+import { Readable } from 'stream';
 import type { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const pathName = req.nextUrl.pathname.replace('/api/static/', '');
 
   let dir = 'tmp';
+
   if (pathName.includes('playback')) {
     dir = 'converted';
   }
+
   const filePath = join(dir, pathName);
 
   try {
@@ -17,25 +20,16 @@ export async function GET(req: NextRequest) {
     const rangeHeader = req.headers.get('range');
 
     if (!rangeHeader) {
-      // No range requested, send entire file
       const fileStream = createReadStream(filePath);
       const headers = new Headers({
         'Content-Length': stats.size.toString(),
         'Accept-Ranges': 'bytes',
       });
 
-      const stream = new ReadableStream({
-        start(controller) {
-          fileStream.on('data', (chunk) => controller.enqueue(chunk));
-          fileStream.on('end', () => controller.close());
-          fileStream.on('error', (error) => controller.error(error));
-        },
-      });
-
-      return new Response(stream, { headers });
+      const webStream = Readable.toWeb(fileStream);
+      return new Response(webStream as any, { headers });
     }
 
-    // Handle range request
     const range = rangeHeader.replace(/bytes=/, '').split('-');
     const start = parseInt(range[0], 10);
     const end = range[1] ? parseInt(range[1], 10) : stats.size - 1;
@@ -48,15 +42,9 @@ export async function GET(req: NextRequest) {
     });
 
     const fileStream = createReadStream(filePath, { start, end });
-    const stream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk) => controller.enqueue(chunk));
-        fileStream.on('end', () => controller.close());
-        fileStream.on('error', (error) => controller.error(error));
-      },
-    });
+    const webStream = Readable.toWeb(fileStream);
 
-    return new Response(stream, {
+    return new Response(webStream as any, {
       status: 206,
       headers,
     });

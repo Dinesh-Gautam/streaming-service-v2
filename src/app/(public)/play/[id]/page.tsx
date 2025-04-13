@@ -28,6 +28,9 @@ export default async function PlayPage({
   const playbackId = movie.media?.video?.id;
   const playbackUrl = '/api/static/playback/' + playbackId + '/video.mpd';
 
+  const thumbnailsUrl =
+    '/api/static/playback/' + playbackId + '/thumbnails.vtt';
+
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
       <MediaPlayer
@@ -39,7 +42,10 @@ export default async function PlayPage({
         src={playbackUrl}
       >
         <MediaProvider />
-        <DefaultVideoLayout icons={defaultLayoutIcons} />
+        <DefaultVideoLayout
+          thumbnails={thumbnailsUrl}
+          icons={defaultLayoutIcons}
+        />
       </MediaPlayer>
     </div>
   );

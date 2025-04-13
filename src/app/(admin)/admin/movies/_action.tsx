@@ -80,85 +80,103 @@ export async function uploadAction(
 }
 
 export async function processVideo(videoPath: string, id: string) {
-  // height, bitrate
-  const sizes = [
-    [240, 350],
-    [480, 700],
-    [720, 2500],
-    [1080, 10000],
-  ];
-
   const outputFileName = 'video';
   const outputDirName = id;
 
-  const targetdir = path.resolve(
+  const targetDir = path.resolve(
     path.join('converted/playback', outputDirName),
   );
 
-  const sourcefn = path.resolve('tmp', videoPath);
+  const sourceFile = path.resolve('tmp', videoPath);
 
-  console.log('source', sourcefn);
-  console.log('info', sizes);
-  console.log('info', targetdir);
+  console.log('source', sourceFile);
+  console.log('info', targetDir);
 
   try {
-    fs.statSync(targetdir);
+    fs.statSync(targetDir);
   } catch (err: any) {
     if (err.code === 'ENOENT') {
-      fs.mkdirSync(targetdir, { recursive: true });
+      fs.mkdirSync(targetDir, { recursive: true });
     } else {
       throw err;
     }
   }
 
-  var proc = ffmpeg({
-    source: sourcefn,
-    cwd: targetdir,
-  });
-
-  var targetfn = path.join(targetdir, `${outputFileName}.mpd`);
-
-  console.log('targetFIleName : ' + targetfn);
-
-  proc
-    .addOption('-loglevel', 'debug')
-    .output(targetfn)
-    .format('dash')
-    .videoCodec('libx264')
-    .audioCodec('aac')
-    .audioChannels(2)
-    .audioFrequency(44100)
-    .outputOptions([
-      '-preset veryfast',
-      '-keyint_min 60',
-      '-g 60',
-      '-sc_threshold 0',
-      '-profile:v main',
-      '-use_template 1',
-      '-use_timeline 1',
-      '-b_strategy 0',
-      '-bf 1',
-      '-map 0:a',
-      '-b:a 96k',
-    ]);
-
-  for (var size of sizes) {
-    let index = sizes.indexOf(size);
-
-    proc.outputOptions([
-      `-filter_complex [0]format=pix_fmts=yuv420p[temp${index}];[temp${index}]scale=-2:${size[0]}[A${index}]`,
-      `-map [A${index}]:v`,
-      `-b:v:${index} ${size[1]}k`,
-    ]);
-  }
-
-  proc.on('start', function (commandLine) {
-    console.log('progress', 'Spawned Ffmpeg with command: ' + commandLine);
-  });
+  await createThumbnails(sourceFile, targetDir, id);
 
   let totalTime: any;
+  const command = ffmpeg({
+    source: sourceFile,
+    cwd: targetDir,
+  });
 
-  proc
+  command
+    // Video codec settings
+    .videoCodec('libx264')
+    .addOption('-preset', 'veryfast')
+    .addOption('-profile:v', 'main')
+    .addOption('-keyint_min', '60')
+    .addOption('-g', '60')
+    .addOption('-sc_threshold', '0')
+
+    // Audio codec settings
+    .audioCodec('aac')
+    .audioBitrate('128k')
+
+    // DASH specific settings
+    .addOption('-use_timeline', '1')
+    .addOption('-use_template', '1')
+    .addOption('-seg_duration', '5')
+    .addOption('-adaptation_sets', 'id=0,streams=v id=1,streams=a')
+    .addOption('-init_seg_name', 'init-stream$RepresentationID$.$ext$')
+    .addOption(
+      '-media_seg_name',
+      'chunk-stream$RepresentationID$-$Number%05d$.$ext$',
+    )
+
+    // Create multiple representations in a single command
+    .addOption('-map', '0:v')
+    .addOption('-map', '0:v')
+    .addOption('-map', '0:v')
+    .addOption('-map', '0:v')
+    .addOption('-map', '0:v')
+    .addOption('-map', '0:a')
+
+    // 240p stream
+    .addOption('-s:v:0', '426x240')
+    .addOption('-b:v:0', '400k')
+    .addOption('-maxrate:v:0', '480k')
+    .addOption('-bufsize:v:0', '800k')
+
+    // 360p stream
+    .addOption('-s:v:1', '640x360')
+    .addOption('-b:v:1', '800k')
+    .addOption('-maxrate:v:1', '960k')
+    .addOption('-bufsize:v:1', '1600k')
+
+    // 480p stream
+    .addOption('-s:v:2', '854x480')
+    .addOption('-b:v:2', '1200k')
+    .addOption('-maxrate:v:2', '1440k')
+    .addOption('-bufsize:v:2', '2400k')
+
+    // 720p stream
+    .addOption('-s:v:3', '1280x720')
+    .addOption('-b:v:3', '2400k')
+    .addOption('-maxrate:v:3', '2880k')
+    .addOption('-bufsize:v:3', '4800k')
+
+    // 1080p stream
+    .addOption('-s:v:4', '1920x1080')
+    .addOption('-b:v:4', '4800k')
+    .addOption('-maxrate:v:4', '5760k')
+    .addOption('-bufsize:v:4', '9600k')
+
+    // Format and output
+    .format('dash')
+    .output(path.join(targetDir, outputFileName + '.mpd'));
+
+  command
     .on('codecData', (data) => {
       totalTime = parseInt(data.duration.replace(/:/g, ''));
     })
@@ -181,20 +199,21 @@ export async function processVideo(videoPath: string, id: string) {
     .on('end', async function () {
       console.log('complete');
       await updateMovieProgressData(id, { completed: true });
-      // await saveMovieData({
-      //   title,
-      //   uid,
-      //   videoFileName: `${name}.mpd`,
-      //   videoFileDir: dirName,
-      // });
     })
 
     .on('error', function (err) {
       console.log('error', err);
-      updateMovieProgressData(id, { error: true, errorMessage: err.message });
+      updateMovieProgressData(id, {
+        error: true,
+        errorMessage: err.message,
+      });
     });
 
-  return proc.run();
+  command.run();
+
+  const targetFilename = path.join(targetDir, `${outputFileName}.mpd`);
+
+  console.log('targetFIleName : ' + targetFilename);
 }
 
 type ProgressData = {
@@ -223,13 +242,17 @@ async function updateMovieProgressData(videoId: string, data: ProgressData) {
     progressData.errorMessage = errorMessage;
   }
 
-  const res = await TranscodingProgress.findOneAndUpdate(
-    { videoId },
-    progressData,
-    { upsert: true, new: true },
-  );
+  try {
+    const res = await TranscodingProgress.findOneAndUpdate(
+      { videoId },
+      progressData,
+      { upsert: true, new: true },
+    );
 
-  return res;
+    return res;
+  } catch (e: any) {
+    console.error('Error saving progress data', error);
+  }
 }
 
 type TranscodingStatus = {
@@ -325,4 +348,133 @@ export async function deleteMovie(id: string) {
     console.log('error', error);
     return { success: false, message: 'Error deleting movie' };
   }
+}
+
+async function createThumbnails(
+  inputFile: string,
+  outputDir: string,
+  videoId: string,
+) {
+  const thumbnailsDir = path.join(outputDir, 'thumbnails');
+
+  // Ensure output directories exist
+  [outputDir, thumbnailsDir].forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+
+  await generateThumbnails(inputFile, thumbnailsDir, outputDir, videoId);
+}
+
+// Function to get video duration
+function getVideoDuration(videoPath: string): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(metadata.format.duration);
+    });
+  });
+}
+
+// Function to format time for VTT (HH:MM:SS.mmm)
+function formatVttTime(seconds: number) {
+  const date = new Date(seconds * 1000);
+  const hours = date.getUTCHours().toString().padStart(2, '0');
+  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  const secs = date.getUTCSeconds().toString().padStart(2, '0');
+  const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
+  return `${hours}:${minutes}:${secs}.${ms}`;
+}
+
+// Generate thumbnails and VTT file
+async function generateThumbnails(
+  inputPath: string,
+  thumbnailsDir: string,
+  outputDir: string,
+  videoId: string,
+) {
+  try {
+    // Get video duration
+    const duration = await getVideoDuration(inputPath);
+
+    if (!duration) {
+      console.error(
+        'Generating Thumbnails error:',
+        'could not get the duration of the video',
+      );
+      return;
+    }
+
+    console.log(`Video duration: ${duration} seconds`);
+
+    // For short videos, use a shorter interval
+    let interval = 5;
+
+    // Calculate how many thumbnails we'll generate
+    const thumbnailCount = Math.ceil(duration / interval);
+
+    console.log(`Generating ${thumbnailCount} thumbnails...`);
+
+    // Generate thumbnails with smaller size
+    ffmpeg(inputPath)
+      .outputOptions([
+        // Extract frames at specified interval and resize to smaller dimensions
+        `-vf fps=1/${interval},scale=240:-1`, // 160px width, maintain aspect ratio
+        '-q:v 1', // JPEG quality (1-31, lower is better)
+        '-f image2',
+      ])
+      .output(path.join(thumbnailsDir, 'thumb%04d.jpg'))
+      .on('end', () => {
+        console.log('Thumbnail generation complete');
+        // Now generate the VTT file with complete coverage
+        generateVttFile(thumbnailCount, interval, duration, outputDir, videoId);
+      })
+      .on('error', (err) => {
+        console.error('Error generating thumbnails:', err);
+      })
+      .run();
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Generate WebVTT file
+function generateVttFile(
+  thumbnailCount: number,
+  interval: number,
+  duration: number,
+  outputDir: string,
+  videoId: string,
+) {
+  const vttFile = path.join(outputDir, 'thumbnails.vtt');
+  let vttContent = 'WEBVTT\n\n';
+
+  // Generate cues to cover the entire video
+  for (let i = 0; i < thumbnailCount; i++) {
+    const startTime = i * interval;
+    let endTime;
+
+    // For the last thumbnail, ensure it covers to the end of the video
+    if (i === thumbnailCount - 1) {
+      endTime = duration;
+    } else {
+      endTime = (i + 1) * interval;
+    }
+
+    // Format timestamps
+    const startTimeFormatted = formatVttTime(startTime);
+    const endTimeFormatted = formatVttTime(endTime);
+
+    // Add cue
+    vttContent += `${startTimeFormatted} --> ${endTimeFormatted}\n`;
+    vttContent += `/api/static/playback/${videoId}/thumbnails/thumb${(i + 1).toString().padStart(4, '0')}.jpg\n\n`;
+  }
+
+  // Write VTT file
+  fs.writeFileSync(vttFile, vttContent);
+  console.log(`WebVTT file created: ${vttFile}`);
 }

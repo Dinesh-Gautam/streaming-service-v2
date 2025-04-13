@@ -93,7 +93,8 @@ export function MoviesTable({
       if (
         !res ||
         res.length === 0 ||
-        !res.some((item) => item.transcodingStarted)
+        !res.some((item) => item.transcodingStarted) ||
+        !res.some((item) => item.progress < 100)
       ) {
         clearInterval(interval);
         return;

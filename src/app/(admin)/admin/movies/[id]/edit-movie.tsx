@@ -92,6 +92,9 @@ export default function EditMoviePage({
   const router = useRouter();
 
   const [transcodingStarted, setTranscodingStarted] = useState(_ts || false);
+  const [transcodingError, setTranscodingError] = useState<null | {
+    message: string;
+  }>(null);
   const [transcodingProgress, setTranscodingProgress] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -113,6 +116,8 @@ export default function EditMoviePage({
   });
 
   useEffect(() => {
+    setTranscodingError(null);
+
     if (transcodingStarted && transcodingProgress < 100) {
       const interval = setInterval(async () => {
         // get transcoding prgoress from server
@@ -124,7 +129,13 @@ export default function EditMoviePage({
           return;
         }
 
-        const { progress } = await getTranscodingProgress(videoId);
+        const { progress, error } = await getTranscodingProgress(videoId);
+
+        if (error) {
+          clearInterval(interval);
+          setTranscodingError({ message: error });
+          return;
+        }
 
         setTranscodingProgress((prev) => {
           if (progress >= 100) {
@@ -472,6 +483,11 @@ export default function EditMoviePage({
                     }
                   </div>
 
+                  {transcodingError && (
+                    <p className="text-sm text-red-400 whitespace-pre-wrap">
+                      Error: {transcodingError.message}
+                    </p>
+                  )}
                   {transcodingProgress > 0 && (
                     <div className="space-y-2">
                       {transcodingProgress < 100 ?
