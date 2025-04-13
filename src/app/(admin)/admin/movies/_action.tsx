@@ -193,69 +193,79 @@ export type MediaProcessingStatus = {
 };
 
 /**
- * Fetches the current status and progress of the media processing job.
- * @param mediaId - The unique identifier for the media (e.g., Movie ID).
- * @returns The status object for the frontend.
+ * Fetches the current status and progress of one or more media processing jobs.
+ * @param mediaIds - Single media ID or array of media IDs
+ * @returns Object containing status for each requested media ID
  */
 export async function getMediaProcessingJob(
-  mediaId: string,
-): Promise<MediaProcessingStatus> {
-  if (!mediaId) {
-    console.warn('[Action] getMediaProcessingJob called without mediaId.');
-    // Return a default state indicating no job exists or ID was invalid
-    return {
-      jobStatus: 'pending', // Or perhaps 'unknown' or 'failed'
-      tasks: [],
-      jobExists: false,
-    };
+  mediaIds: string | string[],
+): Promise<{ [key: string]: MediaProcessingStatus }> {
+  // Normalize input to array
+  const ids = Array.isArray(mediaIds) ? mediaIds : [mediaIds];
+
+  if (!ids.length) {
+    console.warn(
+      '[Action] getMediaProcessingJob called without valid mediaIds.',
+    );
+    return {};
   }
 
   try {
     await dbConnect();
-    // Explicitly type the result of lean()
-    const job = await MediaProcessingJob.findOne({
-      mediaId,
-    }).lean<IMediaProcessingJob | null>();
+    // Find all jobs matching the provided IDs
+    const jobs = await MediaProcessingJob.find({
+      mediaId: { $in: ids },
+    }).lean<IMediaProcessingJob[]>();
 
-    if (!job) {
-      // No job found for this mediaId, means processing hasn't started or failed very early
-      console.log(
-        `[Action] No media processing job found for mediaId: ${mediaId}`,
-      );
-      return {
-        jobStatus: 'pending', // Assume pending if no record exists yet
-        tasks: [], // No tasks to report
+    // Create result object
+    const result: { [key: string]: MediaProcessingStatus } = {};
+
+    // Initialize default status for all requested IDs
+    ids.forEach((id) => {
+      result[id] = {
+        jobStatus: 'pending',
+        tasks: [],
         jobExists: false,
       };
-    }
+    });
 
-    // Job found, format the tasks for the frontend
-    // Add type annotation for 'task' parameter in map
-    const formattedTasks = job.tasks.map((task: IMediaProcessingTask) => ({
-      taskId: task.taskId,
-      engine: task.engine,
-      status: task.status,
-      progress: task.progress,
-      error: task.errorMessage,
-    }));
-    return {
-      jobStatus: job.jobStatus,
-      tasks: formattedTasks,
-      jobExists: true,
-    };
+    // Update with actual job data where available
+    jobs.forEach((job) => {
+      if (!job.mediaId) return;
+
+      const formattedTasks = job.tasks.map((task: IMediaProcessingTask) => ({
+        taskId: task.taskId,
+        engine: task.engine,
+        status: task.status,
+        progress: task.progress,
+        error: task.errorMessage,
+      }));
+
+      result[job.mediaId] = {
+        jobStatus: job.jobStatus,
+        tasks: formattedTasks,
+        jobExists: true,
+      };
+    });
+
+    return result;
   } catch (error: any) {
     console.error(
-      `[Action] Error fetching media processing job for ${mediaId}:`,
+      `[Action] Error fetching media processing jobs for ${ids.join(', ')}:`,
       error,
     );
-    // Return an error state to the frontend
-    return {
-      jobStatus: 'failed', // Indicate failure due to fetch error
-      tasks: [],
-      jobExists: false, // Assume job doesn't exist or is inaccessible
-      // Optionally include an error message if the frontend can handle it
-      // errorMessage: 'Failed to fetch processing status.'
-    };
+    // Return error state for all requested IDs
+    return ids.reduce(
+      (acc, id) => ({
+        ...acc,
+        [id]: {
+          jobStatus: 'failed',
+          tasks: [],
+          jobExists: false,
+        },
+      }),
+      {},
+    );
   }
 }
 

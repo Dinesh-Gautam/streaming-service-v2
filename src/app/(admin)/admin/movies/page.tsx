@@ -20,27 +20,27 @@ export default async function MoviesPage() {
     };
   });
 
-  const videoIds = movies
-    .map((movie) => movie.media?.video?.id)
-    .filter(Boolean) as string[];
+  // const videoIds = movies
+  //   .map((movie) => movie.media?.video?.id)
+  //   .filter(Boolean) as string[];
 
-  let transcodingProgresses;
+  // let transcodingProgresses;
 
-  if (videoIds.length) {
-    const res = videoIds.map((e) => ({
-      id: e,
-      progress: 0,
-      transcodingStarted: false,
-    }));
+  // if (videoIds.length) {
+  //   const res = videoIds.map((e) => ({
+  //     id: e,
+  //     progress: 0,
+  //     transcodingStarted: false,
+  //   }));
 
-    transcodingProgresses = res.reduce((acc, item) => {
-      acc[item.id] = {
-        progress: item.progress || 0,
-        transcodingStarted: item.transcodingStarted,
-      };
-      return acc;
-    }, {} as TranscodingProgresses);
-  }
+  //   transcodingProgresses = res.reduce((acc, item) => {
+  //     acc[item.id] = {
+  //       progress: item.progress || 0,
+  //       transcodingStarted: item.transcodingStarted,
+  //     };
+  //     return acc;
+  //   }, {} as TranscodingProgresses);
+  // }
 
   return (
     <div className="p-6">
@@ -53,11 +53,8 @@ export default async function MoviesPage() {
           </Link>
         </Button>
       </div>
-      {movies.length > 0 && transcodingProgresses ?
-        <MoviesTable
-          movies={movies}
-          transcodingProgresses={transcodingProgresses}
-        />
+      {movies.length > 0 ?
+        <MoviesTable movies={movies} />
       : <p className="text-muted-foreground">No movies found.</p>}
     </div>
   );

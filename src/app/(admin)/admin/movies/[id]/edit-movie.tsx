@@ -134,7 +134,8 @@ export default function EditMoviePage({
       if (!mediaId) return; // Don't fetch if ID isn't available yet
 
       try {
-        const status = await getMediaProcessingJob(mediaId);
+        const { [mediaId]: status } = await getMediaProcessingJob(mediaId);
+
         setProcessingStatus(status);
 
         // Stop polling if job is completed or failed
