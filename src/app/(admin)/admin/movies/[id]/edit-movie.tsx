@@ -52,10 +52,11 @@ import {
 } from '@/admin/components/ui/tabs';
 import { Textarea } from '@/admin/components/ui/textarea';
 import {
-  getTranscodingProgress,
+  getMediaProcessingJob, // Changed import
   processVideo,
   saveMovieData,
   uploadAction,
+  type MediaProcessingStatus, // Import the status type
 } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
@@ -82,20 +83,22 @@ export default function EditMoviePage({
   isNewMovie,
   defaultValues,
   id,
-  transcodingStarted: _ts,
+  // transcodingStarted prop is no longer needed, status is fetched
 }: {
   defaultValues?: z.infer<typeof formSchema>;
   isNewMovie: boolean;
-  id: string;
-  transcodingStarted?: boolean;
+  id: string; // This is the mediaId
 }) {
   const router = useRouter();
 
-  const [transcodingStarted, setTranscodingStarted] = useState(_ts || false);
-  const [transcodingError, setTranscodingError] = useState<null | {
-    message: string;
-  }>(null);
-  const [transcodingProgress, setTranscodingProgress] = useState(0);
+  // State to hold the entire processing job status
+  const [processingStatus, setProcessingStatus] =
+    useState<MediaProcessingStatus>({
+      jobStatus: 'pending',
+      tasks: [],
+      jobExists: false, // Assume not started until first fetch
+    });
+  const [isPolling, setIsPolling] = useState(false); // To manage interval lifecycle
   const [isCopied, setIsCopied] = useState(false);
 
   const [mediaFiles, setMediaFiles] = useState<MediaTypeFileType>(
@@ -115,40 +118,61 @@ export default function EditMoviePage({
     },
   });
 
+  const mediaId = form.watch('media.video.id');
+
+  // Effect to poll for processing status
   useEffect(() => {
-    setTranscodingError(null);
-
-    if (transcodingStarted && transcodingProgress < 100) {
-      const interval = setInterval(async () => {
-        // get transcoding prgoress from server
-
-        const videoId = form.getValues('media.video.id');
-
-        if (!videoId) {
-          clearInterval(interval);
-          return;
-        }
-
-        const { progress, error } = await getTranscodingProgress(videoId);
-
-        if (error) {
-          clearInterval(interval);
-          setTranscodingError({ message: error });
-          return;
-        }
-
-        setTranscodingProgress((prev) => {
-          if (progress >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return progress;
-        });
-      }, 1000);
-
-      return () => clearInterval(interval);
+    if (!mediaId) {
+      console.error(
+        'Error getting MediaId, which is required for getting the progress data',
+      );
     }
-  }, [transcodingStarted, mediaFiles.video]);
+
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const fetchStatus = async () => {
+      if (!mediaId) return; // Don't fetch if ID isn't available yet
+
+      try {
+        const status = await getMediaProcessingJob(mediaId);
+        setProcessingStatus(status);
+
+        // Stop polling if job is completed or failed
+        if (status.jobStatus === 'completed' || status.jobStatus === 'failed') {
+          if (intervalId) clearInterval(intervalId);
+          setIsPolling(false);
+        } else if (
+          !isPolling &&
+          status.jobExists &&
+          status.jobStatus !== 'pending'
+        ) {
+          // Start polling only if job exists and is running
+          setIsPolling(true);
+        }
+      } catch (error) {
+        console.error('Error fetching media processing status:', error);
+        // Optionally set an error state for the whole polling mechanism
+        if (intervalId) clearInterval(intervalId);
+        setIsPolling(false);
+      }
+    };
+
+    // Fetch immediately on mount or when mediaId changes
+    fetchStatus();
+
+    // Set up polling interval if the job is potentially running
+    if (isPolling) {
+      intervalId = setInterval(fetchStatus, 1000); // Poll every 3 seconds
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+    // Dependencies: mediaId ensures refetch if ID changes, isPolling manages interval lifecycle
+  }, [mediaId, isPolling]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     let res;
@@ -213,9 +237,22 @@ export default function EditMoviePage({
       return;
     }
 
-    processVideo(videoPath, id);
-
-    setTranscodingStarted(true);
+    // Call the action, but don't await - let it run in background
+    processVideo(videoPath, id)
+      .then((res) => {
+        if (res.success) {
+          console.log('Processing initiated via action.');
+          // Start polling immediately after successful initiation
+          setIsPolling(true);
+        } else {
+          console.error('Failed to initiate processing:', res.message);
+          // Optionally set a general error state here
+        }
+      })
+      .catch((err) => {
+        console.error('Error calling processVideo action:', err);
+        // Optionally set a general error state here
+      });
   }
 
   const copyToClipboard = (text: string) => {
@@ -471,46 +508,102 @@ export default function EditMoviePage({
                               MB)
                             </div>
                           )}
-                          {!transcodingStarted && (
-                            <div>
-                              <Button onClick={videoProcessHandler}>
-                                Start Processing
-                              </Button>
-                            </div>
-                          )}
+                          {/* Show Start Processing button if video exists and job hasn't started or has failed */}
+                          {OriginalPaths.video &&
+                            (!processingStatus.jobExists ||
+                              processingStatus.jobStatus === 'pending' ||
+                              processingStatus.jobStatus === 'failed') && (
+                              <div>
+                                <Button
+                                  onClick={videoProcessHandler}
+                                  disabled={
+                                    processingStatus.jobStatus === 'running'
+                                  } // Disable if already running from a previous attempt
+                                >
+                                  {processingStatus.jobStatus === 'failed' ?
+                                    'Retry Processing'
+                                  : 'Start Processing'}
+                                </Button>
+                              </div>
+                            )}
                         </>
                       )
                     }
                   </div>
 
-                  {transcodingError && (
-                    <p className="text-sm text-red-400 whitespace-pre-wrap">
-                      Error: {transcodingError.message}
-                    </p>
-                  )}
-                  {transcodingProgress > 0 && (
-                    <div className="space-y-2">
-                      {transcodingProgress < 100 ?
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span>Transcoding Progress</span>
-                            <span>{transcodingProgress.toFixed(1)}%</span>
+                  {/* Display progress for each task */}
+                  {processingStatus.jobExists &&
+                    processingStatus.tasks.length > 0 && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <h4 className="text-md font-medium">
+                          Processing Status:{' '}
+                          <span
+                            className={`capitalize font-semibold ${
+                              processingStatus.jobStatus === 'completed' ?
+                                'text-green-600'
+                              : processingStatus.jobStatus === 'failed' ?
+                                'text-red-600'
+                              : processingStatus.jobStatus === 'running' ?
+                                'text-blue-600'
+                              : 'text-muted-foreground'
+                            }`}
+                          >
+                            {processingStatus.jobStatus}
+                          </span>
+                        </h4>
+                        {processingStatus.tasks.map((task) => (
+                          <div
+                            key={task.taskId}
+                            className="space-y-2"
+                          >
+                            <div className="flex justify-between text-sm font-medium">
+                              {/* Make engine name more readable */}
+                              <span>
+                                {task.engine
+                                  .replace('Engine', '')
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .trim()}{' '}
+                                Status
+                              </span>
+                              <span
+                                className={`capitalize ${
+                                  task.status === 'completed' ? 'text-green-500'
+                                  : task.status === 'failed' ? 'text-red-500'
+                                  : task.status === 'running' ? 'text-blue-500'
+                                  : 'text-muted-foreground'
+                                }`}
+                              >
+                                {task.status}
+                              </span>
+                            </div>
+                            {(
+                              task.status === 'running' ||
+                              task.status === 'completed' ||
+                              (task.status === 'failed' && task.progress > 0)
+                            ) ?
+                              <>
+                                <Progress
+                                  value={task.progress}
+                                  className={`h-2 ${task.status === 'failed' ? 'bg-red-200 [&>*]:bg-red-500' : ''}`}
+                                />
+                                <div className="flex justify-end text-xs text-muted-foreground">
+                                  <span>{task.progress.toFixed(1)}%</span>
+                                </div>
+                              </>
+                            : null}
+                            {task.status === 'failed' && task.error && (
+                              <p className="text-xs text-red-500">
+                                Error: {task.error}
+                              </p>
+                            )}
                           </div>
-                          <Progress
-                            value={transcodingProgress}
-                            className="h-2"
-                          />
-                        </>
-                      : <div className="flex gap-2 text-green-400">
-                          <span>Transcoding Complete</span>
-                          <span>{transcodingProgress.toFixed(1)}%</span>
-                        </div>
-                      }
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                  {OriginalPaths.video && transcodingProgress === 100 && (
-                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                  {/* Show Copy URL button only if the overall job is complete */}
+                  {processingStatus.jobStatus === 'completed' && (
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md mt-4">
                       <div className="flex-1 text-sm truncate">
                         {getPlaybackUrl(id) || ''}
                       </div>

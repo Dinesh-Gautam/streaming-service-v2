@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 
 import { Button } from '@/admin/components/ui/button';
-import { getTranscodingProgress } from '@/app/(admin)/admin/movies/_action';
+// import { getTranscodingProgress } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { Movie } from '@/server/db/schemas/movie';
 
@@ -27,7 +27,11 @@ export default async function MoviesPage() {
   let transcodingProgresses;
 
   if (videoIds.length) {
-    const res = await getTranscodingProgress(videoIds);
+    const res = videoIds.map((e) => ({
+      id: e,
+      progress: 0,
+      transcodingStarted: false,
+    }));
 
     transcodingProgresses = res.reduce((acc, item) => {
       acc[item.id] = {

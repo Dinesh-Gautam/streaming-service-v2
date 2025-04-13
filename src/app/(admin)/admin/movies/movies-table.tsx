@@ -31,10 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/admin/components/ui/tooltip';
-import {
-  deleteMovie,
-  getTranscodingProgress,
-} from '@/app/(admin)/admin/movies/_action';
+import { deleteMovie } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import type { MovieSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
@@ -87,36 +84,36 @@ export function MoviesTable({
 
     if (videoIds.length === 0) return;
 
-    const interval = setInterval(async () => {
-      const res = await getTranscodingProgress(videoIds.map(([key]) => key));
+    // const interval = setInterval(async () => {
+    //   const res = await getTranscodingProgress(videoIds.map(([key]) => key));
 
-      if (
-        !res ||
-        res.length === 0 ||
-        !res.some((item) => item.transcodingStarted) ||
-        !res.some((item) => item.progress < 100)
-      ) {
-        clearInterval(interval);
-        return;
-      }
+    //   if (
+    //     !res ||
+    //     res.length === 0 ||
+    //     !res.some((item) => item.transcodingStarted) ||
+    //     !res.some((item) => item.progress < 100)
+    //   ) {
+    //     clearInterval(interval);
+    //     return;
+    //   }
 
-      setTranscodingProgress((prev) => ({
-        ...prev,
-        ...Object.fromEntries(
-          res.map((item) => [
-            item.id,
-            {
-              progress: item.progress || 0,
-              transcodingStarted: item.transcodingStarted,
-            },
-          ]),
-        ),
-      }));
-    }, 1000);
+    //   setTranscodingProgress((prev) => ({
+    //     ...prev,
+    //     ...Object.fromEntries(
+    //       res.map((item) => [
+    //         item.id,
+    //         {
+    //           progress: item.progress || 0,
+    //           transcodingStarted: item.transcodingStarted,
+    //         },
+    //       ]),
+    //     ),
+    //   }));
+    // }, 1000);
 
-    return () => {
-      clearInterval(interval);
-    };
+    // return () => {
+    //   clearInterval(interval);
+    // };
   }, []);
 
   return (

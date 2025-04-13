@@ -2,18 +2,23 @@
 
 import 'server-only';
 
-import { error } from 'console';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
-import * as fs from 'fs';
 import * as path from 'path';
 import { join } from 'path';
 
-import ffmpeg from 'fluent-ffmpeg';
 import type { z } from 'zod';
 
+import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
+import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
+import { MediaManager } from '@/lib/media/media-manager';
 import type { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
-import { Movie, TranscodingProgress } from '@/server/db/schemas/movie';
+import {
+  MediaProcessingJob,
+  type IMediaProcessingJob,
+  type IMediaProcessingTask,
+} from '@/server/db/schemas/media-processing';
+import { Movie } from '@/server/db/schemas/movie';
 
 await dbConnect();
 
@@ -23,7 +28,7 @@ const UPLOAD_TYPES = {
   BACKDROP: 'backdrop',
 } as const;
 
-const tempDir = process.env.TEMP_DIR || '/tmp';
+const tempDir = process.env.TEMP_DIR || 'tmp';
 
 export async function uploadAction(
   formData: FormData,
@@ -79,245 +84,178 @@ export async function uploadAction(
   return { success: true, path: `${type}/${objectId}`, id: objectId };
 }
 
-export async function processVideo(videoPath: string, id: string) {
-  const outputFileName = 'video';
-  const outputDirName = id;
+/**
+ * Initiates the media processing pipeline (thumbnails, transcoding) for a video.
+ * This function starts the process in the background and returns immediately.
+ * The frontend should poll `getMediaProcessingJob` for progress updates.
+ * @param videoPath - Relative path of the uploaded video in the temp directory (e.g., 'video/xyz123').
+ * @param mediaId - The unique identifier for the media (e.g., Movie ID).
+ */
+export async function processVideo(
+  videoPath: string,
+  mediaId: string,
+): Promise<{ success: boolean; message?: string }> {
+  console.log(`[Action] processVideo called for mediaId: ${mediaId}`);
 
+  if (!videoPath || !mediaId) {
+    console.error('[Action] processVideo: Missing videoPath or mediaId.');
+    return { success: false, message: 'Missing video path or media ID.' };
+  }
+
+  const outputDirName = mediaId; // Use mediaId for the output directory name
   const targetDir = path.resolve(
-    path.join('converted/playback', outputDirName),
+    process.cwd(), // Ensure path is absolute from project root
+    'converted/playback',
+    outputDirName,
   );
+  const sourceFile = path.resolve(process.cwd(), tempDir, videoPath); // Absolute path to temp file
 
-  const sourceFile = path.resolve('tmp', videoPath);
+  console.log(`[Action] Source file: ${sourceFile}`);
+  console.log(`[Action] Target directory: ${targetDir}`);
 
-  console.log('source', sourceFile);
-  console.log('info', targetDir);
-
+  // Ensure target directory exists
   try {
-    fs.statSync(targetDir);
+    if (!existsSync(targetDir)) {
+      console.log(`[Action] Creating target directory: ${targetDir}`);
+      mkdirSync(targetDir, { recursive: true });
+    }
   } catch (err: any) {
-    if (err.code === 'ENOENT') {
-      fs.mkdirSync(targetDir, { recursive: true });
-    } else {
-      throw err;
-    }
-  }
-
-  await createThumbnails(sourceFile, targetDir, id);
-
-  let totalTime: any;
-  const command = ffmpeg({
-    source: sourceFile,
-    cwd: targetDir,
-  });
-
-  command
-    // Video codec settings
-    .videoCodec('libx264')
-    .addOption('-preset', 'veryfast')
-    .addOption('-profile:v', 'main')
-    .addOption('-keyint_min', '60')
-    .addOption('-g', '60')
-    .addOption('-sc_threshold', '0')
-
-    // Audio codec settings
-    .audioCodec('aac')
-    .audioBitrate('128k')
-
-    // DASH specific settings
-    .addOption('-use_timeline', '1')
-    .addOption('-use_template', '1')
-    .addOption('-seg_duration', '5')
-    .addOption('-adaptation_sets', 'id=0,streams=v id=1,streams=a')
-    .addOption('-init_seg_name', 'init-stream$RepresentationID$.$ext$')
-    .addOption(
-      '-media_seg_name',
-      'chunk-stream$RepresentationID$-$Number%05d$.$ext$',
-    )
-
-    // Create multiple representations in a single command
-    .addOption('-map', '0:v')
-    .addOption('-map', '0:v')
-    .addOption('-map', '0:v')
-    .addOption('-map', '0:v')
-    .addOption('-map', '0:v')
-    .addOption('-map', '0:a')
-
-    // 240p stream
-    .addOption('-s:v:0', '426x240')
-    .addOption('-b:v:0', '400k')
-    .addOption('-maxrate:v:0', '480k')
-    .addOption('-bufsize:v:0', '800k')
-
-    // 360p stream
-    .addOption('-s:v:1', '640x360')
-    .addOption('-b:v:1', '800k')
-    .addOption('-maxrate:v:1', '960k')
-    .addOption('-bufsize:v:1', '1600k')
-
-    // 480p stream
-    .addOption('-s:v:2', '854x480')
-    .addOption('-b:v:2', '1200k')
-    .addOption('-maxrate:v:2', '1440k')
-    .addOption('-bufsize:v:2', '2400k')
-
-    // 720p stream
-    .addOption('-s:v:3', '1280x720')
-    .addOption('-b:v:3', '2400k')
-    .addOption('-maxrate:v:3', '2880k')
-    .addOption('-bufsize:v:3', '4800k')
-
-    // 1080p stream
-    .addOption('-s:v:4', '1920x1080')
-    .addOption('-b:v:4', '4800k')
-    .addOption('-maxrate:v:4', '5760k')
-    .addOption('-bufsize:v:4', '9600k')
-
-    // Format and output
-    .format('dash')
-    .output(path.join(targetDir, outputFileName + '.mpd'));
-
-  command
-    .on('codecData', (data) => {
-      totalTime = parseInt(data.duration.replace(/:/g, ''));
-    })
-    .on('progress', function (info) {
-      if (!info.percent && totalTime !== undefined) {
-        const time = parseInt(info.timemark.replace(/:/g, ''));
-
-        const percent = (time / totalTime) * 100;
-
-        info.percent = Number(percent.toFixed(2));
-      }
-
-      updateMovieProgressData(id, info);
-    })
-
-    .on('stderr', function (stderrLine) {
-      console.log('Stderr output: ' + stderrLine);
-    })
-
-    .on('end', async function () {
-      console.log('complete');
-      await updateMovieProgressData(id, { completed: true });
-    })
-
-    .on('error', function (err) {
-      console.log('error', err);
-      updateMovieProgressData(id, {
-        error: true,
-        errorMessage: err.message,
-      });
-    });
-
-  command.run();
-
-  const targetFilename = path.join(targetDir, `${outputFileName}.mpd`);
-
-  console.log('targetFIleName : ' + targetFilename);
-}
-
-type ProgressData = {
-  percent?: number;
-  completed?: boolean;
-  error?: boolean;
-  errorMessage?: string;
-};
-
-async function updateMovieProgressData(videoId: string, data: ProgressData) {
-  const { completed, error, errorMessage, percent } = data;
-
-  console.log('updateMovieProgressData', data);
-
-  const progressData: any = {
-    videoId,
-    progress: percent || 0,
-  };
-
-  if (completed) {
-    progressData.progress = 100;
-  }
-
-  if (error) {
-    progressData.error = error;
-    progressData.errorMessage = errorMessage;
-  }
-
-  try {
-    const res = await TranscodingProgress.findOneAndUpdate(
-      { videoId },
-      progressData,
-      { upsert: true, new: true },
+    console.error(
+      `[Action] Error creating target directory ${targetDir}:`,
+      err,
     );
+    return {
+      success: false,
+      message: `Failed to create output directory: ${err.message}`,
+    };
+  }
 
-    return res;
-  } catch (e: any) {
-    console.error('Error saving progress data', error);
+  // Ensure source file exists
+  if (!existsSync(sourceFile)) {
+    console.error(`[Action] Source file not found: ${sourceFile}`);
+    return { success: false, message: 'Source video file not found.' };
+  }
+
+  try {
+    await dbConnect(); // Ensure DB connection
+
+    // Instantiate engines
+    const thumbnailEngine = new ThumbnailEngine();
+    const transcodingEngine = new TranscodingEngine();
+
+    // Instantiate manager
+    const mediaManager = new MediaManager(mediaId, [
+      thumbnailEngine,
+      transcodingEngine,
+    ]);
+
+    // Run the manager - DO NOT await this here.
+    // Let it run in the background. The manager handles DB updates.
+    mediaManager.run(sourceFile, targetDir).catch((runError) => {
+      // Catch errors during the async run execution (e.g., initial setup errors in run)
+      console.error(
+        `[Action] Error during mediaManager.run() for ${mediaId}:`,
+        runError,
+      );
+      // Note: Specific engine errors are handled within MediaManager and update the DB job status.
+      // This catch is for broader issues in the run() method itself.
+    });
+
+    console.log(`[Action] Media processing initiated for mediaId: ${mediaId}`);
+    return {
+      success: true,
+      message: 'Media processing initiated successfully.',
+    };
+  } catch (error: any) {
+    console.error(
+      `[Action] Failed to initiate media processing for ${mediaId}:`,
+      error,
+    );
+    return {
+      success: false,
+      message: `Failed to initiate processing: ${error.message}`,
+    };
   }
 }
 
-type TranscodingStatus = {
-  progress: number;
-  transcodingStarted: boolean;
-  error?: string;
+// Type definition for the progress data returned to the frontend
+export type MediaProcessingStatus = {
+  jobStatus: IMediaProcessingJob['jobStatus'];
+  tasks: Array<{
+    taskId: string;
+    engine: string;
+    status: IMediaProcessingTask['status'];
+    progress: number;
+    error?: string;
+  }>;
+  // Indicate if a job record exists at all
+  jobExists: boolean;
 };
 
-type TranscodingStatusWithId = TranscodingStatus & {
-  id: string;
-};
+/**
+ * Fetches the current status and progress of the media processing job.
+ * @param mediaId - The unique identifier for the media (e.g., Movie ID).
+ * @returns The status object for the frontend.
+ */
+export async function getMediaProcessingJob(
+  mediaId: string,
+): Promise<MediaProcessingStatus> {
+  if (!mediaId) {
+    console.warn('[Action] getMediaProcessingJob called without mediaId.');
+    // Return a default state indicating no job exists or ID was invalid
+    return {
+      jobStatus: 'pending', // Or perhaps 'unknown' or 'failed'
+      tasks: [],
+      jobExists: false,
+    };
+  }
 
-export async function getTranscodingProgress<T extends string | string[]>(
-  id: T,
-): Promise<T extends string ? TranscodingStatus : TranscodingStatusWithId[]> {
   try {
-    if (Array.isArray(id)) {
-      const res = await TranscodingProgress.find({
-        videoId: { $in: id },
-      }).lean();
+    await dbConnect();
+    // Explicitly type the result of lean()
+    const job = await MediaProcessingJob.findOne({
+      mediaId,
+    }).lean<IMediaProcessingJob | null>();
 
-      const progress: TranscodingStatusWithId[] = res.map((item) => ({
-        id: item.videoId,
-        progress: item.progress || 0,
-        transcodingStarted: true,
-        error: item.errorMessage,
-      }));
-
-      const missingIds = id.filter(
-        (videoId) => !res.some((item) => item.videoId === videoId),
+    if (!job) {
+      // No job found for this mediaId, means processing hasn't started or failed very early
+      console.log(
+        `[Action] No media processing job found for mediaId: ${mediaId}`,
       );
-
-      missingIds.forEach((videoId) => {
-        progress.push({
-          id: videoId,
-          progress: 0,
-          transcodingStarted: false,
-          error: undefined,
-        });
-      });
-
-      return progress as any;
+      return {
+        jobStatus: 'pending', // Assume pending if no record exists yet
+        tasks: [], // No tasks to report
+        jobExists: false,
+      };
     }
 
-    const res = await TranscodingProgress.findOne({
-      videoId: id,
-    });
-
-    const status: TranscodingStatus =
-      res ?
-        {
-          progress: res.progress || 0,
-          transcodingStarted: true,
-          error: res.errorMessage,
-        }
-      : {
-          progress: 0,
-          transcodingStarted: false,
-          error: undefined,
-        };
-
-    return status as any;
-  } catch (error) {
-    console.error('Error fetching transcoding progress:', error);
-    throw new Error('Failed to fetch transcoding progress');
+    // Job found, format the tasks for the frontend
+    // Add type annotation for 'task' parameter in map
+    const formattedTasks = job.tasks.map((task: IMediaProcessingTask) => ({
+      taskId: task.taskId,
+      engine: task.engine,
+      status: task.status,
+      progress: task.progress,
+      error: task.errorMessage,
+    }));
+    return {
+      jobStatus: job.jobStatus,
+      tasks: formattedTasks,
+      jobExists: true,
+    };
+  } catch (error: any) {
+    console.error(
+      `[Action] Error fetching media processing job for ${mediaId}:`,
+      error,
+    );
+    // Return an error state to the frontend
+    return {
+      jobStatus: 'failed', // Indicate failure due to fetch error
+      tasks: [],
+      jobExists: false, // Assume job doesn't exist or is inaccessible
+      // Optionally include an error message if the frontend can handle it
+      // errorMessage: 'Failed to fetch processing status.'
+    };
   }
 }
 
@@ -348,133 +286,4 @@ export async function deleteMovie(id: string) {
     console.log('error', error);
     return { success: false, message: 'Error deleting movie' };
   }
-}
-
-async function createThumbnails(
-  inputFile: string,
-  outputDir: string,
-  videoId: string,
-) {
-  const thumbnailsDir = path.join(outputDir, 'thumbnails');
-
-  // Ensure output directories exist
-  [outputDir, thumbnailsDir].forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
-
-  await generateThumbnails(inputFile, thumbnailsDir, outputDir, videoId);
-}
-
-// Function to get video duration
-function getVideoDuration(videoPath: string): Promise<number | undefined> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, (err, metadata) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(metadata.format.duration);
-    });
-  });
-}
-
-// Function to format time for VTT (HH:MM:SS.mmm)
-function formatVttTime(seconds: number) {
-  const date = new Date(seconds * 1000);
-  const hours = date.getUTCHours().toString().padStart(2, '0');
-  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-  const secs = date.getUTCSeconds().toString().padStart(2, '0');
-  const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
-  return `${hours}:${minutes}:${secs}.${ms}`;
-}
-
-// Generate thumbnails and VTT file
-async function generateThumbnails(
-  inputPath: string,
-  thumbnailsDir: string,
-  outputDir: string,
-  videoId: string,
-) {
-  try {
-    // Get video duration
-    const duration = await getVideoDuration(inputPath);
-
-    if (!duration) {
-      console.error(
-        'Generating Thumbnails error:',
-        'could not get the duration of the video',
-      );
-      return;
-    }
-
-    console.log(`Video duration: ${duration} seconds`);
-
-    // For short videos, use a shorter interval
-    let interval = 5;
-
-    // Calculate how many thumbnails we'll generate
-    const thumbnailCount = Math.ceil(duration / interval);
-
-    console.log(`Generating ${thumbnailCount} thumbnails...`);
-
-    // Generate thumbnails with smaller size
-    ffmpeg(inputPath)
-      .outputOptions([
-        // Extract frames at specified interval and resize to smaller dimensions
-        `-vf fps=1/${interval},scale=240:-1`, // 160px width, maintain aspect ratio
-        '-q:v 1', // JPEG quality (1-31, lower is better)
-        '-f image2',
-      ])
-      .output(path.join(thumbnailsDir, 'thumb%04d.jpg'))
-      .on('end', () => {
-        console.log('Thumbnail generation complete');
-        // Now generate the VTT file with complete coverage
-        generateVttFile(thumbnailCount, interval, duration, outputDir, videoId);
-      })
-      .on('error', (err) => {
-        console.error('Error generating thumbnails:', err);
-      })
-      .run();
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-
-// Generate WebVTT file
-function generateVttFile(
-  thumbnailCount: number,
-  interval: number,
-  duration: number,
-  outputDir: string,
-  videoId: string,
-) {
-  const vttFile = path.join(outputDir, 'thumbnails.vtt');
-  let vttContent = 'WEBVTT\n\n';
-
-  // Generate cues to cover the entire video
-  for (let i = 0; i < thumbnailCount; i++) {
-    const startTime = i * interval;
-    let endTime;
-
-    // For the last thumbnail, ensure it covers to the end of the video
-    if (i === thumbnailCount - 1) {
-      endTime = duration;
-    } else {
-      endTime = (i + 1) * interval;
-    }
-
-    // Format timestamps
-    const startTimeFormatted = formatVttTime(startTime);
-    const endTimeFormatted = formatVttTime(endTime);
-
-    // Add cue
-    vttContent += `${startTimeFormatted} --> ${endTimeFormatted}\n`;
-    vttContent += `/api/static/playback/${videoId}/thumbnails/thumb${(i + 1).toString().padStart(4, '0')}.jpg\n\n`;
-  }
-
-  // Write VTT file
-  fs.writeFileSync(vttFile, vttContent);
-  console.log(`WebVTT file created: ${vttFile}`);
 }
