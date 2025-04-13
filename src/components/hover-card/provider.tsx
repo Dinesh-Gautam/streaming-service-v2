@@ -106,7 +106,11 @@ export const HoverCardProvider = (props: HoverCardProviderProps) => {
         })}
       </div>
       <YoutubeVideoPlayerProvider
-        id={getHoverCardMovie()?.id}
+        id={
+          typeof getHoverCardMovie().id === 'number' ?
+            Number(getHoverCardMovie().id)
+          : null
+        }
         media_type={
           (
             getHoverCardMovie() as ReturnType<typeof getHoverCardMovie> & {

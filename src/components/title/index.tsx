@@ -10,10 +10,11 @@ import {
   type SetStateAction,
 } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import styles from '@/styles/modules/title.module.scss';
 
-import { ArrowLeft, ArrowRight } from '@mui/icons-material';
+import { ArrowLeft, ArrowRight, PlayArrowRounded } from '@mui/icons-material';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import Close from '@mui/icons-material/Close';
 import Star from '@mui/icons-material/Star';
@@ -30,12 +31,14 @@ import {
 } from '@/components/youtube';
 import { useYoutubePlayer } from '@/components/youtube/context';
 import type { MediaType } from '@/lib/types';
+import type { OriginalMovieResult } from '@/server/db/movies';
 import type {
   cachedGeMovietDetails,
   cachedTvDetails,
   cachedTvSeasonInfo,
 } from '@/server/tmdb';
 import { getImageUrl } from '@/utils/tmdb';
+import { getPlaybackUrl } from '@/utils/url';
 
 const otherElementsAnimation = {
   initial: {
@@ -56,11 +59,11 @@ export type MediaResult<T extends MediaType> =
 export type MovieResult = MediaResult<'movie'>;
 export type TvResult = MediaResult<'tv'>;
 
-export type Result = MovieResult | TvResult;
+export type Result = MovieResult | TvResult | OriginalMovieResult;
 
 type TitleViewProps = {
   media_type: MediaType;
-  result: MovieResult | TvResult;
+  result: Result;
   layout_type?: string;
   original: boolean;
 };
@@ -198,31 +201,24 @@ function SeparatedInfo({
   result: Result;
   media_type: MediaType;
 }) {
-  const releaseDate = new Date(
+  const date =
     'release_date' in result ? result.release_date
     : 'first_air_date' in result ? result.first_air_date
-    : '',
-  ).getFullYear();
+    : null;
+
+  const releaseDate = date && new Date(date).getFullYear();
 
   return (
     <Separator
       gap={8}
       values={[
         media_type,
-        // result.original ?
-        //   result.genres
-        //     .split(',')
-        //     .map((gen, index, { length }) =>
-        //       index + 1 == length ? gen + ' ' : gen + ', ',
-        //     )
-        //     .join(' ')
-        // :
         result.genres
           .map((gen, index, { length }) =>
             index + 1 == length ? gen.name + ' ' : gen.name + ', ',
           )
           .join(' '),
-        isNaN(releaseDate) ? '' : releaseDate,
+        releaseDate,
       ]}
     />
   );
@@ -262,7 +258,7 @@ function ClickableLessInfo({
               <Separator
                 gap={8}
                 values={[
-                  `${result?.vote_average.toFixed(1) || null} (${
+                  `${result.vote_average?.toFixed(1) || null} (${
                     result?.vote_count?.toLocaleString() || null
                   })`,
                   ('number_of_episodes' in result &&
@@ -295,7 +291,7 @@ function ClickableLessInfo({
           para={
             'description' in result ?
               (result.description as string)
-            : result.overview
+            : result.overview || ''
           }
         />
       </motion.div>
@@ -345,7 +341,7 @@ function OpenedMoreInfo({
                   <Separator
                     gap={8}
                     values={[
-                      `${result?.vote_average.toFixed(1) || null} (${
+                      `${result.vote_average?.toFixed(1) || null} (${
                         result?.vote_count?.toLocaleString() || null
                       })`,
                       ('number_of_episodes' in result &&
@@ -376,7 +372,7 @@ function OpenedMoreInfo({
               para={
                 'description' in result ?
                   (result.description as string)
-                : result.overview
+                : result.overview || ''
               }
             />
             {/* <MoreInfo
@@ -395,8 +391,8 @@ function Buttons({ result, original }: { result: Result; original: boolean }) {
   const { playerState } = useYoutubePlayer();
   return (
     <>
-      {/* {original && (
-        <Link href={'/movie' + '?id=' + result?.uid}>
+      {original && (
+        <Link href={getPlaybackUrl(String(result.id))}>
           <button>
             <div
               style={{
@@ -410,7 +406,7 @@ function Buttons({ result, original }: { result: Result; original: boolean }) {
             </span>
           </button>
         </Link>
-      )} */}
+      )}
 
       <motion.div
         layout="position"
@@ -498,12 +494,11 @@ function Backdrop({
             }}
           />
         : <Image
-            src={getImageUrl(
-              result.backdrop_path,
-              //   {
-              //   original: original,
-              // }
-            )}
+            src={
+              original ?
+                '/api/static/' + result.backdrop_path
+              : getImageUrl(result.backdrop_path ?? '')
+            }
             alt="image"
             fill
           />
@@ -618,7 +613,10 @@ function TvSeasonsDrawer({
 
     if (seasonSelect) {
       (async () => {
-        const info = await getSeasonInfo(result.id, seasonSelect.season_number);
+        const info = await getSeasonInfo(
+          result.id as number,
+          seasonSelect.season_number,
+        );
         setSeasonInfo(info);
       })();
     }

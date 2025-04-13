@@ -94,7 +94,7 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                 <Image
                   src={
                     hoverCardPosition.original ?
-                      '/api/static' + getHoverCardMovie()?.backdrop_path || ''
+                      '/api/static/' + getHoverCardMovie()?.backdrop_path || ''
                     : getImageUrl(getHoverCardMovie()?.backdrop_path || '')
                   }
                   style={{
@@ -166,21 +166,26 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                         <Separator
                           values={[
                             `${
-                              getHoverCardMovie()?.vote_average.toFixed(1) ||
+                              getHoverCardMovie().vote_average?.toFixed(1) ||
                               null
                             }(${
-                              getHoverCardMovie()?.vote_count.toLocaleString() ||
+                              getHoverCardMovie().vote_count?.toLocaleString() ||
                               null
                             })`,
-                            new Date(
-                              getHoverCardMovie()?.release_date ?? '',
-                            ).getFullYear(),
-                            new Date(
-                              getHoverCardMovie()?.first_air_date ?? '',
-                            ).getFullYear(),
-                            new Intl.DisplayNames(['en'], {
-                              type: 'language',
-                            }).of(getHoverCardMovie()?.original_language),
+                            'release_date' in getHoverCardMovie() &&
+                              new Date(
+                                getHoverCardMovie()?.release_date ?? '',
+                              ).getFullYear(),
+                            'first_air_date' in getHoverCardMovie() &&
+                              new Date(
+                                getHoverCardMovie().first_air_date ?? '',
+                              ).getFullYear(),
+                            getHoverCardMovie().original_language &&
+                              new Intl.DisplayNames(['en'], {
+                                type: 'language',
+                              }).of(
+                                getHoverCardMovie().original_language as string,
+                              ),
                           ]}
                         />
                       </>
@@ -199,7 +204,7 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
               <Image
                 src={
                   hoverCardPosition.original ?
-                    '/api/static' + getHoverCardMovie()?.backdrop_path || ''
+                    '/api/static/' + getHoverCardMovie()?.backdrop_path || ''
                   : getImageUrl(getHoverCardMovie()?.backdrop_path || '')
                 }
                 className={styles.backgroundImage}

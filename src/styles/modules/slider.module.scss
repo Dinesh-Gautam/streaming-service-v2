@@ -2,6 +2,10 @@
 
 .sliderContainer {
   font-size: clamp(12px, 2vw, 16px);
+
+  h2 {
+    margin-left: 4%;
+  }
 }
 
 .container {
@@ -49,7 +53,6 @@
   position: relative;
   aspect-ratio: 16/9;
   contain: layout size;
-
   position: absolute;
   left: 0;
   transform: translateX(calc(100% * var(--i)));
@@ -74,6 +77,7 @@
     width: 100%;
     object-position: center;
     pointer-events: none;
+    aspect-ratio: 16/9;
   }
 }
 

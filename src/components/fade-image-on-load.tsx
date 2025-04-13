@@ -20,7 +20,7 @@ type FadeImageOnLoad = {
   /**
    * Image source to load
    */
-  imageSrc: string;
+  imageSrc?: string;
   /**
    * directly load this url, don't use the `getImageUrl` function @see getImageUrl
    */
@@ -38,6 +38,7 @@ type FadeImageOnLoad = {
       'data-index': number;
       'data-middle': boolean;
       'data-type': string;
+      'data-original': boolean;
     }>;
   /**
    * props for the image component
@@ -128,7 +129,7 @@ function FadeImageOnLoad({
       >
         {
           <>
-            {props.ambientMode && (
+            {props.ambientMode && props.imageSrc && (
               <Image
                 {...props.image}
                 src={getImageUrl(props.imageSrc)}
@@ -148,9 +149,9 @@ function FadeImageOnLoad({
             {(props.imageSrc || props.rawImageSrc) && (
               <Image
                 {...props.image}
-                src={props.rawImageSrc ?? getImageUrl(props.imageSrc)}
+                src={props.rawImageSrc ?? getImageUrl(props.imageSrc ?? '')}
                 onLoad={() => setImageLoaded(true)}
-                alt={props.imageSrc}
+                alt={props.imageSrc ?? 'Image'}
               />
             )}
           </>

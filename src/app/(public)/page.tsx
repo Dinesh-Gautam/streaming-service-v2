@@ -4,6 +4,7 @@ import { HoverCardProvider } from '@/components/hover-card/provider';
 import { Nav } from '@/components/nav';
 import { SLIDER_TITLES, SLIDERS } from '@/constants/sliders';
 import { ContextProvider } from '@/context/state-context';
+import { getOriginalMovies } from '@/server/db/movies';
 import {
   cachedGetNowPlayingMovies,
   cachedGetPopularMovies,
@@ -15,15 +16,22 @@ export const dynamic = 'force-static';
 export const revalidate = 86400;
 
 export default async function Home() {
-  const [popularMovies, nowPlaying, trendingMovies, trendingTv] =
-    await Promise.all([
-      cachedGetPopularMovies({}),
-      cachedGetNowPlayingMovies(),
-      cachedGetTrending('movie', 'week'),
-      cachedGetTrending('tv', 'week'),
-    ]);
+  const [
+    originalMovies,
+    popularMovies,
+    nowPlaying,
+    trendingMovies,
+    trendingTv,
+  ] = await Promise.all([
+    getOriginalMovies(),
+    cachedGetPopularMovies({}),
+    cachedGetNowPlayingMovies(),
+    cachedGetTrending('movie', 'week'),
+    cachedGetTrending('tv', 'week'),
+  ]);
 
   const sliderData = {
+    [SLIDERS.Originals]: originalMovies,
     [SLIDERS.PopularMovies]: omitResutlsWithNoBannerImage(
       popularMovies.results,
     ),

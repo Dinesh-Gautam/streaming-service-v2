@@ -9,6 +9,10 @@ import { YoutubeVideoPlayerProvider } from '@/components/youtube';
 import { ContextProvider } from '@/context/state-context';
 import type { MediaType } from '@/lib/types';
 import {
+  getOriginalMovieDetail,
+  type OriginalMovieResult,
+} from '@/server/db/movies';
+import {
   cachedGeMovietDetails,
   cachedTvDetails,
   cachedTvSeasonInfo,
@@ -35,35 +39,35 @@ export default async function TitlePage({ params, searchParams }: Props) {
   const { id, type: media_type } = await params;
   const { t: layout_type, original } = await searchParams;
 
-  let searchResult: Result | null;
+  let searchResult: Result | OriginalMovieResult | null;
 
-  if (isNaN(Number(id))) return notFound();
+  if (!original) {
+    searchResult =
+      media_type === 'movie' ?
+        ((await cachedGeMovietDetails(Number(id), {
+          append_to_response: ['external_ids'],
+        })) as MovieResult)
+      : media_type === 'tv' ?
+        ((await cachedTvDetails(Number(id), {
+          append_to_response: ['external_ids'],
+        })) as TvResult)
+      : null;
 
-  // if (!original) {
-  searchResult =
-    media_type === 'movie' ?
-      ((await cachedGeMovietDetails(Number(id), {
-        append_to_response: ['external_ids'],
-      })) as MovieResult)
-    : media_type === 'tv' ?
-      ((await cachedTvDetails(Number(id), {
-        append_to_response: ['external_ids'],
-      })) as TvResult)
-    : null;
+    if (!searchResult) return notFound();
 
-  if (!searchResult) return notFound();
-
-  if (media_type === 'tv') {
-    (searchResult as TvResult).seasonInfo = await cachedTvSeasonInfo(
-      Number(id),
-      1,
-    );
+    if (media_type === 'tv') {
+      (searchResult as TvResult).seasonInfo = await cachedTvSeasonInfo(
+        Number(id),
+        1,
+      );
+    }
+  } else {
+    searchResult = await getOriginalMovieDetail(id);
   }
 
-  // } else {
-  //   searchResult = await getOriginalMovieDetails(id);
-  //   searchResult.original = Boolean(original);
-  // }
+  if (!searchResult) {
+    return notFound();
+  }
 
   return (
     <ContextProvider>

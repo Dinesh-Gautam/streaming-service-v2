@@ -9,6 +9,7 @@ import {
   DefaultVideoLayout,
 } from '@vidstack/react/player/layouts/default';
 
+import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 import { Movie } from '@/server/db/schemas/movie';
 
 export default async function PlayPage({
@@ -18,7 +19,7 @@ export default async function PlayPage({
 }) {
   const { id } = await params;
 
-  const movie = await Movie.findById(id);
+  const movie = (await Movie.findById(id)) as MovieType;
 
   if (!movie) {
     return notFound();
@@ -30,6 +31,9 @@ export default async function PlayPage({
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
       <MediaPlayer
+        load="visible"
+        posterLoad="visible"
+        poster={'/api/static/' + movie.media?.backdrop?.originalPath}
         style={{ height: '100vh' }}
         title="Sprite Fight"
         src={playbackUrl}

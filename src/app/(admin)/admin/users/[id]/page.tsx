@@ -1,5 +1,5 @@
 import EditUser from '@/app/(admin)/admin/users/[id]/edit-user';
-import { getUserById } from '@/lib/db/users';
+import { getUserById } from '@/server/db/users';
 
 export default async function EditUserPage({
   params,

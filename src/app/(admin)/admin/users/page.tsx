@@ -4,7 +4,7 @@ import { PlusCircle } from 'lucide-react';
 
 import { Button } from '@/admin/components/ui/button';
 import { PATHS } from '@/constants/paths';
-import { getAllUsers } from '@/lib/db/users';
+import { getAllUsers } from '@/server/db/users';
 
 import { UsersTable } from './users-table';
 

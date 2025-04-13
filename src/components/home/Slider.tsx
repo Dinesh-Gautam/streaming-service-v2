@@ -13,6 +13,7 @@ import type {
 } from 'tmdb-js-web';
 
 import FadeImageOnLoad from '@/components/fade-image-on-load';
+import type { OriginalMovieResult } from '@/server/db/movies';
 
 interface SliderProps {
   /**
@@ -22,7 +23,11 @@ interface SliderProps {
   /**
    * List of data to display in the slider
    */
-  data: (MoviesGetPopularResult | TrendingGetTrendingResult)[];
+  data: (
+    | MoviesGetPopularResult
+    | TrendingGetTrendingResult
+    | OriginalMovieResult
+  )[];
 
   id: string;
 }
@@ -46,6 +51,13 @@ function Slider({ title, data, id }: SliderProps) {
   whether the slider is scrolling or not
   */
   const [disable, setDisable] = useState(false);
+
+  /**
+   * if the data length is greater than the max items
+   * then show the arrows
+   * otherwise hide the arrows
+   */
+  const showArrows = data.length > MAX_ITEMS;
 
   /**
    * Handle the button (next/prev) click event
@@ -84,10 +96,12 @@ function Slider({ title, data, id }: SliderProps) {
     return () => window.removeEventListener('resize', handler);
   }, [containerRef.current]);
 
+  console.log(title, data);
+
   return (
     data && (
       <div className={styles.sliderContainer}>
-        {title && <h2 style={{ marginLeft: '2rem' }}>{title}</h2>}
+        {title && <h2>{title}</h2>}
         {data && (
           <div
             ref={containerRef}
@@ -108,7 +122,6 @@ function Slider({ title, data, id }: SliderProps) {
                 Calculate the value of `i` for infinite scrolling
                 based on the "transformPercent" value
                 */
-
                 const baseIncrement = index === 0 ? 0 : 100;
 
                 const additionalIncrement =
@@ -128,7 +141,9 @@ function Slider({ title, data, id }: SliderProps) {
                 );
 
                 const styleValue =
-                  data.length * roundedTransformPercent + index;
+                  data.length < MAX_ITEMS ?
+                    index
+                  : data.length * roundedTransformPercent + index;
 
                 return (
                   <div
@@ -136,48 +151,72 @@ function Slider({ title, data, id }: SliderProps) {
                     className={styles.item}
                     key={index}
                   >
-                    <FadeImageOnLoad
-                      loadingBackground
-                      imageSrc={e.backdrop_path}
-                      imageContainer={{
-                        className: styles.imageContainer,
-                        id: 'imageContainer',
-                        'data-index': data.indexOf(e),
-                        'data-type': id,
-                        'data-middle': true,
-                      }}
-                      image={{
-                        priority: index < MAX_ITEMS,
-                        height: 400 / 2,
-                        width: 400,
-                      }}
-                    />
+                    {'isOriginal' in e ?
+                      <FadeImageOnLoad
+                        loadingBackground
+                        rawImageSrc={'/api/static/' + e.backdrop_path}
+                        imageContainer={{
+                          className: styles.imageContainer,
+                          id: 'imageContainer',
+                          'data-index': data.indexOf(e),
+                          'data-type': id,
+                          'data-middle': true,
+                          'data-original': true,
+                        }}
+                        image={{
+                          priority: index < MAX_ITEMS,
+                          height: 400 / 2,
+                          width: 400,
+                        }}
+                      />
+                    : <FadeImageOnLoad
+                        loadingBackground
+                        imageSrc={e.backdrop_path}
+                        imageContainer={{
+                          className: styles.imageContainer,
+                          id: 'imageContainer',
+                          'data-index': data.indexOf(e),
+                          'data-type': id,
+                          'data-middle': true,
+                        }}
+                        image={{
+                          priority: index < MAX_ITEMS,
+                          height: 400 / 2,
+                          width: 400,
+                        }}
+                      />
+                    }
                     <h1 className={styles.movieName}>
-                      {e.title || e.original_title}
+                      {e.title || ('original_title' in e && e.original_title)}
                     </h1>
                   </div>
                 );
               })}
             </div>
-
-            {Math.abs(transformPercent) > 0 && (
-              <button
-                disabled={disable}
-                className={styles.leftButton + ' ' + styles.btn}
-                onClick={() => buttonClick('prev')}
-              >
-                <ArrowForwardIosIcon style={{ transform: 'rotate(-180deg)' }} />
-              </button>
+            {showArrows && (
+              <>
+                {Math.abs(transformPercent) > 0 && (
+                  <button
+                    disabled={disable}
+                    className={styles.leftButton + ' ' + styles.btn}
+                    onClick={() => buttonClick('prev')}
+                  >
+                    <ArrowForwardIosIcon
+                      style={{ transform: 'rotate(-180deg)' }}
+                    />
+                  </button>
+                )}
+                {
+                  <button
+                    disabled={disable}
+                    className={styles.rightButton + ' ' + styles.btn}
+                    onClick={() => buttonClick('next')}
+                  >
+                    <ArrowForwardIosIcon />
+                  </button>
+                }
+              </>
             )}
-            {
-              <button
-                disabled={disable}
-                className={styles.rightButton + ' ' + styles.btn}
-                onClick={() => buttonClick('next')}
-              >
-                <ArrowForwardIosIcon />
-              </button>
-            }
           </div>
         )}
       </div>

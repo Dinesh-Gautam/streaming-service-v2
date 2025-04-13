@@ -2,8 +2,8 @@
 
 import 'server-only';
 
-import { createUser, deleteUser, updateUser } from '@/lib/db/users';
 import type { UserSchemaType } from '@/lib/validation/schemas';
+import { createUser, deleteUser, updateUser } from '@/server/db/users';
 
 const UserActions = {
   CREATE: 'create',

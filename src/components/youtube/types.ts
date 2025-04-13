@@ -17,7 +17,7 @@ export interface VideoPlayerContextProps {
   ytPlayerRef: React.MutableRefObject<YT.Player | null>;
   playerState: PlayerState;
   setPlayerState: React.Dispatch<React.SetStateAction<PlayerState>>;
-  id: number;
+  id: number | null;
   media_type: MediaType;
   videosData: VideoData[];
   setVideosData: React.Dispatch<React.SetStateAction<VideoData[]>>;
@@ -26,6 +26,6 @@ export interface VideoPlayerContextProps {
 }
 
 export type YoutubeVideoPlayerProviderProps = {
-  id: number;
+  id: number | null;
   media_type: MediaType;
 } & PropsWithChildren<{}>;

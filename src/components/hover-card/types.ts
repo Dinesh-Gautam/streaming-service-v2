@@ -14,6 +14,7 @@ import type {
 
 import type { SLIDERS } from '@/constants/sliders';
 import type { MediaType } from '@/lib/types';
+import type { OriginalMovieResult } from '@/server/db/movies';
 
 type Result = {
   media_type?: MediaType;
@@ -24,7 +25,8 @@ type Result = {
 export type sliderResults =
   | (MoviesGetPopularResult & Result)
   | (MoviesGetNowPlayingResult & Result)
-  | (TrendingGetTrendingResult & Result);
+  | (TrendingGetTrendingResult & Result)
+  | (OriginalMovieResult & Result);
 
 export type HoverCardProviderProps = PropsWithChildren<{
   [key in (typeof SLIDERS)[keyof typeof SLIDERS]]: sliderResults[];

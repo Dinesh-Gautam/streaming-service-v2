@@ -44,6 +44,8 @@ function YoutubeVideoPlayerProvider({
   };
 
   async function getVideosData() {
+    if (!id) return;
+
     const data = await getTitleTrailerVideos(id, media_type);
 
     if (!data) return;
