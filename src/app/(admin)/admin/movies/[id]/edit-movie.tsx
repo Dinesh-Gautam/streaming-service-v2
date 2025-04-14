@@ -163,7 +163,7 @@ export default function EditMoviePage({
 
     // Set up polling interval if the job is potentially running
     if (isPolling) {
-      intervalId = setInterval(fetchStatus, 1000); // Poll every 3 seconds
+      intervalId = setInterval(fetchStatus, 1000); // Poll every 1 seconds
     }
 
     // Cleanup function

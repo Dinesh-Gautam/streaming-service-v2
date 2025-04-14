@@ -40,11 +40,11 @@ export class ThumbnailEngine extends MediaEngine {
 
     try {
       // Ensure output directories exist
-      this.ensureDirectoryExists(outputDir);
-      this.ensureDirectoryExists(thumbnailsDir);
+      this._ensureDirectoryExists(outputDir);
+      this._ensureDirectoryExists(thumbnailsDir);
 
       // 1. Get video duration
-      const duration = await this.getVideoDuration(inputFile);
+      const duration = await this._getVideoDuration(inputFile);
       if (!duration) {
         throw new Error('Could not determine video duration.');
       }
@@ -57,16 +57,14 @@ export class ThumbnailEngine extends MediaEngine {
       );
 
       // 3. Generate thumbnails using ffmpeg
-      await this.generateThumbnailsFFmpeg(
+      await this._generateThumbnailsFFmpeg(
         inputFile,
         thumbnailsDir,
         thumbnailCount,
       );
-      // Update progress after thumbnails are generated
-      this.updateProgress({ percent: 50 });
 
       // 4. Generate VTT file
-      this.generateVttFile(
+      this._generateVttFile(
         thumbnailCount,
         this.options.interval,
         duration,
@@ -84,14 +82,14 @@ export class ThumbnailEngine extends MediaEngine {
     }
   }
 
-  private ensureDirectoryExists(dirPath: string): void {
+  private _ensureDirectoryExists(dirPath: string): void {
     if (!fs.existsSync(dirPath)) {
       console.log(`[${this.engineName}] Creating directory: ${dirPath}`);
       fs.mkdirSync(dirPath, { recursive: true });
     }
   }
 
-  private getVideoDuration(videoPath: string): Promise<number | undefined> {
+  private _getVideoDuration(videoPath: string): Promise<number | undefined> {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
         if (err) {
@@ -105,7 +103,7 @@ export class ThumbnailEngine extends MediaEngine {
     });
   }
 
-  private generateThumbnailsFFmpeg(
+  private _generateThumbnailsFFmpeg(
     inputPath: string,
     thumbnailsDir: string,
     thumbnailCount: number,
@@ -129,13 +127,19 @@ export class ThumbnailEngine extends MediaEngine {
           );
           reject(new Error(`Thumbnail generation failed: ${err.message}`));
         })
-        // Add progress handling if needed, though it's often quick
-        // .on('progress', (progress) => { ... })
+        .on('progress', (progress) => {
+          const currentProgress = this.getProgress();
+
+          if (progress.percent && progress.percent - currentProgress > 5)
+            this.updateProgress({
+              percent: Math.max(progress.percent - 2, 0),
+            });
+        })
         .run();
     });
   }
 
-  private generateVttFile(
+  private _generateVttFile(
     thumbnailCount: number,
     interval: number,
     duration: number,
@@ -155,8 +159,8 @@ export class ThumbnailEngine extends MediaEngine {
       const startTime = i * interval;
       const endTime = i === thumbnailCount - 1 ? duration : (i + 1) * interval;
 
-      const startTimeFormatted = this.formatVttTime(startTime);
-      const endTimeFormatted = this.formatVttTime(endTime);
+      const startTimeFormatted = this._formatVttTime(startTime);
+      const endTimeFormatted = this._formatVttTime(endTime);
 
       // Construct the URL path relative to the static serving endpoint
       // Assumes API route like /api/static/playback/[mediaId]/thumbnails/thumbXXXX.jpg
@@ -180,7 +184,7 @@ export class ThumbnailEngine extends MediaEngine {
     }
   }
 
-  private formatVttTime(seconds: number): string {
+  private _formatVttTime(seconds: number): string {
     const date = new Date(0);
     date.setSeconds(seconds);
     const hours = date.getUTCHours().toString().padStart(2, '0');

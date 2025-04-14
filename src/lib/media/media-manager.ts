@@ -300,12 +300,22 @@ export class MediaManager {
 
   private listeners = new Map<string, Map<string, (...args: any[]) => void>>();
 
+  // private _progressTimeOut: NodeJS.Timeout | null = null;
+
   private attachListeners(engine: MediaEngine, taskId: string): void {
     const engineListeners = new Map<string, (...args: any[]) => void>();
 
     const onProgress = (progress: number) => {
+      // if (!this._progressTimeOut) {
       this.updateTask(taskId, { progress });
+
+      // run the progress update after some time, to prevent huge number of db calls
+      // this._progressTimeOut = setTimeout(() => {
+      //   this._progressTimeOut = null;
+      // }, 1000);
+      // }
     };
+
     const onStatus = (status: IMediaProcessingTask['status']) => {
       // Status is updated directly via updateTask before/after engine.process
       // but we can log it here if needed.

@@ -39,9 +39,11 @@ export default async function TitlePage({ params, searchParams }: Props) {
   const { id, type: media_type } = await params;
   const { t: layout_type, original } = await searchParams;
 
+  const isOriginal = original === 'true';
+
   let searchResult: Result | OriginalMovieResult | null;
 
-  if (!original) {
+  if (!isOriginal) {
     searchResult =
       media_type === 'movie' ?
         ((await cachedGeMovietDetails(Number(id), {

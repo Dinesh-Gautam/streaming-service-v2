@@ -69,6 +69,7 @@ export abstract class MediaEngine extends EventEmitter {
    */
   protected updateProgress(progressDetail: MediaEngineProgressDetail): void {
     const newProgress = Math.max(0, Math.min(100, progressDetail.percent));
+
     if (this._progress !== newProgress) {
       this._progress = newProgress;
       this.emit('progress', this._progress, progressDetail); // Emit percentage and full detail
