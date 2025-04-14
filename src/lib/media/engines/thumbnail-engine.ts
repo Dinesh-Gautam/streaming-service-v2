@@ -3,7 +3,11 @@ import * as path from 'path';
 
 import ffmpeg from 'fluent-ffmpeg';
 
-import { MediaEngine, MediaEngineProgressDetail } from '../media-engine';
+import {
+  EngineOutput,
+  MediaEngine,
+  MediaEngineProgressDetail,
+} from '../media-engine';
 
 // Default options for the thumbnail engine
 interface ThumbnailEngineOptions {
@@ -29,8 +33,8 @@ export class ThumbnailEngine extends MediaEngine {
   async process(
     inputFile: string,
     outputDir: string,
-    // We don't use the third 'options' param here, relying on constructor options
-  ): Promise<void> {
+    options?: any, // Keep options signature consistent with base class
+  ): Promise<EngineOutput> {
     this.updateStatus('running');
     this._progress = 0; // Reset progress
     this._errorMessage = null;
@@ -74,11 +78,21 @@ export class ThumbnailEngine extends MediaEngine {
       );
 
       // 5. Mark as complete
-      this.complete(); // Sets progress to 100 and status to 'completed'
+      this.complete(); // Sets progress to 100 and status to 'completed' via event
+      // Return success object
+      return {
+        success: true,
+        outputPaths: {
+          vtt: vttFilePath,
+          thumbnailsDir: thumbnailsDir, // Include the directory path as well
+        },
+      };
     } catch (error: any) {
-      this.fail(error);
-      // Re-throw the error so the MediaManager knows the step failed
-      throw error;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.fail(errorMessage); // Sets status to 'failed' and stores error message via event
+      // Return failure object
+      return { success: false, error: errorMessage };
     }
   }
 

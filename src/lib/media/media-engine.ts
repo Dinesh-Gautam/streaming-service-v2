@@ -3,8 +3,15 @@ import { EventEmitter } from 'events';
 export type MediaEngineStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface MediaEngineProgressDetail {
-  percent: number;
+  percent: number | null;
   // Add any other relevant details like ETA, current step, etc. if needed
+}
+// Standardized output structure for engines
+export interface EngineOutput {
+  success: boolean;
+  outputPaths?: { [key: string]: string }; // e.g., { vtt: '/path/to/video.vtt', manifest: '...' }
+  data?: any; // Optional raw data (e.g., transcription) for chaining
+  error?: string; // Error message if success is false
 }
 
 export abstract class MediaEngine extends EventEmitter {
@@ -28,7 +35,7 @@ export abstract class MediaEngine extends EventEmitter {
     inputFile: string,
     outputDir: string,
     options?: any,
-  ): Promise<void>;
+  ): Promise<EngineOutput>;
 
   /**
    * Gets the current status of the engine.
@@ -68,7 +75,7 @@ export abstract class MediaEngine extends EventEmitter {
    * @param progressDetail - An object containing the progress percentage and potentially other details.
    */
   protected updateProgress(progressDetail: MediaEngineProgressDetail): void {
-    const newProgress = Math.max(0, Math.min(100, progressDetail.percent));
+    const newProgress = Math.max(0, Math.min(100, progressDetail.percent || 0));
 
     if (this._progress !== newProgress) {
       this._progress = newProgress;

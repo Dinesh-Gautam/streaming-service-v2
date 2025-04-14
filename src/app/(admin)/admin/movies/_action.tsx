@@ -8,6 +8,7 @@ import { join } from 'path';
 
 import type { z } from 'zod';
 
+import { SubtitleEngine } from '@/lib/media/engines/subtitle';
 import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
 import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
 import { MediaManager } from '@/lib/media/media-manager';
@@ -142,11 +143,13 @@ export async function processVideo(
     // Instantiate engines
     const thumbnailEngine = new ThumbnailEngine();
     const transcodingEngine = new TranscodingEngine();
+    const subtitleEngine = new SubtitleEngine(); // Instantiate SubtitleEngine
 
     // Instantiate manager
     const mediaManager = new MediaManager(mediaId, [
       thumbnailEngine,
       transcodingEngine,
+      subtitleEngine, // Add SubtitleEngine to the processing chain
     ]);
 
     // Run the manager - DO NOT await this here.

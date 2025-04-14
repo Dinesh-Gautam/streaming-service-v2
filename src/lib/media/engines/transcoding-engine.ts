@@ -2,7 +2,11 @@ import * as path from 'path';
 
 import ffmpeg from 'fluent-ffmpeg';
 
-import { MediaEngine, MediaEngineProgressDetail } from '../media-engine';
+import {
+  EngineOutput,
+  MediaEngine,
+  MediaEngineProgressDetail,
+} from '../media-engine';
 
 // Define potential options for the transcoding engine if needed in the future
 // interface TranscodingEngineOptions { ... }
@@ -17,7 +21,7 @@ export class TranscodingEngine extends MediaEngine {
     inputFile: string,
     outputDir: string,
     options?: any, // Options could include target formats, bitrates etc.
-  ): Promise<void> {
+  ): Promise<EngineOutput> {
     this.updateStatus('running');
     this._progress = 0;
     this._errorMessage = null;
@@ -25,7 +29,10 @@ export class TranscodingEngine extends MediaEngine {
     const outputFileName = options?.outputFileName || 'video'; // Default output name
     const outputManifest = path.join(outputDir, `${outputFileName}.mpd`);
 
-    return new Promise((resolve, reject) => {
+    // Note: The 'async' keyword on 'process' is technically not needed when returning a new Promise directly,
+    // but it doesn't hurt and keeps the signature consistent.
+    return new Promise<EngineOutput>((resolve) => {
+      // Resolve type is EngineOutput, reject is implicitly handled by resolving with {success: false}
       let totalDurationSeconds: number | null = null;
 
       const command = ffmpeg({
@@ -145,6 +152,7 @@ export class TranscodingEngine extends MediaEngine {
           const progressDetail: MediaEngineProgressDetail = {
             percent: Math.min(100, Math.max(0, percent)), // Clamp between 0-100
           };
+
           this.updateProgress(progressDetail);
         })
         .on('stderr', (stderrLine) => {
@@ -157,15 +165,17 @@ export class TranscodingEngine extends MediaEngine {
           );
           // console.error(`[${this.engineName}] ffmpeg stdout: ${stdout}`); // Optional: log stdout on error
           // console.error(`[${this.engineName}] ffmpeg stderr: ${stderr}`); // Optional: log stderr on error
-          this.fail(new Error(`Transcoding failed: ${err.message}`));
-          reject(err); // Reject the promise
+          const errorMessage = `Transcoding failed: ${err.message}`;
+          this.fail(errorMessage); // Set status and emit error event
+          resolve({ success: false, error: errorMessage }); // Resolve with failure object
         })
         .on('end', (stdout, stderr) => {
           console.log(
             `[${this.engineName}] Transcoding finished successfully.`,
           );
-          this.complete(); // Sets progress to 100, status to 'completed'
-          resolve(); // Resolve the promise
+          this.complete(); // Set status and emit complete event
+          // Resolve with success object, including the path to the manifest
+          resolve({ success: true, outputPaths: { manifest: outputManifest } });
         });
 
       // Start the ffmpeg process

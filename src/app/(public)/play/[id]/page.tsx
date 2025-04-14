@@ -3,7 +3,7 @@ import '@vidstack/react/player/styles/default/layouts/video.css';
 
 import { notFound } from 'next/navigation';
 
-import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import { MediaPlayer, MediaProvider, Track } from '@vidstack/react';
 import {
   defaultLayoutIcons,
   DefaultVideoLayout,
@@ -31,10 +31,15 @@ export default async function PlayPage({
   const thumbnailsUrl =
     '/api/static/playback/' + playbackId + '/thumbnails.vtt';
 
+  const subtitleUrl =
+    '/api/static/playback/' + playbackId + '/' + playbackId + '.vtt';
+
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
       <MediaPlayer
+        viewType="video"
         load="visible"
+        streamType="on-demand"
         posterLoad="visible"
         poster={'/api/static/' + movie.media?.backdrop?.originalPath}
         style={{ height: '100vh' }}
@@ -42,6 +47,12 @@ export default async function PlayPage({
         src={playbackUrl}
       >
         <MediaProvider />
+        <Track
+          kind="subtitles"
+          lang="eng"
+          label="English"
+          src={subtitleUrl}
+        />
         <DefaultVideoLayout
           thumbnails={thumbnailsUrl}
           icons={defaultLayoutIcons}

@@ -5,7 +5,7 @@ import {
   MediaProcessingJob,
 } from '@/server/db/schemas/media-processing';
 
-import { MediaEngine } from './media-engine';
+import { EngineOutput, MediaEngine } from './media-engine'; // Import EngineOutput
 
 export class MediaManager {
   private engines: MediaEngine[];
@@ -75,28 +75,44 @@ export class MediaManager {
 
         this.attachListeners(engine, task.taskId);
 
-        try {
-          console.log(
-            `[MediaManager] Starting engine: ${engine.engineName} (Task ID: ${task.taskId})`,
-          );
-          await this.updateTask(task.taskId, {
-            status: 'running',
-            startTime: new Date(),
-          });
-          // Run the engine's process method
-          await engine.process(inputFile, outputDir); // Pass relevant options if needed
-          // Listener will handle 'completed' update
-        } catch (error: any) {
+        // No longer need try/catch specifically around engine.process,
+        // as failure is indicated by the EngineOutput return value.
+        // Keep the outer try/catch for broader job errors.
+
+        console.log(
+          `[MediaManager] Starting engine: ${engine.engineName} (Task ID: ${task.taskId})`,
+        );
+        await this.updateTask(task.taskId, {
+          status: 'running',
+          startTime: new Date(),
+        });
+
+        // Run the engine's process method and get the result
+        const result: EngineOutput = await engine.process(inputFile, outputDir); // Pass relevant options if needed
+
+        // Check the result for success or failure
+        if (!result.success) {
           console.error(
-            `[MediaManager] Engine ${engine.engineName} failed: ${error.message}`,
+            `[MediaManager] Engine ${engine.engineName} reported failure: ${result.error}`,
           );
-          // Listener should have already updated task status to 'failed'
+          // The engine's fail() method should have already emitted 'error'
+          // which triggers the listener to update the task status.
+          // We just need to update the overall job status and stop.
           await this.updateJobStatus('failed');
-          // Stop processing further engines as per sequential requirement
-          return;
-        } finally {
-          this.removeListeners(engine); // Clean up listeners
+          this.removeListeners(engine); // Clean up listeners for this failed engine
+          return; // Stop processing further engines
+        } else {
+          // Engine completed successfully.
+          // The engine's complete() method should have emitted 'complete'
+          // which triggers the listener to update the task status.
+          console.log(
+            `[MediaManager] Engine ${engine.engineName} completed successfully. Output paths: ${JSON.stringify(result.outputPaths)}`,
+          );
+          // Potentially use result.data or result.outputPaths for chaining later
         }
+
+        // Clean up listeners after successful completion of this engine
+        this.removeListeners(engine);
       }
 
       // If all engines completed successfully
