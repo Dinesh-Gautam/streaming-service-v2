@@ -40,15 +40,50 @@ export class MediaManager {
         throw new Error('Failed to create or find processing job.');
       }
 
-      // Only start if the job isn't already completed or failed
-      if (
-        this.job.jobStatus === 'completed' ||
-        this.job.jobStatus === 'failed'
-      ) {
+      // --- START RETRY LOGIC ---
+      let needsSave = false;
+      if (this.job.jobStatus === 'failed') {
+        console.log(`[MediaManager] Retrying failed job for ${this.mediaId}.`);
+        this.job.jobStatus = 'pending'; // Reset job status before starting run
+        this.job.tasks.forEach((task) => {
+          if (task.status === 'failed') {
+            console.log(
+              `[MediaManager] Resetting failed task ${task.taskId} to pending for retry.`,
+            );
+            task.status = 'pending';
+            task.errorMessage = undefined; // Clear previous error
+            task.progress = 0; // Reset progress
+            task.startTime = undefined;
+            task.endTime = undefined;
+          }
+        });
+        needsSave = true; // Mark that the job document needs saving
+      }
+      // --- END RETRY LOGIC ---
+
+      // Check if job is already completed (no need to retry completed jobs)
+      if (this.job.jobStatus === 'completed') {
         console.log(
-          `[MediaManager] Job for ${this.mediaId} already ${this.job.jobStatus}. Skipping run.`,
+          `[MediaManager] Job for ${this.mediaId} already completed. Skipping run.`,
         );
         return;
+      }
+
+      // Save the job if statuses were reset for retry
+      if (needsSave) {
+        // Use atomic update to save reset statuses
+        const updateFields: Record<string, any> = {
+          jobStatus: this.job.jobStatus,
+          tasks: this.job.tasks, // Send the whole modified tasks array
+          updatedAt: new Date(),
+        };
+        await MediaProcessingJob.updateOne(
+          { _id: this.job._id },
+          { $set: updateFields },
+        );
+        console.log(
+          `[MediaManager] Job status and tasks reset for retry and saved.`,
+        );
       }
 
       await this.updateJobStatus('running');
@@ -57,21 +92,14 @@ export class MediaManager {
         const task = this.findOrCreateTask(engine);
         if (!task) continue; // Should not happen
 
-        // Skip if task already completed or failed in a previous run
-        if (task.status === 'completed' || task.status === 'failed') {
+        // Skip only if task already completed successfully in a previous run
+        if (task.status === 'completed') {
           console.log(
-            `[MediaManager] Task '${task.taskId}' already ${task.status}. Skipping.`,
+            `[MediaManager] Task '${task.taskId}' already completed. Skipping.`,
           );
-          if (task.status === 'failed') {
-            // If any previous task failed, the whole job fails (sequential)
-            await this.updateJobStatus('failed');
-            console.error(
-              `[MediaManager] Job failed because task '${task.taskId}' previously failed.`,
-            );
-            return; // Stop processing further engines
-          }
-          continue; // Move to the next engine if this one was completed
+          continue; // Move to the next engine
         }
+        // Tasks with 'pending' or 'failed' (after reset) status will proceed.
 
         this.attachListeners(engine, task.taskId);
 
@@ -80,11 +108,14 @@ export class MediaManager {
         // Keep the outer try/catch for broader job errors.
 
         console.log(
-          `[MediaManager] Starting engine: ${engine.engineName} (Task ID: ${task.taskId})`,
+          `[MediaManager] Starting engine: ${engine.engineName} (Task ID: ${task.taskId}) - Status: ${task.status}`,
         );
         await this.updateTask(task.taskId, {
           status: 'running',
           startTime: new Date(),
+          // Reset error message in DB if retrying a failed task
+          ...(task.status === 'pending' &&
+            task.errorMessage && { errorMessage: undefined }),
         });
 
         // Run the engine's process method and get the result
@@ -95,13 +126,13 @@ export class MediaManager {
           console.error(
             `[MediaManager] Engine ${engine.engineName} reported failure: ${result.error}`,
           );
-          // The engine's fail() method should have already emitted 'error'
-          // which triggers the listener to update the task status.
-          // We just need to update the overall job status and stop.
+          // Listener should update task status to 'failed' via engine.fail()
+          // Update overall job status to failed
           await this.updateJobStatus('failed');
-          this.removeListeners(engine); // Clean up listeners for this failed engine
-          return; // Stop processing further engines
+          this.removeListeners(engine);
+          return; // Stop processing further engines on failure
         } else {
+          // Listener should update task status to 'completed' via engine.complete()
           // Engine completed successfully.
           // The engine's complete() method should have emitted 'complete'
           // which triggers the listener to update the task status.
