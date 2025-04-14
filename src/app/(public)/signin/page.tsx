@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -14,6 +14,19 @@ import { PATHS } from '@/constants/paths';
 export const dynamic = 'force-static';
 
 export default function SignInPage() {
+  return (
+    <div className={styles.container}>
+      <Suspense>
+        <SignInForm />
+      </Suspense>
+      <div className={styles.box}>
+        Don&apos;t have an account <Link href={PATHS.SIGN_UP}>Sign Up.</Link>
+      </div>
+    </div>
+  );
+}
+
+function SignInForm() {
   const session = useSession();
 
   const [userInfo, setUserInfo] = useState({ email: '', password: '' });
@@ -42,73 +55,66 @@ export default function SignInPage() {
       setError((res && res.error) || 'some error occurred');
     }
   };
-
   return (
-    <div className={styles.container}>
-      <form
-        className={styles.box}
-        onSubmit={handleSubmit}
-      >
-        {session.status === 'authenticated' ?
-          <h1>You are Logged in</h1>
-        : session.status === 'loading' ?
-          <h1>Loading...</h1>
-        : <>
-            <h1>Login</h1>
-            {error && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <Info color="error" />
-                <span>{error}</span>
-              </div>
-            )}
-            <div>
-              <div>
-                <label htmlFor="email">Email</label>
-              </div>
-              <input
-                value={userInfo.email}
-                id="email"
-                onChange={({ target }) =>
-                  setUserInfo({ ...userInfo, email: target.value })
-                }
-                // type="email"
-                type="text"
-                placeholder="john@email.com"
-                required
-              />
+    <form
+      className={styles.box}
+      onSubmit={handleSubmit}
+    >
+      {session.status === 'authenticated' ?
+        <h1>You are Logged in</h1>
+      : session.status === 'loading' ?
+        <h1>Loading...</h1>
+      : <>
+          <h1>Login</h1>
+          {error && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Info color="error" />
+              <span>{error}</span>
             </div>
+          )}
+          <div>
             <div>
-              <label htmlFor="pass">Password</label>
-              <input
-                id="pass"
-                value={userInfo.password}
-                onChange={({ target }) =>
-                  setUserInfo({ ...userInfo, password: target.value })
-                }
-                type="password"
-                placeholder="********"
-                required
-              />
+              <label htmlFor="email">Email</label>
             </div>
             <input
-              className={styles.submitButton}
-              type="submit"
-              value="Login"
+              value={userInfo.email}
+              id="email"
+              onChange={({ target }) =>
+                setUserInfo({ ...userInfo, email: target.value })
+              }
+              // type="email"
+              type="text"
+              placeholder="john@email.com"
+              required
             />
-          </>
-        }
-      </form>
-
-      <div className={styles.box}>
-        Don&apos;t have an account <Link href={PATHS.SIGN_UP}>Sign Up.</Link>
-      </div>
-    </div>
+          </div>
+          <div>
+            <label htmlFor="pass">Password</label>
+            <input
+              id="pass"
+              value={userInfo.password}
+              onChange={({ target }) =>
+                setUserInfo({ ...userInfo, password: target.value })
+              }
+              type="password"
+              placeholder="********"
+              required
+            />
+          </div>
+          <input
+            className={styles.submitButton}
+            type="submit"
+            value="Login"
+          />
+        </>
+      }
+    </form>
   );
 }
