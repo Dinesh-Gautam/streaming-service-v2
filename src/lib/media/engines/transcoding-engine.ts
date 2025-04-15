@@ -2,6 +2,7 @@ import * as path from 'path';
 
 import ffmpeg from 'fluent-ffmpeg';
 
+import { TranscodingOutput } from '../engine-outputs'; // Import specific output type
 import {
   EngineOutput,
   MediaEngine,
@@ -11,7 +12,8 @@ import {
 // Define potential options for the transcoding engine if needed in the future
 // interface TranscodingEngineOptions { ... }
 
-export class TranscodingEngine extends MediaEngine {
+// Specify the output type for this engine
+export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
   constructor(/* options: Partial<TranscodingEngineOptions> = {} */) {
     super('TranscodingEngine');
     // Apply options if any
@@ -21,7 +23,7 @@ export class TranscodingEngine extends MediaEngine {
     inputFile: string,
     outputDir: string,
     options?: any, // Options could include target formats, bitrates etc.
-  ): Promise<EngineOutput> {
+  ): Promise<EngineOutput<TranscodingOutput>> {
     this.updateStatus('running');
     this._progress = 0;
     this._errorMessage = null;
@@ -31,7 +33,7 @@ export class TranscodingEngine extends MediaEngine {
 
     // Note: The 'async' keyword on 'process' is technically not needed when returning a new Promise directly,
     // but it doesn't hurt and keeps the signature consistent.
-    return new Promise<EngineOutput>((resolve) => {
+    return new Promise<EngineOutput<TranscodingOutput>>((resolve) => {
       // Resolve type is EngineOutput, reject is implicitly handled by resolving with {success: false}
       let totalDurationSeconds: number | null = null;
 
@@ -175,7 +177,13 @@ export class TranscodingEngine extends MediaEngine {
           );
           this.complete(); // Set status and emit complete event
           // Resolve with success object, including the path to the manifest
-          resolve({ success: true, outputPaths: { manifest: outputManifest } });
+          resolve({
+            success: true,
+            output: {
+              paths: { manifest: outputManifest },
+              // data is undefined for this engine
+            },
+          });
         });
 
       // Start the ffmpeg process

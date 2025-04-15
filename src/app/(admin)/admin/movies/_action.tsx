@@ -8,6 +8,7 @@ import { join } from 'path';
 
 import type { z } from 'zod';
 
+import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
 import { SubtitleEngine } from '@/lib/media/engines/subtitle';
 import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
 import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
@@ -143,13 +144,13 @@ export async function processVideo(
     // Instantiate engines
     const thumbnailEngine = new ThumbnailEngine();
     const transcodingEngine = new TranscodingEngine();
-    const subtitleEngine = new SubtitleEngine(); // Instantiate SubtitleEngine
+    // const subtitleEngine = new SubtitleEngine(); // Instantiate SubtitleEngine
 
     // Instantiate manager
     const mediaManager = new MediaManager(mediaId, [
       thumbnailEngine,
       transcodingEngine,
-      subtitleEngine, // Add SubtitleEngine to the processing chain
+      // subtitleEngine, // Add SubtitleEngine to the processing chain
     ]);
 
     // Run the manager - DO NOT await this here.
@@ -190,6 +191,7 @@ export type MediaProcessingStatus = {
     status: IMediaProcessingTask['status'];
     progress: number;
     error?: string;
+    output?: EngineTaskOutput; // Use the specific union type
   }>;
   // Indicate if a job record exists at all
   jobExists: boolean;
@@ -242,6 +244,8 @@ export async function getMediaProcessingJob(
         status: task.status,
         progress: task.progress,
         error: task.errorMessage,
+        // Cast the output from the DB (which is Mixed) to our specific TS type
+        output: task.output as EngineTaskOutput | undefined,
       }));
 
       result[job.mediaId] = {

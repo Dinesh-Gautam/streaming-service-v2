@@ -1,4 +1,6 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
+
+import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
 
 // Interface for individual task status within a job
 export interface IMediaProcessingTask extends Document {
@@ -9,6 +11,7 @@ export interface IMediaProcessingTask extends Document {
   errorMessage?: string;
   startTime?: Date;
   endTime?: Date;
+  output?: EngineTaskOutput; // Use the specific union type for output
 }
 
 // Interface for the overall media processing job
@@ -34,6 +37,7 @@ const MediaProcessingTaskSchema = new Schema<IMediaProcessingTask>(
     errorMessage: { type: String },
     startTime: { type: Date },
     endTime: { type: Date },
+    output: { type: Schema.Types.Mixed }, // Keep Mixed for Mongoose flexibility, but TS uses EngineTaskOutput
   },
   { _id: false }, // Don't create separate _id for subdocuments
 );

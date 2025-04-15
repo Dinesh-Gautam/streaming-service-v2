@@ -1,17 +1,12 @@
 import * as fs from 'fs';
-import { Buffer } from 'node:buffer'; // For Deepgram SDK
 import * as path from 'path';
 
 import { createClient, DeepgramClient } from '@deepgram/sdk';
 import ffmpeg from 'fluent-ffmpeg';
 
 // Standardized output structure (aligning with plan, though process returns void for now)
-import {
-  EngineOutput,
-  MediaEngine,
-  MediaEngineProgressDetail,
-  MediaEngineStatus,
-} from '../media-engine';
+import { SubtitleOutput } from '../engine-outputs'; // Import specific output type
+import { EngineOutput, MediaEngine } from '../media-engine';
 
 // Define potential options for the subtitle engine
 interface SubtitleEngineOptions {
@@ -37,7 +32,8 @@ const DEFAULT_OPTIONS: SubtitleEngineOptions = {
 
 const TEMP_DIR = './tmp'; // Temporary directory for audio extraction
 
-export class SubtitleEngine extends MediaEngine {
+// Specify the output type for this engine
+export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
   private options: SubtitleEngineOptions;
   private deepgram: DeepgramClient;
 
@@ -61,7 +57,7 @@ export class SubtitleEngine extends MediaEngine {
     inputFile: string,
     outputDir: string,
     options?: any, // Keep options signature consistent with base class
-  ): Promise<EngineOutput> {
+  ): Promise<EngineOutput<SubtitleOutput>> {
     this.updateStatus('running');
     this._progress = 0;
     this._errorMessage = null;
@@ -101,8 +97,10 @@ export class SubtitleEngine extends MediaEngine {
       // Return success object
       return {
         success: true,
-        outputPaths: { vtt: outputVttPath },
-        data: transcriptionResult, // Optionally pass raw data
+        output: {
+          paths: { vtt: outputVttPath },
+          data: transcriptionResult, // Include the raw transcription data
+        },
       };
     } catch (error: any) {
       const errorMessage =

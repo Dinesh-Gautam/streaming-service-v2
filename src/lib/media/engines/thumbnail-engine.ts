@@ -3,11 +3,8 @@ import * as path from 'path';
 
 import ffmpeg from 'fluent-ffmpeg';
 
-import {
-  EngineOutput,
-  MediaEngine,
-  MediaEngineProgressDetail,
-} from '../media-engine';
+import { ThumbnailOutput } from '../engine-outputs'; // Import specific output type
+import { EngineOutput, MediaEngine } from '../media-engine';
 
 // Default options for the thumbnail engine
 interface ThumbnailEngineOptions {
@@ -22,7 +19,8 @@ const DEFAULT_OPTIONS: ThumbnailEngineOptions = {
   jpegQuality: 2, // High quality
 };
 
-export class ThumbnailEngine extends MediaEngine {
+// Specify the output type for this engine
+export class ThumbnailEngine extends MediaEngine<ThumbnailOutput> {
   private options: ThumbnailEngineOptions;
 
   constructor(options: Partial<ThumbnailEngineOptions> = {}) {
@@ -34,7 +32,7 @@ export class ThumbnailEngine extends MediaEngine {
     inputFile: string,
     outputDir: string,
     options?: any, // Keep options signature consistent with base class
-  ): Promise<EngineOutput> {
+  ): Promise<EngineOutput<ThumbnailOutput>> {
     this.updateStatus('running');
     this._progress = 0; // Reset progress
     this._errorMessage = null;
@@ -82,9 +80,12 @@ export class ThumbnailEngine extends MediaEngine {
       // Return success object
       return {
         success: true,
-        outputPaths: {
-          vtt: vttFilePath,
-          thumbnailsDir: thumbnailsDir, // Include the directory path as well
+        output: {
+          paths: {
+            vtt: vttFilePath,
+            thumbnailsDir: thumbnailsDir,
+          },
+          // data is undefined for this engine
         },
       };
     } catch (error: any) {

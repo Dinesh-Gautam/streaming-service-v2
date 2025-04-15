@@ -5,14 +5,16 @@ import {
   MediaProcessingJob,
 } from '@/server/db/schemas/media-processing';
 
-import { EngineOutput, MediaEngine } from './media-engine'; // Import EngineOutput
+import { EngineTaskOutput } from './engine-outputs'; // Import the output union type
+import { EngineOutput, MediaEngine } from './media-engine'; // Import generic types
 
 export class MediaManager {
-  private engines: MediaEngine[];
+  // Use the base MediaEngine type here, as the array can hold engines with different output types
+  private engines: MediaEngine<any>[]; // Using 'any' here is acceptable for the collection
   private mediaId: string;
   private job: IMediaProcessingJob | null = null;
 
-  constructor(mediaId: string, engines: MediaEngine[]) {
+  constructor(mediaId: string, engines: MediaEngine<any>[]) {
     if (!mediaId) {
       throw new Error('MediaManager requires a valid mediaId.');
     }
@@ -119,7 +121,11 @@ export class MediaManager {
         });
 
         // Run the engine's process method and get the result
-        const result: EngineOutput = await engine.process(inputFile, outputDir); // Pass relevant options if needed
+        // The result type depends on the specific engine, use the union type or keep it generic
+        const result: EngineOutput<EngineTaskOutput> = await engine.process(
+          inputFile,
+          outputDir,
+        ); // Pass relevant options if needed
 
         // Check the result for success or failure
         if (!result.success) {
@@ -132,14 +138,17 @@ export class MediaManager {
           this.removeListeners(engine);
           return; // Stop processing further engines on failure
         } else {
-          // Listener should update task status to 'completed' via engine.complete()
-          // Engine completed successfully.
-          // The engine's complete() method should have emitted 'complete'
-          // which triggers the listener to update the task status.
+          // Engine completed successfully. Update task status and store output.
           console.log(
-            `[MediaManager] Engine ${engine.engineName} completed successfully. Output paths: ${JSON.stringify(result.outputPaths)}`,
+            `[MediaManager] Engine ${engine.engineName} completed successfully. Output: ${JSON.stringify(result.output)}`,
           );
-          // Potentially use result.data or result.outputPaths for chaining later
+          await this.updateTask(task.taskId, {
+            status: 'completed',
+            progress: 100,
+            // Pass the entire output object (which now contains paths and data)
+            output: result.output,
+          });
+          // The 'complete' event listener (onComplete) no longer needs to update the task status.
         }
 
         // Clean up listeners after successful completion of this engine
@@ -206,7 +215,7 @@ export class MediaManager {
 
   // Helper to find or potentially add a task if the job exists but the task doesn't
   private findOrCreateTask(
-    engine: MediaEngine,
+    engine: MediaEngine<any>, // Accept any engine type
     jobInstance?: IMediaProcessingJob,
   ): IMediaProcessingTask | undefined {
     const currentJob = jobInstance || this.job;
@@ -349,7 +358,7 @@ export class MediaManager {
 
   // private _progressTimeOut: NodeJS.Timeout | null = null;
 
-  private attachListeners(engine: MediaEngine, taskId: string): void {
+  private attachListeners(engine: MediaEngine<any>, taskId: string): void {
     const engineListeners = new Map<string, (...args: any[]) => void>();
 
     const onProgress = (progress: number) => {
@@ -379,7 +388,11 @@ export class MediaManager {
       });
     };
     const onComplete = () => {
-      this.updateTask(taskId, { status: 'completed', progress: 100 });
+      // Task status and output are now updated directly after engine.process succeeds.
+      // this.updateTask(taskId, { status: 'completed', progress: 100 }); // No longer needed here
+      console.log(
+        `[MediaManager] Received 'complete' event for task ${taskId}.`,
+      );
     };
 
     engine.on('progress', onProgress);
@@ -395,7 +408,7 @@ export class MediaManager {
     this.listeners.set(taskId, engineListeners);
   }
 
-  private removeListeners(engine: MediaEngine): void {
+  private removeListeners(engine: MediaEngine<any>): void {
     const index = this.engines.findIndex((e) => e === engine);
     const taskId = `${engine.engineName.toLowerCase().replace('engine', '')}-${index}`;
     const engineListeners = this.listeners.get(taskId);

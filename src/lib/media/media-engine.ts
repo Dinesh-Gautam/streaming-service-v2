@@ -1,20 +1,26 @@
 import { EventEmitter } from 'events';
 
+// Standardized output structure for engines
+import { EngineTaskOutput } from './engine-outputs'; // Import the union type
+
 export type MediaEngineStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface MediaEngineProgressDetail {
   percent: number | null;
   // Add any other relevant details like ETA, current step, etc. if needed
 }
-// Standardized output structure for engines
-export interface EngineOutput {
+
+// Make EngineOutput generic to accept specific output types
+export interface EngineOutput<T extends EngineTaskOutput | {} = {}> {
   success: boolean;
-  outputPaths?: { [key: string]: string }; // e.g., { vtt: '/path/to/video.vtt', manifest: '...' }
-  data?: any; // Optional raw data (e.g., transcription) for chaining
+  output?: T; // Use the specific output type (paths and data combined)
   error?: string; // Error message if success is false
 }
 
-export abstract class MediaEngine extends EventEmitter {
+// Make MediaEngine generic, defaulting to an empty object if no specific output type is needed
+export abstract class MediaEngine<
+  T extends EngineTaskOutput | {} = {},
+> extends EventEmitter {
   protected _status: MediaEngineStatus = 'pending';
   protected _progress: number = 0;
   protected _errorMessage: string | null = null;
@@ -35,7 +41,7 @@ export abstract class MediaEngine extends EventEmitter {
     inputFile: string,
     outputDir: string,
     options?: any,
-  ): Promise<EngineOutput>;
+  ): Promise<EngineOutput<T>>; // Return the specifically typed EngineOutput
 
   /**
    * Gets the current status of the engine.
