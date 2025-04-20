@@ -31,8 +31,11 @@ export default async function PlayPage({
   const thumbnailsUrl =
     '/api/static/playback/' + playbackId + '/thumbnails.vtt';
 
-  const subtitleUrl =
-    '/api/static/playback/' + playbackId + '/' + playbackId + '.vtt';
+  const subtitleUrl = {
+    en: '/api/static/playback/' + playbackId + '/' + playbackId + '.en.vtt',
+    hi: '/api/static/playback/' + playbackId + '/' + playbackId + '.hi.vtt',
+    pa: '/api/static/playback/' + playbackId + '/' + playbackId + '.pa.vtt',
+  };
 
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
@@ -47,12 +50,17 @@ export default async function PlayPage({
         src={playbackUrl}
       >
         <MediaProvider />
-        <Track
-          kind="subtitles"
-          lang="eng"
-          label="English"
-          src={subtitleUrl}
-        />
+        {Object.entries(subtitleUrl).map(([lang, url]) => (
+          <Track
+            key={lang}
+            kind="subtitles"
+            lang={lang}
+            label={new Intl.DisplayNames('en', {
+              type: 'language',
+            }).of(lang)}
+            src={url}
+          />
+        ))}
         <DefaultVideoLayout
           thumbnails={thumbnailsUrl}
           icons={defaultLayoutIcons}

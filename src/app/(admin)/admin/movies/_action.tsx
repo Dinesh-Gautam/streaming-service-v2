@@ -144,13 +144,16 @@ export async function processVideo(
     // Instantiate engines
     const thumbnailEngine = new ThumbnailEngine();
     const transcodingEngine = new TranscodingEngine();
-    // const subtitleEngine = new SubtitleEngine(); // Instantiate SubtitleEngine
+    const subtitleEngine = new SubtitleEngine({
+      sourceLanguage: 'en', // Specify source language
+      targetLanguages: ['hi', 'pa'], // Specify target languages
+    }); // Instantiate SubtitleEngine with options
 
     // Instantiate manager
     const mediaManager = new MediaManager(mediaId, [
       thumbnailEngine,
       transcodingEngine,
-      // subtitleEngine, // Add SubtitleEngine to the processing chain
+      subtitleEngine,
     ]);
 
     // Run the manager - DO NOT await this here.

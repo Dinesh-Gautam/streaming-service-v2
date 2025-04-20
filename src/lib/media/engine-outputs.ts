@@ -23,7 +23,8 @@ export interface TranscodingOutput {
  */
 export interface SubtitleOutput {
   paths?: {
-    vtt: string; // Path to the generated VTT file
+    // Key: language code (e.g., 'en', 'hi', 'pa'), Value: path to VTT file
+    vtt: Record<string, string>;
   };
   // Define a more specific type for Deepgram's result if possible,
   // or use 'any' if the structure is highly variable or complex.
