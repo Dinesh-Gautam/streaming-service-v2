@@ -13,7 +13,7 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Sparkles } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -268,6 +268,9 @@ export default function EditMoviePage({
     backdrop: form.watch('media.backdrop.originalPath'),
   };
 
+  // Use Sparkles from lucide-react as the AI indicator icon
+  const AiIcon: React.ElementType = Sparkles;
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">
@@ -293,7 +296,7 @@ export default function EditMoviePage({
                 Fill in the information below to{' '}
                 {isNewMovie ?
                   'create a new movie entry'
-                : "update the movie's information"}
+                  : "update the movie's information"}
                 .
               </CardDescription>
             </CardHeader>
@@ -498,7 +501,7 @@ export default function EditMoviePage({
 
                     {videoUploadingPending ?
                       <span className="animate-pulse">Uploading...</span>
-                    : OriginalPaths.video && (
+                      : OriginalPaths.video && (
                         <>
                           {mediaFiles.video && (
                             <div className="text-sm text-muted-foreground">
@@ -523,7 +526,7 @@ export default function EditMoviePage({
                                 >
                                   {processingStatus.jobStatus === 'failed' ?
                                     'Retry Processing'
-                                  : 'Start Processing'}
+                                    : 'Start Processing'}
                                 </Button>
                               </div>
                             )}
@@ -539,15 +542,14 @@ export default function EditMoviePage({
                         <h4 className="text-md font-medium">
                           Processing Status:{' '}
                           <span
-                            className={`capitalize font-semibold ${
-                              processingStatus.jobStatus === 'completed' ?
-                                'text-green-600'
+                            className={`capitalize font-semibold ${processingStatus.jobStatus === 'completed' ?
+                              'text-green-600'
                               : processingStatus.jobStatus === 'failed' ?
                                 'text-red-600'
-                              : processingStatus.jobStatus === 'running' ?
-                                'text-blue-600'
-                              : 'text-muted-foreground'
-                            }`}
+                                : processingStatus.jobStatus === 'running' ?
+                                  'text-blue-600'
+                                  : 'text-muted-foreground'
+                              }`}
                           >
                             {processingStatus.jobStatus}
                           </span>
@@ -566,13 +568,23 @@ export default function EditMoviePage({
                                   .trim()}{' '}
                                 Status
                               </span>
+                              {/* AI Completion Indicator */}
+                              {task.engine === 'AIEngine' && task.status === 'completed' && (
+                                <span
+                                  title="AI Processing Complete"
+                                  className="ml-2 flex items-center text-xs font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
+                                >
+                                  <AiIcon className="h-4 w-4 mr-1 text-purple-500" />
+                                  {/* Optional: Add text like "AI" */}
+                                  {/* AI */}
+                                </span>
+                              )}
                               <span
-                                className={`capitalize ${
-                                  task.status === 'completed' ? 'text-green-500'
+                                className={`capitalize ${task.status === 'completed' ? 'text-green-500'
                                   : task.status === 'failed' ? 'text-red-500'
-                                  : task.status === 'running' ? 'text-blue-500'
-                                  : 'text-muted-foreground'
-                                }`}
+                                    : task.status === 'running' ? 'text-blue-500'
+                                      : 'text-muted-foreground'
+                                  }`}
                               >
                                 {task.status}
                               </span>
@@ -591,7 +603,7 @@ export default function EditMoviePage({
                                   <span>{task.progress.toFixed(1)}%</span>
                                 </div>
                               </>
-                            : null}
+                              : null}
                             {task.status === 'failed' && task.error && (
                               <p className="text-xs text-red-500">
                                 Error: {task.error}
@@ -618,7 +630,7 @@ export default function EditMoviePage({
                       >
                         {isCopied ?
                           <Check className="h-4 w-4 mr-1" />
-                        : <Copy className="h-4 w-4 mr-1" />}
+                          : <Copy className="h-4 w-4 mr-1" />}
                         {isCopied ? 'Copied' : 'Copy URL'}
                       </Button>
                     </div>
@@ -647,7 +659,7 @@ export default function EditMoviePage({
 
                   {posterUploadPending ?
                     'uploading...'
-                  : OriginalPaths.poster && (
+                    : OriginalPaths.poster && (
                       <div className="flex">
                         <div className="relative w-[150px] h-[225px] border rounded-md overflow-hidden">
                           <Image
@@ -688,7 +700,7 @@ export default function EditMoviePage({
 
                   {backdropUploadPending ?
                     'Uploading...'
-                  : OriginalPaths.backdrop && (
+                    : OriginalPaths.backdrop && (
                       <div className="flex w-full ">
                         <div className="relative w-[480px] h-[270px] border rounded-md overflow-hidden">
                           <Image
@@ -707,6 +719,19 @@ export default function EditMoviePage({
                   }
                 </div>
               </div>
+
+              {/* Optionally display AI generated data */}
+              {processingStatus.tasks.find(t => t.engine === 'AIEngine' && t.status === 'completed') && (
+                <div className="mt-4 p-4 border rounded-md bg-muted/30">
+                  <h5 className="font-semibold mb-2 flex items-center">
+                    <AiIcon className="h-5 w-5 mr-2 text-purple-500" />
+                    AI Generated Suggestions
+                  </h5>
+                  {/* TODO: Display AI output (title, description, genres etc.)
+                     Maybe add buttons to apply suggestions to form fields? */}
+                  <p className="text-sm text-muted-foreground">AI data display placeholder.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

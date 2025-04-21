@@ -9,6 +9,7 @@ import { join } from 'path';
 import type { z } from 'zod';
 
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
+import { AIEngine } from '@/lib/media/engines/ai-engine'; // Import the new AI Engine
 import { SubtitleEngine } from '@/lib/media/engines/subtitle';
 import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
 import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
@@ -142,18 +143,21 @@ export async function processVideo(
     await dbConnect(); // Ensure DB connection
 
     // Instantiate engines
-    const thumbnailEngine = new ThumbnailEngine();
-    const transcodingEngine = new TranscodingEngine();
+    // const thumbnailEngine = new ThumbnailEngine();
+    // const transcodingEngine = new TranscodingEngine();
     const subtitleEngine = new SubtitleEngine({
       sourceLanguage: 'en', // Specify source language
       targetLanguages: ['hi', 'pa'], // Specify target languages
     }); // Instantiate SubtitleEngine with options
+    const aiEngine = new AIEngine(); // Instantiate the AI Engine
 
-    // Instantiate manager
+    // Instantiate manager with all engines in desired order
+    // MediaManager will reorder if AI engine is before Subtitle engine
     const mediaManager = new MediaManager(mediaId, [
-      thumbnailEngine,
-      transcodingEngine,
+      // thumbnailEngine,
+      // transcodingEngine,
       subtitleEngine,
+      aiEngine, // Add AI Engine to the list
     ]);
 
     // Run the manager - DO NOT await this here.

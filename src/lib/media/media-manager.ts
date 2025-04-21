@@ -5,7 +5,8 @@ import {
   MediaProcessingJob,
 } from '@/server/db/schemas/media-processing';
 
-import { EngineTaskOutput } from './engine-outputs'; // Import the output union type
+import { EngineTaskOutput, SubtitleOutput } from './engine-outputs';
+// Import the output union type
 import { EngineOutput, MediaEngine } from './media-engine'; // Import generic types
 
 export class MediaManager {
@@ -23,6 +24,27 @@ export class MediaManager {
     }
     this.mediaId = mediaId;
     this.engines = engines;
+    // Ensure AIEngine runs after SubtitleEngine if both are present
+    // This is a basic check; a more robust dependency system could be added later.
+    const subtitleIndex = this.engines.findIndex(
+      (e) => e.engineName === 'SubtitleEngine',
+    );
+    const aiIndex = this.engines.findIndex((e) => e.engineName === 'AIEngine');
+    if (subtitleIndex !== -1 && aiIndex !== -1 && aiIndex < subtitleIndex) {
+      console.warn(
+        '[MediaManager] Warning: AIEngine found before SubtitleEngine. Reordering for dependency.',
+      );
+      // Simple reorder: move AIEngine after SubtitleEngine
+      const aiEngineInstance = this.engines.splice(aiIndex, 1)[0];
+      const newAiIndex = this.engines.findIndex(
+        (e) => e.engineName === 'SubtitleEngine',
+      ); // Find index again after splice
+      this.engines.splice(newAiIndex + 1, 0, aiEngineInstance);
+      console.log(
+        '[MediaManager] Engines reordered:',
+        this.engines.map((e) => e.engineName),
+      );
+    }
   }
 
   /**
@@ -90,9 +112,51 @@ export class MediaManager {
 
       await this.updateJobStatus('running');
 
+      // Store outputs from completed engines to pass to dependents
+      const completedEngineOutputs: Record<string, EngineTaskOutput> = {};
+
       for (const engine of this.engines) {
         const task = this.findOrCreateTask(engine);
         if (!task) continue; // Should not happen
+
+        let dependentInput: SubtitleOutput | undefined = undefined;
+
+        // --- Dependency Check: Specific logic for AIEngine ---
+        if (engine.engineName === 'AIEngine') {
+          dependentInput = completedEngineOutputs['SubtitleEngine'] as
+            | SubtitleOutput
+            | undefined;
+
+          // If not in memory (e.g., during retry), check the DB
+          if (!dependentInput) {
+            const subtitleTask = this.findCompletedTaskInJob('SubtitleEngine');
+            if (subtitleTask?.output) {
+              console.log(
+                `[MediaManager] Found SubtitleEngine output in DB for retry.`,
+              );
+              dependentInput = subtitleTask.output as SubtitleOutput; // Retrieve from DB
+            } else {
+              console.warn(
+                `[MediaManager] SubtitleEngine output not found in memory or DB.`,
+              );
+            }
+          }
+
+          // If still no input after checking memory and DB, fail the dependency
+          if (!dependentInput) {
+            console.warn(
+              `[MediaManager] Skipping AIEngine for ${this.mediaId} because SubtitleEngine did not complete successfully or its output is missing.`,
+            );
+            // Optionally, mark the AI task as skipped or failed due to dependency
+            await this.updateTask(task.taskId, {
+              status: 'failed', // Or a new 'skipped' status if desired
+              errorMessage:
+                'Dependency failed: SubtitleEngine output unavailable.',
+            });
+            continue; // Skip processing this engine
+          }
+        }
+        // --- End Dependency Check ---
 
         // Skip only if task already completed successfully in a previous run
         if (task.status === 'completed') {
@@ -120,12 +184,32 @@ export class MediaManager {
             task.errorMessage && { errorMessage: undefined }),
         });
 
+        // --- Prepare options for engine.process (e.g., pass Subtitle output to AI) ---
+        let processOptions: any = {};
+        if (engine.engineName === 'AIEngine') {
+          if (dependentInput) {
+            // Use the input fetched earlier (memory or DB)
+            processOptions = { subtitleOutput: dependentInput };
+          } else {
+            // This case should technically not be reached due to the dependency check above
+            console.error(
+              `[MediaManager] Internal error: Subtitle output missing for AIEngine despite passing dependency check.`,
+            );
+            await this.updateTask(task.taskId, {
+              status: 'failed',
+              errorMessage: 'Internal error: Missing dependency output.',
+            });
+            continue; // Skip processing
+          }
+        }
+        // --- End Prepare options ---
+
         // Run the engine's process method and get the result
-        // The result type depends on the specific engine, use the union type or keep it generic
         const result: EngineOutput<EngineTaskOutput> = await engine.process(
           inputFile,
           outputDir,
-        ); // Pass relevant options if needed
+          processOptions, // Pass the prepared options
+        );
 
         // Check the result for success or failure
         if (!result.success) {
@@ -140,8 +224,14 @@ export class MediaManager {
         } else {
           // Engine completed successfully. Update task status and store output.
           console.log(
-            `[MediaManager] Engine ${engine.engineName} completed successfully. Output: ${JSON.stringify(result.output)}`,
+            `[MediaManager] Engine ${engine.engineName} completed successfully. Output keys: ${result.output ? Object.keys(result.output) : 'N/A'}`,
           );
+
+          // Store output for potential dependent tasks
+          if (result.output) {
+            completedEngineOutputs[engine.engineName] = result.output;
+          }
+
           await this.updateTask(task.taskId, {
             status: 'completed',
             progress: 100,
@@ -221,7 +311,18 @@ export class MediaManager {
     const currentJob = jobInstance || this.job;
     if (!currentJob) return undefined;
 
-    const index = this.engines.findIndex((e) => e === engine);
+    const index = this.engines.findIndex(
+      (e) => e.engineName === engine.engineName,
+    );
+    // Handle case where engine might not be found (shouldn't happen in normal flow)
+    if (index === -1) {
+      console.error(
+        `[MediaManager] Engine ${engine.engineName} not found in configured engines during findOrCreateTask.`,
+      );
+      return undefined;
+    }
+
+    // Ensure taskId is consistently generated based on engine name and its *current* index
     const taskId = `${engine.engineName.toLowerCase().replace('engine', '')}-${index}`;
 
     let task = currentJob.tasks.find((t) => t.taskId === taskId);
@@ -419,6 +520,25 @@ export class MediaManager {
       });
       this.listeners.delete(taskId);
     }
+  }
+
+  // Helper to find a completed task by engine name in the current job
+  private findCompletedTaskInJob(
+    engineName: string,
+  ): IMediaProcessingTask | undefined {
+    if (!this.job) return undefined;
+
+    // Find the engine's index to construct the potential taskId
+    const engineIndex = this.engines.findIndex(
+      (e) => e.engineName === engineName,
+    );
+    if (engineIndex === -1) return undefined; // Engine not configured
+
+    const taskId = `${engineName.toLowerCase().replace('engine', '')}-${engineIndex}`;
+
+    return this.job.tasks.find(
+      (task) => task.taskId === taskId && task.status === 'completed',
+    );
   }
 }
 

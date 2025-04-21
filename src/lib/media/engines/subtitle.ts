@@ -310,7 +310,7 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
       const combinedError =
         Object.keys(translationErrors).length > 0 ?
           `${errorMessage}. Non-fatal translation errors occurred before this: ${JSON.stringify(translationErrors)}`
-        : errorMessage;
+          : errorMessage;
       return { success: false, error: combinedError }; // Return fatal error status
     } finally {
       // --- 6. Cleanup temporary audio file ---
@@ -348,6 +348,10 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
 
   private async _transcribeAudio(audioPath: string): Promise<any> {
     try {
+      // Read from temp.json instead of transcribing
+      const jsonData = await fs.promises.readFile('temp_transcoding.json', 'utf8');
+      return JSON.parse(jsonData);
+
       const audioBuffer = await fs.promises.readFile(audioPath);
       const { result, error } =
         await this.deepgram.listen.prerecorded.transcribeFile(audioBuffer, {
@@ -364,6 +368,15 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
         throw new Error('Deepgram transcription returned no result.');
       }
       console.log(`[${this.engineName}] Transcription received from Deepgram.`);
+
+      // Todo: remove this
+      // await fs.promises.writeFile(
+      //   'temp_transcoding.json',
+      //   JSON.stringify(result, null, 2),
+      // );
+      // console.log(
+      //   `[${this.engineName}] Transcription result saved to temp.json`,
+      // );
 
       return result;
     } catch (err: any) {
@@ -448,7 +461,19 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
         targetLanguageCode: targetLanguage,
       };
 
-      const [response] = await this.translateClient.translateText(request);
+      // const [response] = await this.translateClient.translateText(request);
+
+      // Todo: remove this (optional, keep for debugging if needed)
+      const response: any = JSON.parse(
+        await fs.promises.readFile('temp_translations.json', 'utf-8'),
+      );
+      // await fs.promises.writeFile(
+      //   'temp_translations.json',
+      //   JSON.stringify(response, null, 2),
+      // );
+      // console.log(
+      //   `[${this.engineName}] Translation response saved to temp_translations.json`,
+      // );
 
       if (
         !response.translations ||

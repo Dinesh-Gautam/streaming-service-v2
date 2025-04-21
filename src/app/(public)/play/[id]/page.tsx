@@ -37,6 +37,8 @@ export default async function PlayPage({
     pa: '/api/static/playback/' + playbackId + '/' + playbackId + '.pa.vtt',
   };
 
+  const chaptersUrl = '/api/static/playback/' + playbackId + '/chapters.vtt';
+
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
       <MediaPlayer
@@ -61,6 +63,15 @@ export default async function PlayPage({
             src={url}
           />
         ))}
+
+        <Track
+          default={true}
+          type="vtt"
+          label="Chapters"
+          lang="en"
+          kind="chapters"
+          src={chaptersUrl}
+        />
         <DefaultVideoLayout
           thumbnails={thumbnailsUrl}
           icons={defaultLayoutIcons}
