@@ -304,13 +304,23 @@ export default function EditMoviePage({
   // Use Sparkles from lucide-react as the AI indicator icon
   const AiIcon: React.ElementType = Sparkles;
 
-  const tasks = processingStatus.tasks;
+  // // const tasks = processingStatus.tasks;
   // const [tasks, setTasks] = useState(mockTasks);
   // useEffect(() => {
-  //   setInterval(() => {
+  //   const interval = setInterval(() => {
   //     if (index < mockTasks.length) {
 
   //       const progress = tasks[index].progress;
+  //       if (index == 1 && progress >= 50) {
+  //         clearInterval(interval);
+  //         setTasks(prev => {
+  //           const newTasks = [...prev];
+  //           newTasks[index].status = 'failed';
+  //           newTasks[index].error = 'This is a test error';
+  //           return newTasks;
+  //         });
+  //         return;
+  //       }
   //       console.log('progress', progress);
 
   //       if (progress < 100) {
@@ -330,7 +340,7 @@ export default function EditMoviePage({
   //       }
   //     }
 
-  //   }, 100);
+  //   }, 10);
   // }, []);
 
   // console.log('tasks', tasks);
@@ -627,16 +637,12 @@ export default function EditMoviePage({
                             }
                             const taskName = names[currentTask.engine as keyof typeof names] || currentTask.engine;
 
-                            const statuses = {
-                              "completed": "Completed",
-                              "failed": "Failed",
-                              "running": "Running",
-                              "pending": "Pending",
-                            }
-
-                            // Determine overall status display
-                            let statusText: string = tasks[currentTaskIndex].status; // Explicitly type as string
-                            let statusColor = 'text-muted-foreground';
+                            // const statuses = {
+                            //   "completed": "Completed",
+                            //   "failed": "Failed",
+                            //   "running": "Running",
+                            //   "pending": "Pending",
+                            // }
 
                             return (
                               <div className="flex w-full gap-2 align-baseline mb-0.5">
@@ -652,6 +658,11 @@ export default function EditMoviePage({
                                 <span className={`capitalize font-semibold text-primary `}>
                                   {taskName}
                                 </span>
+                                {currentTask.status === 'failed' && (
+                                  <span className="text-red-400 font-normal">
+                                    Failed: {currentTask.error}
+                                  </span>
+                                )}
                                 {/* <span className={`capitalize ${statusColor}`}>
                                   {' - '} {statuses[statusText as keyof typeof statuses]}
                                 </span> */}
@@ -665,8 +676,9 @@ export default function EditMoviePage({
                           {
                             tasks.map((task, indexs) => {
                               const bgColor = "bg-secondary";
-                              const outlineClass = "";
+                              const outlineClass = task.status === 'failed' ? "border-red-400" : "border-secondary";
                               const progressColor =
+                                // task.status === 'failed' ? "bg-secondary" :
                                 task.engine === "AIEngine" ?
                                   "bg-gradient-to-r from-pink-500 to-red-500" :
                                   "bg-primary";
@@ -676,7 +688,7 @@ export default function EditMoviePage({
                                 <div
                                   key={task.taskId}
                                   title={`${task.engine.replace('Engine', '').replace(/([A-Z])/g, ' $1').trim()}: ${task.status} (${task.progress.toFixed(1)}%)`}
-                                  className={`flex-1 h-full rounded-full overflow-hidden relative ${bgColor} ${outlineClass}`}
+                                  className={`flex-1 h-full rounded-full overflow-hidden relative border-1 ${bgColor} ${outlineClass}`}
                                 >
                                   <div
                                     className={`h-full rounded-full absolute top-0 left-0 ${progressColor}`}
