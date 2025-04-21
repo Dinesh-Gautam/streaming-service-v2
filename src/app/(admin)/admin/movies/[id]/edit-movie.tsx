@@ -51,6 +51,7 @@ import {
   uploadAction,
   type MediaProcessingStatus,
 } from '@/app/(admin)/admin/movies/_action';
+import { ShineBorder } from '@/components/magicui/shine-border';
 import { PATHS } from '@/constants/paths';
 import { AIEngineOutput } from '@/lib/media/engine-outputs'; // Keep this specific import
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
@@ -335,7 +336,7 @@ export default function EditMoviePage({
                 Fill in the information below to{' '}
                 {isNewMovie ?
                   'create a new movie entry'
-                : "update the movie's information"}
+                  : "update the movie's information"}
                 .
               </CardDescription>
             </CardHeader>
@@ -470,7 +471,6 @@ export default function EditMoviePage({
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
                             onClick={handleAddCustomGenre}
                           >
                             Add Genre
@@ -572,9 +572,9 @@ export default function EditMoviePage({
                       >
                         {processingStatus.jobStatus === 'failed' ?
                           'Retry Processing'
-                        : 'Start Processing'}
+                          : 'Start Processing'}
                       </Button>
-                    : null}
+                      : null}
 
                     {processingStatus.jobExists && (
                       <SegmentedProgressBar
@@ -598,7 +598,7 @@ export default function EditMoviePage({
                         >
                           {isCopied ?
                             <Check className="h-4 w-4 mr-1" />
-                          : <Copy className="h-4 w-4 mr-1" />}
+                            : <Copy className="h-4 w-4 mr-1" />}
                           {isCopied ? 'Copied' : 'Copy URL'}
                         </Button>
                       </div>
@@ -694,7 +694,7 @@ function AiSuggestions({
   const aiOutput =
     aiTask?.output && 'data' in aiTask.output ?
       (aiTask.output as AIEngineOutput)
-    : null;
+      : null;
 
   if (!aiOutput?.data) return null; // Return early if no AI task or data
 
@@ -750,7 +750,8 @@ function AiSuggestions({
   };
 
   return (
-    <div className="mt-6 p-4 border rounded-md bg-muted/30 relative">
+    <div className="mt-6 p-4   rounded-md bg-muted/30 relative">
+      <ShineBorder shineColor={['#D130B9', '#DC3639']} />
       {isApplied && (
         <Badge
           variant="secondary"
@@ -822,15 +823,15 @@ function AiSuggestions({
               <span className="relative z-10 flex items-center gap-2">
                 {isApplying ?
                   'Applying...'
-                : isApplied ?
-                  <>
-                    {' '}
-                    <Check className="h-4 w-4" /> Applied{' '}
-                  </>
-                : <>
-                    {' '}
-                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
-                  </>
+                  : isApplied ?
+                    <>
+                      {' '}
+                      <Check className="h-4 w-4" /> Applied{' '}
+                    </>
+                    : <>
+                      {' '}
+                      <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                    </>
                 }
               </span>
             </Button>
