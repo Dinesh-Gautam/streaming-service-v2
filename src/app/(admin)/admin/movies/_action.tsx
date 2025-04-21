@@ -143,8 +143,8 @@ export async function processVideo(
     await dbConnect(); // Ensure DB connection
 
     // Instantiate engines
-    // const thumbnailEngine = new ThumbnailEngine();
-    // const transcodingEngine = new TranscodingEngine();
+    const thumbnailEngine = new ThumbnailEngine();
+    const transcodingEngine = new TranscodingEngine();
     const subtitleEngine = new SubtitleEngine({
       sourceLanguage: 'en', // Specify source language
       targetLanguages: ['hi', 'pa'], // Specify target languages
@@ -154,8 +154,8 @@ export async function processVideo(
     // Instantiate manager with all engines in desired order
     // MediaManager will reorder if AI engine is before Subtitle engine
     const mediaManager = new MediaManager(mediaId, [
-      // thumbnailEngine,
-      // transcodingEngine,
+      thumbnailEngine,
+      transcodingEngine,
       subtitleEngine,
       aiEngine, // Add AI Engine to the list
     ]);

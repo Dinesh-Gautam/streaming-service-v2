@@ -4,9 +4,20 @@ import type {
 } from 'tmdb-js-web';
 
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
+import {
+  AIEngineOutput,
+  SubtitleOutput,
+  ThumbnailOutput,
+  TranscodingOutput,
+} from '@/lib/media/engine-outputs';
 import type { MediaType } from '@/lib/types';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
+
+import {
+  IMediaProcessingJob,
+  MediaProcessingJob,
+} from './schemas/media-processing';
 
 await dbConnect();
 
@@ -41,25 +52,101 @@ export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
   });
 }
 
-export async function getOriginalMovieDetail(
-  id: string,
-): Promise<OriginalMovieResult | null> {
-  const movie = await Movie.findById(id);
+export async function getOriginalMovieDetail(id: string): Promise<
+  | (OriginalMovieResult &
+      Partial<{
+        subtitles: {
+          language: string;
+          url: string;
+        }[];
+        thumbnailUrl: string;
+        playbackUrl: string;
+        chaptersUrl: string;
+      }>)
+  | null
+> {
+  const movie = await Movie.findById(id).lean<MovieType>();
 
   if (!movie) return null;
 
-  const { _id, ...plainMovie } = movie.toObject() as MovieType & {
-    _id: string;
+  const mediaId = movie.media?.video?.id;
+
+  const job = await MediaProcessingJob.findOne({
+    mediaId,
+  }).lean<IMediaProcessingJob>();
+
+  let endResult = {
+    title: movie.title,
+    overview: movie.description,
+    release_date: new Date(movie.year + '-01-01').toISOString(),
+    genres: movie.genres.map((g, i) => ({ id: i, name: g })),
+    backdrop_path: movie.media?.backdrop?.originalPath,
+    isOriginal: true,
+    id,
+    media_type: 'movie' as MediaType,
   };
 
-  return {
-    title: plainMovie.title,
-    overview: plainMovie.description,
-    release_date: new Date(plainMovie.year + '-01-01').toISOString(),
-    genres: plainMovie.genres.map((g, i) => ({ id: i, name: g })),
-    backdrop_path: plainMovie.media?.backdrop?.originalPath,
-    isOriginal: true,
-    id: _id.toString(),
-    media_type: 'movie',
-  };
+  if (job?.jobStatus === 'completed') {
+    const tasks = job.tasks.filter((t) => t.status === 'completed');
+
+    if (tasks.length > 0) {
+      const appendResult = tasks.reduce((acc, task) => {
+        if (task.status !== 'completed') return acc;
+
+        if (task.engine === 'SubtitleEngine') {
+          const subtitleOutput = task.output as SubtitleOutput;
+
+          const paths = subtitleOutput.paths?.vtt;
+
+          if (!paths) return acc;
+
+          const textTracks = Object.entries(paths).map(([language]) => {
+            return {
+              language,
+              url: `/api/static/playback/${mediaId}/${mediaId}.${language}.vtt`,
+            };
+          });
+
+          return {
+            ...acc,
+            subtitles: textTracks,
+          };
+        }
+
+        if (task.engine === 'ThumbnailEngine') {
+          const thumbnailOutput = task.output as ThumbnailOutput;
+
+          return {
+            ...acc,
+            thumbnailUrl: `/api/static/playback/${mediaId}/thumbnails.vtt`,
+          };
+        }
+
+        if (task.engine === 'TranscodingEngine') {
+          return {
+            ...acc,
+            playbackUrl: `/api/static/playback/${mediaId}/video.mpd`,
+          };
+        }
+
+        if (task.engine === 'AIEngine') {
+          // const aiOutput = task.output as AIEngineOutput;
+
+          return {
+            ...acc,
+            chaptersUrl: `/api/static/playback/${mediaId}/${mediaId}.chapters.vtt`,
+          };
+        }
+
+        return acc;
+      }, {});
+
+      endResult = {
+        ...endResult,
+        ...appendResult,
+      };
+    }
+  }
+
+  return endResult;
 }

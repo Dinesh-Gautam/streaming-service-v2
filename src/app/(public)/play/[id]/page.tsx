@@ -11,6 +11,7 @@ import {
 
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 import { Movie } from '@/server/db/schemas/movie';
+import { getOriginalMovieDetail } from '@/server/db/movies';
 
 export default async function PlayPage({
   params,
@@ -19,25 +20,27 @@ export default async function PlayPage({
 }) {
   const { id } = await params;
 
-  const movie = (await Movie.findById(id)) as MovieType;
+  const movie = await getOriginalMovieDetail(id);
 
   if (!movie) {
     return notFound();
   }
 
-  const playbackId = movie.media?.video?.id;
-  const playbackUrl = '/api/static/playback/' + playbackId + '/video.mpd';
+  console.log(movie);
 
-  const thumbnailsUrl =
-    '/api/static/playback/' + playbackId + '/thumbnails.vtt';
+  // const playbackId = movie.media?.video?.id;
+  // const playbackUrl = '/api/static/playback/' + playbackId + '/video.mpd';
 
-  const subtitleUrl = {
-    en: '/api/static/playback/' + playbackId + '/' + playbackId + '.en.vtt',
-    hi: '/api/static/playback/' + playbackId + '/' + playbackId + '.hi.vtt',
-    pa: '/api/static/playback/' + playbackId + '/' + playbackId + '.pa.vtt',
-  };
+  // const thumbnailsUrl =
+  //   '/api/static/playback/' + playbackId + '/thumbnails.vtt';
 
-  const chaptersUrl = '/api/static/playback/' + playbackId + '/chapters.vtt';
+  // const subtitleUrl = {
+  //   en: '/api/static/playback/' + playbackId + '/' + playbackId + '.en.vtt',
+  //   hi: '/api/static/playback/' + playbackId + '/' + playbackId + '.hi.vtt',
+  //   pa: '/api/static/playback/' + playbackId + '/' + playbackId + '.pa.vtt',
+  // };
+
+  // const chaptersUrl = '/api/static/playback/' + playbackId + '/chapters.vtt';
 
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
@@ -46,21 +49,21 @@ export default async function PlayPage({
         load="visible"
         streamType="on-demand"
         posterLoad="visible"
-        poster={'/api/static/' + movie.media?.backdrop?.originalPath}
+        poster={'/api/static/' + movie.backdrop_path}
         style={{ height: '100vh' }}
-        title="Sprite Fight"
-        src={playbackUrl}
+        title={movie.title}
+        src={movie.playbackUrl}
       >
         <MediaProvider />
-        {Object.entries(subtitleUrl).map(([lang, url]) => (
+        {movie.subtitles?.map((subtitle) => (
           <Track
-            key={lang}
+            key={subtitle.language}
             kind="subtitles"
-            lang={lang}
+            lang={subtitle.language}
             label={new Intl.DisplayNames('en', {
               type: 'language',
-            }).of(lang)}
-            src={url}
+            }).of(subtitle.language)}
+            src={subtitle.url}
           />
         ))}
 
@@ -70,10 +73,10 @@ export default async function PlayPage({
           label="Chapters"
           lang="en"
           kind="chapters"
-          src={chaptersUrl}
+          src={movie.chaptersUrl}
         />
         <DefaultVideoLayout
-          thumbnails={thumbnailsUrl}
+          thumbnails={movie.thumbnailUrl}
           icons={defaultLayoutIcons}
         />
       </MediaPlayer>
