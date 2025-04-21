@@ -29,7 +29,7 @@ const MovieSchema = new Schema({
       id: { type: String },
     },
   },
-  isAIGenerated: { type: Boolean, default: false }, // Add the new field
+  isAIGenerated: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

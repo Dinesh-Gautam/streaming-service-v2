@@ -8,6 +8,7 @@ import { join } from 'path';
 
 import type { z } from 'zod';
 
+import { type Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
 import { AIEngine } from '@/lib/media/engines/ai-engine'; // Import the new AI Engine
 import { SubtitleEngine } from '@/lib/media/engines/subtitle';

@@ -9,7 +9,6 @@ import { Check, Copy, Sparkles } from 'lucide-react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Badge } from '@/admin/components/ui/badge';
 import { Button } from '@/admin/components/ui/button';
 import {
   Card,
@@ -312,354 +311,358 @@ export default function EditMoviePage({
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">
-        {isNewMovie ? 'Create Movie' : 'Edit Movie'}
-      </h1>
+    <form
+      id="movie-details-form"
+      onSubmit={form.handleSubmit(onSubmit)}
+    >
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-6">
+          {isNewMovie ? 'Create Movie' : 'Edit Movie'}
+        </h1>
 
-      <Tabs
-        defaultValue="details"
-        className="w-full"
-      >
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="media">Media</TabsTrigger>
-        </TabsList>
+        <Tabs
+          defaultValue="details"
+          className="w-full"
+        >
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {isNewMovie ? 'Add a new movie' : 'Update movie details'}
-              </CardTitle>
-              <CardDescription>
-                Fill in the information below to{' '}
-                {isNewMovie ?
-                  'create a new movie entry'
+          <TabsContent value="details">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {isNewMovie ? 'Add a new movie' : 'Update movie details'}
+                </CardTitle>
+                <CardDescription>
+                  Fill in the information below to{' '}
+                  {isNewMovie ?
+                    'create a new movie entry'
                   : "update the movie's information"}
-                .
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form
-                  id="movie-details-form"
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6"
-                >
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter movie title"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter movie description"
-                            className="min-h-[120px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="genres"
-                    render={() => (
-                      <FormItem>
-                        <div className="mb-4">
-                          <FormLabel>Genres</FormLabel>
-                          <FormDescription>
-                            Select all genres that apply, or add a custom one
-                            below.
-                          </FormDescription>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {genreItems.map((item) => (
-                            <FormField
-                              key={item.label}
-                              control={form.control}
-                              name="genres"
-                              render={({ field }) => (
-                                <FormItem
-                                  key={item.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(
-                                        item.label,
-                                      )}
-                                      onCheckedChange={(checked) => {
-                                        const currentValue = field.value || [];
-                                        if (checked) {
-                                          field.onChange([
-                                            ...currentValue,
-                                            item.label,
-                                          ]);
-                                        } else {
-                                          field.onChange(
-                                            currentValue.filter(
-                                              (value) => value !== item.label,
-                                            ),
-                                          );
-                                        }
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">
-                                    {item.label}
-                                  </FormLabel>
-                                </FormItem>
-                              )}
+                  .
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <div className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter movie title"
+                              {...field}
                             />
-                          ))}
-                        </div>
-                        <div className="mt-4 flex items-center gap-2">
-                          <Input
-                            type="text"
-                            placeholder="Add custom genre..."
-                            value={customGenreInput}
-                            onChange={(e) =>
-                              setCustomGenreInput(e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddCustomGenre();
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Enter movie description"
+                              className="min-h-[120px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="year"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Year</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="genres"
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-4">
+                            <FormLabel>Genres</FormLabel>
+                            <FormDescription>
+                              Select all genres that apply, or add a custom one
+                              below.
+                            </FormDescription>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {genreItems.map((item) => (
+                              <FormField
+                                key={item.label}
+                                control={form.control}
+                                name="genres"
+                                render={({ field }) => (
+                                  <FormItem
+                                    key={item.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(
+                                          item.label,
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          const currentValue =
+                                            field.value || [];
+                                          if (checked) {
+                                            field.onChange([
+                                              ...currentValue,
+                                              item.label,
+                                            ]);
+                                          } else {
+                                            field.onChange(
+                                              currentValue.filter(
+                                                (value) => value !== item.label,
+                                              ),
+                                            );
+                                          }
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal cursor-pointer">
+                                      {item.label}
+                                    </FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <div className="mt-4 flex items-center gap-2">
+                            <Input
+                              type="text"
+                              placeholder="Add custom genre..."
+                              value={customGenreInput}
+                              onChange={(e) =>
+                                setCustomGenreInput(e.target.value)
                               }
-                            }}
-                            className="flex-grow"
-                          />
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddCustomGenre();
+                                }
+                              }}
+                              className="flex-grow"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleAddCustomGenre}
+                            >
+                              Add Genre
+                            </Button>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Draft">Draft</SelectItem>
+                              <SelectItem value="Published">
+                                Published
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Hidden field for isAIGenerated - value managed by form state */}
+                    <FormField
+                      control={form.control}
+                      name="isAIGenerated"
+                      render={(
+                        { field: { ref, name, onBlur, onChange } }, // Destructure field to avoid passing boolean 'value'
+                      ) => (
+                        <FormItem className="hidden">
+                          <FormControl>
+                            {/* Pass only necessary props */}
+                            <input
+                              type="hidden"
+                              name={name}
+                              ref={ref}
+                              onBlur={onBlur}
+                              onChange={onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="media">
+            <Card>
+              <CardHeader>
+                <CardTitle>Media Files</CardTitle>
+                <CardDescription>
+                  Upload video, poster, and backdrop images for this movie.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                <MediaUploadSection
+                  mediaType="video"
+                  title="Video File"
+                  description="Upload an MP4 video file. It will be automatically processed."
+                  accept="video/mp4"
+                  originalPath={OriginalPaths.video}
+                  isUploading={videoUploadingPending}
+                  onFileChange={(e) => handelMediaUpload(e, 'video')}
+                  file={mediaFiles.video}
+                >
+                  {OriginalPaths.video && mediaId && (
+                    <div className="flex flex-col space-y-4">
+                      <video
+                        className=" self-center w-full max-w-3xl h-auto rounded-md"
+                        controls
+                        src={'/api/static/' + OriginalPaths.video}
+                        key={OriginalPaths.video} // Add key to force re-render on path change
+                      />
+
+                      {(
+                        !processingStatus.jobExists ||
+                        processingStatus.jobStatus === 'pending' ||
+                        processingStatus.jobStatus === 'failed'
+                      ) ?
+                        <Button
+                          onClick={videoProcessHandler}
+                          disabled={processingStatus.jobStatus === 'running'}
+                        >
+                          {processingStatus.jobStatus === 'failed' ?
+                            'Retry Processing'
+                          : 'Start Processing'}
+                        </Button>
+                      : null}
+
+                      {processingStatus.jobExists && (
+                        <SegmentedProgressBar
+                          tasks={processingStatus.tasks}
+                          jobStatus={processingStatus.jobStatus}
+                        />
+                      )}
+
+                      {processingStatus.jobStatus === 'completed' && (
+                        <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                          <div className="flex-1 text-sm truncate">
+                            {getPlaybackUrl(id) || ''}
+                          </div>
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={handleAddCustomGenre}
+                            size="sm"
+                            onClick={() =>
+                              copyToClipboard(getPlaybackUrl(id) || '')
+                            }
                           >
-                            Add Genre
+                            {isCopied ?
+                              <Check className="h-4 w-4 mr-1" />
+                            : <Copy className="h-4 w-4 mr-1" />}
+                            {isCopied ? 'Copied' : 'Copy URL'}
                           </Button>
                         </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      )}
+                    </div>
+                  )}
+                </MediaUploadSection>
 
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Draft">Draft</SelectItem>
-                            <SelectItem value="Published">Published</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <MediaUploadSection
+                  mediaType="poster"
+                  title="Poster Image"
+                  description="Upload a poster image (recommended size: 400x600px)."
+                  accept="image/*"
+                  originalPath={OriginalPaths.poster}
+                  isUploading={posterUploadPending}
+                  onFileChange={(e) => handelMediaUpload(e, 'poster')}
+                  file={mediaFiles.poster}
+                />
 
-                  {/* Hidden field for isAIGenerated - value managed by form state */}
-                  <FormField
-                    control={form.control}
-                    name="isAIGenerated"
-                    render={(
-                      { field: { ref, name, onBlur, onChange } }, // Destructure field to avoid passing boolean 'value'
-                    ) => (
-                      <FormItem className="hidden">
-                        <FormControl>
-                          {/* Pass only necessary props */}
-                          <input
-                            type="hidden"
-                            name={name}
-                            ref={ref}
-                            onBlur={onBlur}
-                            onChange={onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <MediaUploadSection
+                  mediaType="backdrop"
+                  title="Backdrop Image"
+                  description="Upload a backdrop image (recommended size: 1920x1080px)."
+                  accept="image/*"
+                  originalPath={OriginalPaths.backdrop}
+                  isUploading={backdropUploadPending}
+                  onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
+                  file={mediaFiles.backdrop}
+                />
 
-        <TabsContent value="media">
-          <Card>
-            <CardHeader>
-              <CardTitle>Media Files</CardTitle>
-              <CardDescription>
-                Upload video, poster, and backdrop images for this movie.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <MediaUploadSection
-                mediaType="video"
-                title="Video File"
-                description="Upload an MP4 video file. It will be automatically processed."
-                accept="video/mp4"
-                originalPath={OriginalPaths.video}
-                isUploading={videoUploadingPending}
-                onFileChange={(e) => handelMediaUpload(e, 'video')}
-                file={mediaFiles.video}
-              >
-                {OriginalPaths.video && mediaId && (
-                  <div className="space-y-4">
-                    <video
-                      className="w-full max-w-3xl h-auto rounded-md"
-                      controls
-                      src={'/api/static/' + OriginalPaths.video}
-                      key={OriginalPaths.video} // Add key to force re-render on path change
-                    />
+                <AiSuggestions
+                  tasks={processingStatus.tasks}
+                  form={form}
+                  movieId={id}
+                  isApplied={aiSuggestionsApplied}
+                  setApplied={setAiSuggestionsApplied}
+                  isApplying={isApplyingAISuggestions}
+                  startTransition={startApplyAISuggestionsTransition}
+                  setGenreItems={setGenreItems}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-                    {(
-                      !processingStatus.jobExists ||
-                      processingStatus.jobStatus === 'pending' ||
-                      processingStatus.jobStatus === 'failed'
-                    ) ?
-                      <Button
-                        onClick={videoProcessHandler}
-                        disabled={processingStatus.jobStatus === 'running'}
-                      >
-                        {processingStatus.jobStatus === 'failed' ?
-                          'Retry Processing'
-                          : 'Start Processing'}
-                      </Button>
-                      : null}
-
-                    {processingStatus.jobExists && (
-                      <SegmentedProgressBar
-                        tasks={processingStatus.tasks}
-                        jobStatus={processingStatus.jobStatus}
-                      />
-                    )}
-
-                    {processingStatus.jobStatus === 'completed' && (
-                      <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                        <div className="flex-1 text-sm truncate">
-                          {getPlaybackUrl(id) || ''}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            copyToClipboard(getPlaybackUrl(id) || '')
-                          }
-                        >
-                          {isCopied ?
-                            <Check className="h-4 w-4 mr-1" />
-                            : <Copy className="h-4 w-4 mr-1" />}
-                          {isCopied ? 'Copied' : 'Copy URL'}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </MediaUploadSection>
-
-              <MediaUploadSection
-                mediaType="poster"
-                title="Poster Image"
-                description="Upload a poster image (recommended size: 400x600px)."
-                accept="image/*"
-                originalPath={OriginalPaths.poster}
-                isUploading={posterUploadPending}
-                onFileChange={(e) => handelMediaUpload(e, 'poster')}
-                file={mediaFiles.poster}
-              />
-
-              <MediaUploadSection
-                mediaType="backdrop"
-                title="Backdrop Image"
-                description="Upload a backdrop image (recommended size: 1920x1080px)."
-                accept="image/*"
-                originalPath={OriginalPaths.backdrop}
-                isUploading={backdropUploadPending}
-                onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
-                file={mediaFiles.backdrop}
-              />
-
-              <AiSuggestions
-                tasks={processingStatus.tasks}
-                form={form}
-                movieId={id}
-                isApplied={aiSuggestionsApplied}
-                setApplied={setAiSuggestionsApplied}
-                isApplying={isApplyingAISuggestions}
-                startTransition={startApplyAISuggestionsTransition}
-                setGenreItems={setGenreItems}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex justify-end space-x-4 mt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push(PATHS.ADMIN.MOVIES)}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          form="movie-details-form"
-        >
-          {isNewMovie ? 'Create Movie' : 'Update Movie'}
-        </Button>
+        <div className="flex justify-end space-x-4 mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(PATHS.ADMIN.MOVIES)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="movie-details-form"
+          >
+            {isNewMovie ? 'Create Movie' : 'Update Movie'}
+          </Button>
+        </div>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -694,7 +697,7 @@ function AiSuggestions({
   const aiOutput =
     aiTask?.output && 'data' in aiTask.output ?
       (aiTask.output as AIEngineOutput)
-      : null;
+    : null;
 
   if (!aiOutput?.data) return null; // Return early if no AI task or data
 
@@ -752,14 +755,6 @@ function AiSuggestions({
   return (
     <div className="mt-6 p-4   rounded-md bg-muted/30 relative">
       <ShineBorder shineColor={['#D130B9', '#DC3639']} />
-      {isApplied && (
-        <Badge
-          variant="secondary"
-          className="absolute top-2 right-2 bg-green-100 text-green-800 border-green-300"
-        >
-          Applied
-        </Badge>
-      )}
       <h5 className="font-semibold mb-3 flex items-center gap-2">
         <SparkelIcon />
         AI Generated Suggestions
@@ -823,15 +818,15 @@ function AiSuggestions({
               <span className="relative z-10 flex items-center gap-2">
                 {isApplying ?
                   'Applying...'
-                  : isApplied ?
-                    <>
-                      {' '}
-                      <Check className="h-4 w-4" /> Applied{' '}
-                    </>
-                    : <>
-                      {' '}
-                      <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
-                    </>
+                : isApplied ?
+                  <>
+                    {' '}
+                    <Check className="h-4 w-4" /> Applied{' '}
+                  </>
+                : <>
+                    {' '}
+                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                  </>
                 }
               </span>
             </Button>

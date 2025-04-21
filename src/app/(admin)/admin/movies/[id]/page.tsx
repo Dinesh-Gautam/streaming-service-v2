@@ -13,7 +13,7 @@ type EditMoviePageProps = {
 export default async function Page({ params }: EditMoviePageProps) {
   const { id } = await params;
 
-  let data, transcodingStarted;
+  let data
 
   const isNewMovie = id === 'new';
 
@@ -27,23 +27,15 @@ export default async function Page({ params }: EditMoviePageProps) {
     data = {
       ...plainMovie,
     } as MovieType;
-
-    const videoId = data.media?.video?.id;
-
-    // if (!videoId) {
-    //   transcodingStarted = false;
-    // } else {
-    //   const { transcodingStarted: _ts } = await getTranscodingProgress(videoId);
-    //   transcodingStarted = _ts;
-    // }
   }
+
+  console.log(data)
 
   return (
     <EditMoviePage
       id={id}
       defaultValues={data}
       isNewMovie={isNewMovie}
-      // transcodingStarted={transcodingStarted}
     />
   );
 }

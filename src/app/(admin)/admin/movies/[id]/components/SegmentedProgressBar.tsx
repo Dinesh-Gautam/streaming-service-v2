@@ -1,6 +1,5 @@
 import type React from 'react';
 
-
 import { type MediaProcessingStatus } from '@/app/(admin)/admin/movies/_action';
 import { TextAnimate } from '@/components/magicui/text-animate';
 
@@ -231,9 +230,8 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
     return 'bg-primary';
   };
 
-
   return (
-    <div className="space-y-2 pt-4 border-t">
+    <div className="space-y-2 pt-4 ">
       {/* Dynamic Title */}
       <div className="flex items-center text-sm font-medium text-muted-foreground mb-1">
         {currentTaskIndex !== -1 && (
@@ -243,7 +241,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
             </span>
             {isAiTask && <SparkelIcon />}
             <span className="font-semibold text-primary">
-              {isAiTask ? (
+              {isAiTask ?
                 <TextAnimate
                   startOnView={false}
                   animation="blurIn"
@@ -251,9 +249,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
                 >
                   {taskName}
                 </TextAnimate>
-              ) : (
-                taskName
-              )}
+              : taskName}
             </span>
             <span className={`capitalize ml-1 ${getStatusColor(statusText)}`}>
               ({statusText})
