@@ -74,6 +74,7 @@ export const MovieSchema = z.object({
         .optional(),
     })
     .optional(),
+  isAIGenerated: z.boolean().optional(), // Add the new field
 });
 
 export type UserSchemaType = z.infer<typeof UserSchema>;

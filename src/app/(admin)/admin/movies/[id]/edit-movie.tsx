@@ -1,22 +1,15 @@
 'use client';
 
 import type React from 'react';
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-  type MouseEvent,
-  type MouseEventHandler,
-} from 'react';
-import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useTransition, type MouseEvent } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, Copy, Sparkles } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
+import { Badge } from '@/admin/components/ui/badge';
 import { Button } from '@/admin/components/ui/button';
 import {
   Card,
@@ -36,7 +29,6 @@ import {
   FormMessage,
 } from '@/admin/components/ui/form';
 import { Input } from '@/admin/components/ui/input';
-import { Progress } from '@/admin/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -52,13 +44,15 @@ import {
 } from '@/admin/components/ui/tabs';
 import { Textarea } from '@/admin/components/ui/textarea';
 import {
-  getMediaProcessingJob, // Changed import
+  applyAISuggestions,
+  getMediaProcessingJob,
   processVideo,
   saveMovieData,
   uploadAction,
-  type MediaProcessingStatus, // Import the status type
+  type MediaProcessingStatus,
 } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
+import { AIEngineOutput } from '@/lib/media/engine-outputs'; // Keep this specific import
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
 
@@ -66,9 +60,9 @@ import MediaUploadSection from './components/MediaUploadSection';
 import SegmentedProgressBar, {
   SparkelIcon,
 } from './components/SegmentedProgressBar';
-import { AIEngineOutput } from '@/lib/media/engine-outputs';
 
-const genreItems = [
+// Initial list of genres
+const defaultGenreItems = [
   { id: 'action', label: 'Action' },
   { id: 'comedy', label: 'Comedy' },
   { id: 'drama', label: 'Drama' },
@@ -85,40 +79,10 @@ const mediaTypes = ['video', 'poster', 'backdrop'] as const;
 
 type MediaTypeFileType = Record<(typeof mediaTypes)[number], File | null>;
 
-// const mockTasks: MediaProcessingStatus['tasks'] = [
-//   {
-//     taskId: '1',
-//     engine: 'AIEngine',
-//     status: 'pending',
-//     progress: 0,
-//   },
-//   {
-//     taskId: '2',
-//     engine: 'SubtitleEngine',
-//     status: 'pending',
-//     progress: 0,
-//   },
-//   {
-//     taskId: '3',
-//     engine: 'TranscodingEngine',
-//     status: 'pending',
-//     progress: 0,
-//   },
-//   {
-//     taskId: '4',
-//     engine: 'ThumbnailEngine',
-//     status: 'pending',
-//     progress: 0,
-//   },
-// ];
-
-// let index = 0;
-
 export default function EditMoviePage({
   isNewMovie,
   defaultValues,
   id,
-  // transcodingStarted prop is no longer needed, status is fetched
 }: {
   defaultValues?: z.infer<typeof formSchema>;
   isNewMovie: boolean;
@@ -126,15 +90,21 @@ export default function EditMoviePage({
 }) {
   const router = useRouter();
 
-  // State to hold the entire processing job status
   const [processingStatus, setProcessingStatus] =
     useState<MediaProcessingStatus>({
       jobStatus: 'pending',
       tasks: [],
-      jobExists: false, // Assume not started until first fetch
+      jobExists: false,
     });
-  const [isPolling, setIsPolling] = useState(false); // To manage interval lifecycle
+  const [isPolling, setIsPolling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isApplyingAISuggestions, startApplyAISuggestionsTransition] =
+    useTransition();
+  const [aiSuggestionsApplied, setAiSuggestionsApplied] = useState(
+    defaultValues?.isAIGenerated || false,
+  );
+  const [genreItems, setGenreItems] = useState([...defaultGenreItems]);
+  const [customGenreInput, setCustomGenreInput] = useState('');
 
   const [mediaFiles, setMediaFiles] = useState<MediaTypeFileType>(
     Object.fromEntries(
@@ -150,30 +120,27 @@ export default function EditMoviePage({
       year: new Date().getFullYear(),
       genres: [],
       status: 'Draft',
+      isAIGenerated: false,
     },
   });
 
   const mediaId = form.watch('media.video.id');
 
-  // Effect to poll for processing status
   useEffect(() => {
     if (!mediaId) {
-      console.error(
-        'Error getting MediaId, which is required for getting the progress data',
-      );
+      // console.error('MediaId missing, cannot poll for status.');
+      return; // Don't proceed if no mediaId
     }
 
     let intervalId: NodeJS.Timeout | null = null;
 
     const fetchStatus = async () => {
-      if (!mediaId) return; // Don't fetch if ID isn't available yet
+      if (!mediaId) return;
 
       try {
         const { [mediaId]: status } = await getMediaProcessingJob(mediaId);
-
         setProcessingStatus(status);
 
-        // Stop polling if job is completed or failed
         if (status.jobStatus === 'completed' || status.jobStatus === 'failed') {
           if (intervalId) clearInterval(intervalId);
           setIsPolling(false);
@@ -182,44 +149,62 @@ export default function EditMoviePage({
           status.jobExists &&
           status.jobStatus !== 'pending'
         ) {
-          // Start polling only if job exists and is running
           setIsPolling(true);
         }
       } catch (error) {
         console.error('Error fetching media processing status:', error);
-        // Optionally set an error state for the whole polling mechanism
         if (intervalId) clearInterval(intervalId);
         setIsPolling(false);
       }
     };
 
-    // Fetch immediately on mount or when mediaId changes
-    fetchStatus();
+    fetchStatus(); // Initial fetch
 
-    // Set up polling interval if the job is potentially running
     if (isPolling) {
-      intervalId = setInterval(fetchStatus, 1000); // Poll every 1 seconds
+      intervalId = setInterval(fetchStatus, 5000); // Poll every 5 seconds
     }
 
-    // Cleanup function
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
-    // Dependencies: mediaId ensures refetch if ID changes, isPolling manages interval lifecycle
   }, [mediaId, isPolling]);
 
+  useEffect(() => {
+    if (defaultValues?.genres) {
+      const allGenres = new Set([
+        ...defaultGenreItems.map((g) => g.label),
+        ...defaultValues.genres,
+      ]);
+      setGenreItems(
+        Array.from(allGenres).map((label) => ({
+          id: label.toLowerCase().replace(/\s+/g, '-'),
+          label,
+        })),
+      );
+    }
+    setAiSuggestionsApplied(defaultValues?.isAIGenerated || false);
+  }, [defaultValues]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    const finalValues = {
+      ...values,
+      genres: Array.from(new Set(values.genres || [])),
+    };
+
     let res;
     if (isNewMovie) {
-      res = await saveMovieData(values);
+      res = await saveMovieData(finalValues);
     } else {
-      res = await saveMovieData(values, id);
+      res = await saveMovieData(finalValues, id);
     }
 
     if (res.success) {
       router.push(PATHS.ADMIN.MOVIES);
+    } else {
+      console.error('Failed to save movie:', res.message);
+      // Consider adding user feedback here (e.g., toast notification)
     }
   }
 
@@ -239,19 +224,19 @@ export default function EditMoviePage({
   ) => {
     transitions[type](async () => {
       if (e.target.files && e.target.files[0]) {
-        setMediaFiles((prev) => ({
-          ...prev,
-          [type]: e.target.files![0],
-        }));
+        const file = e.target.files[0];
+        setMediaFiles((prev) => ({ ...prev, [type]: file }));
 
         const formData = new FormData();
-        formData.append('file', e.target.files![0]);
+        formData.append('file', file);
 
         try {
           const res = await uploadAction(formData, type);
-          if (res.success) {
+          if (res.success && res.path && res.id) {
             form.setValue(`media.${type}.originalPath`, res.path);
             form.setValue(`media.${type}.id`, res.id);
+          } else {
+            console.error(`Upload failed for ${type}:`, res);
           }
         } catch (error) {
           console.error(`Error uploading ${type}:`, error);
@@ -261,33 +246,30 @@ export default function EditMoviePage({
   };
 
   function videoProcessHandler(e: MouseEvent) {
+    e.preventDefault(); // Prevent potential form submission if inside form
     console.log('Video processing started');
 
-    const [videoPath, id] = form.getValues([
-      'media.video.originalPath',
-      'media.video.id',
-    ]);
+    const videoDetails = form.getValues('media.video');
 
-    if (!videoPath) {
-      console.error('No video file selected');
+    if (!videoDetails?.originalPath || !videoDetails?.id) {
+      console.error('No video file selected or ID missing');
+      // Add user feedback (e.g., toast)
       return;
     }
 
-    // Call the action, but don't await - let it run in background
-    processVideo(videoPath, id)
+    processVideo(videoDetails.originalPath, videoDetails.id)
       .then((res) => {
         if (res.success) {
           console.log('Processing initiated via action.');
-          // Start polling immediately after successful initiation
           setIsPolling(true);
         } else {
           console.error('Failed to initiate processing:', res.message);
-          // Optionally set a general error state here
+          // Add user feedback
         }
       })
       .catch((err) => {
         console.error('Error calling processVideo action:', err);
-        // Optionally set a general error state here
+        // Add user feedback
       });
   }
 
@@ -303,46 +285,30 @@ export default function EditMoviePage({
     backdrop: form.watch('media.backdrop.originalPath'),
   };
 
-  // // const tasks = processingStatus.tasks;
-  // const [tasks, setTasks] = useState(mockTasks);
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     if (index < mockTasks.length) {
-
-  //       const progress = tasks[index].progress;
-  //       if (index == 1 && progress >= 50) {
-  //         clearInterval(interval);
-  //         setTasks(prev => {
-  //           const newTasks = [...prev];
-  //           newTasks[index].status = 'failed';
-  //           newTasks[index].error = 'This is a test error';
-  //           return newTasks;
-  //         });
-  //         return;
-  //       }
-  //       console.log('progress', progress);
-
-  //       if (progress < 100) {
-  //         setTasks(prev => {
-  //           const newTasks = [...prev];
-  //           newTasks[index].status = 'running';
-  //           newTasks[index].progress = progress + 1;
-  //           return newTasks;
-  //         });
-  //       } else {
-  //         setTasks(prev => {
-  //           const newTasks = [...prev];
-  //           newTasks[index].status = 'completed';
-  //           index++;
-  //           return newTasks;
-  //         });
-  //       }
-  //     }
-
-  //   }, 10);
-  // }, []);
-
-  // console.log('tasks', tasks);
+  const handleAddCustomGenre = () => {
+    const newGenreLabel = customGenreInput.trim();
+    if (
+      newGenreLabel &&
+      !genreItems.some(
+        (g) => g.label.toLowerCase() === newGenreLabel.toLowerCase(),
+      )
+    ) {
+      const newGenre = {
+        id: newGenreLabel.toLowerCase().replace(/\s+/g, '-'),
+        label: newGenreLabel,
+      };
+      setGenreItems((prev) => [...prev, newGenre]);
+      const currentGenres = form.getValues('genres') || [];
+      form.setValue('genres', [...currentGenres, newGenre.label]);
+      setCustomGenreInput('');
+    } else if (newGenreLabel) {
+      const currentGenres = form.getValues('genres') || [];
+      if (!currentGenres.includes(newGenreLabel)) {
+        form.setValue('genres', [...currentGenres, newGenreLabel]);
+      }
+      setCustomGenreInput('');
+    }
+  };
 
   return (
     <div className="p-6">
@@ -369,13 +335,14 @@ export default function EditMoviePage({
                 Fill in the information below to{' '}
                 {isNewMovie ?
                   'create a new movie entry'
-                  : "update the movie's information"}
+                : "update the movie's information"}
                 .
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
                 <form
+                  id="movie-details-form"
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
@@ -439,53 +406,75 @@ export default function EditMoviePage({
                         <div className="mb-4">
                           <FormLabel>Genres</FormLabel>
                           <FormDescription>
-                            Select all genres that apply to this movie.
+                            Select all genres that apply, or add a custom one
+                            below.
                           </FormDescription>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                           {genreItems.map((item) => (
                             <FormField
-                              key={item.id}
+                              key={item.label}
                               control={form.control}
                               name="genres"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem
-                                    key={item.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(
-                                          item.label,
-                                        )}
-                                        onCheckedChange={(checked) => {
-                                          const currentValue = [
-                                            ...(field.value || []),
-                                          ];
-                                          if (checked) {
-                                            field.onChange([
-                                              ...currentValue,
-                                              item.label,
-                                            ]);
-                                          } else {
-                                            field.onChange(
-                                              currentValue.filter(
-                                                (value) => value !== item.label,
-                                              ),
-                                            );
-                                          }
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="font-normal cursor-pointer">
-                                      {item.label}
-                                    </FormLabel>
-                                  </FormItem>
-                                );
-                              }}
+                              render={({ field }) => (
+                                <FormItem
+                                  key={item.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(
+                                        item.label,
+                                      )}
+                                      onCheckedChange={(checked) => {
+                                        const currentValue = field.value || [];
+                                        if (checked) {
+                                          field.onChange([
+                                            ...currentValue,
+                                            item.label,
+                                          ]);
+                                        } else {
+                                          field.onChange(
+                                            currentValue.filter(
+                                              (value) => value !== item.label,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal cursor-pointer">
+                                    {item.label}
+                                  </FormLabel>
+                                </FormItem>
+                              )}
                             />
                           ))}
+                        </div>
+                        <div className="mt-4 flex items-center gap-2">
+                          <Input
+                            type="text"
+                            placeholder="Add custom genre..."
+                            value={customGenreInput}
+                            onChange={(e) =>
+                              setCustomGenreInput(e.target.value)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomGenre();
+                              }
+                            }}
+                            className="flex-grow"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddCustomGenre}
+                          >
+                            Add Genre
+                          </Button>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -517,7 +506,27 @@ export default function EditMoviePage({
                     )}
                   />
 
-
+                  {/* Hidden field for isAIGenerated - value managed by form state */}
+                  <FormField
+                    control={form.control}
+                    name="isAIGenerated"
+                    render={(
+                      { field: { ref, name, onBlur, onChange } }, // Destructure field to avoid passing boolean 'value'
+                    ) => (
+                      <FormItem className="hidden">
+                        <FormControl>
+                          {/* Pass only necessary props */}
+                          <input
+                            type="hidden"
+                            name={name}
+                            ref={ref}
+                            onBlur={onBlur}
+                            onChange={onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </form>
               </Form>
             </CardContent>
@@ -533,23 +542,23 @@ export default function EditMoviePage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-              {/* Video Upload Section */}
               <MediaUploadSection
                 mediaType="video"
                 title="Video File"
-                description="Upload an MP4 video file. It will be automatically transcoded to MPD format."
+                description="Upload an MP4 video file. It will be automatically processed."
                 accept="video/mp4"
                 originalPath={OriginalPaths.video}
                 isUploading={videoUploadingPending}
                 onFileChange={(e) => handelMediaUpload(e, 'video')}
                 file={mediaFiles.video}
               >
-                {OriginalPaths.video && (
+                {OriginalPaths.video && mediaId && (
                   <div className="space-y-4">
                     <video
                       className="w-full max-w-3xl h-auto rounded-md"
                       controls
                       src={'/api/static/' + OriginalPaths.video}
+                      key={OriginalPaths.video} // Add key to force re-render on path change
                     />
 
                     {(
@@ -563,9 +572,9 @@ export default function EditMoviePage({
                       >
                         {processingStatus.jobStatus === 'failed' ?
                           'Retry Processing'
-                          : 'Start Processing'}
+                        : 'Start Processing'}
                       </Button>
-                      : null}
+                    : null}
 
                     {processingStatus.jobExists && (
                       <SegmentedProgressBar
@@ -589,7 +598,7 @@ export default function EditMoviePage({
                         >
                           {isCopied ?
                             <Check className="h-4 w-4 mr-1" />
-                            : <Copy className="h-4 w-4 mr-1" />}
+                          : <Copy className="h-4 w-4 mr-1" />}
                           {isCopied ? 'Copied' : 'Copy URL'}
                         </Button>
                       </div>
@@ -598,7 +607,6 @@ export default function EditMoviePage({
                 )}
               </MediaUploadSection>
 
-              {/* Poster Upload Section */}
               <MediaUploadSection
                 mediaType="poster"
                 title="Poster Image"
@@ -610,7 +618,6 @@ export default function EditMoviePage({
                 file={mediaFiles.poster}
               />
 
-              {/* Backdrop Upload Section */}
               <MediaUploadSection
                 mediaType="backdrop"
                 title="Backdrop Image"
@@ -622,8 +629,16 @@ export default function EditMoviePage({
                 file={mediaFiles.backdrop}
               />
 
-              {/* AI Suggestions Section */}
-              <AiSuggestions tasks={processingStatus.tasks} />
+              <AiSuggestions
+                tasks={processingStatus.tasks}
+                form={form}
+                movieId={id}
+                isApplied={aiSuggestionsApplied}
+                setApplied={setAiSuggestionsApplied}
+                isApplying={isApplyingAISuggestions}
+                startTransition={startApplyAISuggestionsTransition}
+                setGenreItems={setGenreItems}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -633,64 +648,194 @@ export default function EditMoviePage({
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push('/movies')}
+          onClick={() => router.push(PATHS.ADMIN.MOVIES)}
         >
           Cancel
         </Button>
-        <Button type="submit">
+        <Button
+          type="submit"
+          form="movie-details-form"
+        >
           {isNewMovie ? 'Create Movie' : 'Update Movie'}
         </Button>
       </div>
-
     </div>
   );
 }
 
-function AiSuggestions({ tasks }: { tasks: MediaProcessingStatus['tasks'] }) {
+interface AiSuggestionsProps {
+  tasks: MediaProcessingStatus['tasks'];
+  form: UseFormReturn<z.infer<typeof formSchema>>;
+  movieId: string;
+  isApplied: boolean;
+  setApplied: (applied: boolean) => void;
+  isApplying: boolean;
+  startTransition: React.TransitionStartFunction;
+  setGenreItems: React.Dispatch<
+    React.SetStateAction<{ id: string; label: string }[]>
+  >;
+}
+
+function AiSuggestions({
+  tasks,
+  form,
+  movieId,
+  isApplied,
+  setApplied,
+  isApplying,
+  startTransition,
+  setGenreItems,
+}: AiSuggestionsProps) {
   const aiTask = tasks.find(
     (t) => t.engine === 'AIEngine' && t.status === 'completed',
   );
 
-  if (!aiTask) return null;
+  // Type guard to ensure output is AIEngineOutput
+  const aiOutput =
+    aiTask?.output && 'data' in aiTask.output ?
+      (aiTask.output as AIEngineOutput)
+    : null;
 
-  const { title, description, genres } = (aiTask.output as AIEngineOutput)?.data || {};
+  if (!aiOutput?.data) return null; // Return early if no AI task or data
+
+  const { title, description, genres } = aiOutput.data;
+
+  const handleApplySuggestions = () => {
+    if (!title || !description || !genres || isApplied || isApplying) return;
+
+    startTransition(async () => {
+      try {
+        form.setValue('title', title);
+        form.setValue('description', description);
+        setGenreItems((prevGenres) => {
+          const currentGenreLabels = new Set(prevGenres.map((g) => g.label));
+          const newGenresToAdd = genres.filter(
+            (g: string) => !currentGenreLabels.has(g),
+          );
+          if (newGenresToAdd.length > 0) {
+            return [
+              ...prevGenres,
+              ...newGenresToAdd.map((label: string) => ({
+                id: label.toLowerCase().replace(/\s+/g, '-'),
+                label,
+              })),
+            ];
+          }
+          return prevGenres;
+        });
+        form.setValue('genres', genres);
+        form.setValue('isAIGenerated', true);
+
+        const result = await applyAISuggestions(movieId, {
+          title,
+          description,
+          genres,
+        });
+
+        if (result.success) {
+          setApplied(true);
+          console.log('AI Suggestions applied successfully.');
+          // Add user feedback (e.g., toast)
+        } else {
+          console.error('Failed to apply AI suggestions:', result.message);
+          form.setValue('isAIGenerated', false); // Revert on failure
+          // Add user feedback (e.g., toast)
+        }
+      } catch (error) {
+        console.error('Error applying AI suggestions:', error);
+        form.setValue('isAIGenerated', false); // Revert on error
+        // Add user feedback (e.g., toast)
+      }
+    });
+  };
 
   return (
-    <div className="mt-4 p-4 border rounded-md bg-muted/30">
-      <h5 className="font-semibold mb-2 flex items-center gap-2">
+    <div className="mt-6 p-4 border rounded-md bg-muted/30 relative">
+      {isApplied && (
+        <Badge
+          variant="secondary"
+          className="absolute top-2 right-2 bg-green-100 text-green-800 border-green-300"
+        >
+          Applied
+        </Badge>
+      )}
+      <h5 className="font-semibold mb-3 flex items-center gap-2">
         <SparkelIcon />
         AI Generated Suggestions
       </h5>
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
           AI has analyzed your video and generated the following suggestions:
         </p>
         <div className="grid gap-4">
-          {
-            title && (
-              <div className="p-3 bg-background rounded-md">
-                <h6 className="text-sm font-medium mb-1">Title Suggestion</h6>
-                <p className="text-sm text-muted-foreground">{title}</p>
-              </div>
-            )
-          }
-          {
-            description && (
-              <div className="p-3 bg-background rounded-md">
-                <h6 className="text-sm font-medium mb-1">Description Suggestion</h6>
-                <p className="text-sm text-muted-foreground">{description}</p>
-              </div>
-            )
-          }
-          {
-            genres && genres.length > 0 && (
-              <div className="p-3 bg-background rounded-md">
-                <h6 className="text-sm font-medium mb-1">Genre Suggestions</h6>
-                <p className="text-sm text-muted-foreground">{genres.join(', ')}</p>
-              </div>
-            )
-          }
+          {title && (
+            <div className="p-3 bg-background rounded-md border">
+              <h6 className="text-sm font-medium mb-1">Title Suggestion</h6>
+              <p className="text-sm text-muted-foreground">{title}</p>
+            </div>
+          )}
+          {description && (
+            <div className="p-3 bg-background rounded-md border">
+              <h6 className="text-sm font-medium mb-1">
+                Description Suggestion
+              </h6>
+              <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+          )}
+          {genres && genres.length > 0 && (
+            <div className="p-3 bg-background rounded-md border">
+              <h6 className="text-sm font-medium mb-1">Genre Suggestions</h6>
+              <p className="text-sm text-muted-foreground">
+                {genres.join(', ')}
+              </p>
+            </div>
+          )}
         </div>
+
+        {(title || description || (genres && genres.length > 0)) && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              onClick={handleApplySuggestions}
+              disabled={isApplied || isApplying}
+              className={`
+                relative overflow-hidden group transition-opacity duration-300
+                ${isApplied ? 'opacity-50 cursor-not-allowed' : ''}
+                ${isApplying ? 'opacity-75 cursor-wait' : ''}
+              `}
+              variant="outline"
+            >
+              <span
+                className="absolute inset-[-2px] rounded-md z-[-1] bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{
+                  background:
+                    'linear-gradient(to right, #D130B9, #DC3639, #EA171B)',
+                  opacity: isApplied || isApplying ? 0 : undefined,
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className="absolute inset-0 bg-background rounded-[5px] z-[-1] group-hover:opacity-95 transition-opacity duration-300"
+                aria-hidden="true"
+              ></span>
+
+              <span className="relative z-10 flex items-center gap-2">
+                {isApplying ?
+                  'Applying...'
+                : isApplied ?
+                  <>
+                    {' '}
+                    <Check className="h-4 w-4" /> Applied{' '}
+                  </>
+                : <>
+                    {' '}
+                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                  </>
+                }
+              </span>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

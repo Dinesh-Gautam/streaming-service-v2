@@ -288,6 +288,7 @@ export async function saveMovieData(
   id?: string,
 ) {
   try {
+    await dbConnect(); // Ensure DB connection
     if (!id) {
       await Movie.create(data);
     } else {
@@ -295,19 +296,53 @@ export async function saveMovieData(
     }
 
     return { success: true };
-  } catch (error) {
-    console.log('error', error);
-    return { success: false, message: 'Error creating movie' };
+  } catch (error: any) {
+    console.error('Error saving movie data:', error);
+    return { success: false, message: `Error saving movie: ${error.message}` };
   }
 }
 
 export async function deleteMovie(id: string) {
   try {
+    await dbConnect(); // Ensure DB connection
     await Movie.findByIdAndDelete(id);
 
     return { success: true };
-  } catch (error) {
-    console.log('error', error);
-    return { success: false, message: 'Error deleting movie' };
+  } catch (error: any) {
+    console.error('Error deleting movie:', error);
+    return {
+      success: false,
+      message: `Error deleting movie: ${error.message}`,
+    };
+  }
+}
+
+// New action to apply AI suggestions
+export async function applyAISuggestions(
+  movieId: string,
+  suggestions: {
+    title: string;
+    description: string;
+    genres: string[];
+  },
+) {
+  try {
+    await dbConnect(); // Ensure DB connection
+    const updateData = {
+      ...suggestions,
+      isAIGenerated: true, // Set the flag
+    };
+    await Movie.findByIdAndUpdate(movieId, updateData);
+    console.log(`[Action] Applied AI suggestions for movie ID: ${movieId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(
+      `[Action] Error applying AI suggestions for movie ID ${movieId}:`,
+      error,
+    );
+    return {
+      success: false,
+      message: `Error applying AI suggestions: ${error.message}`,
+    };
   }
 }
