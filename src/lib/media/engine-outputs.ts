@@ -59,7 +59,7 @@ export interface AIEngineOutput {
 }
 
 // Discriminated union for all possible engine outputs
-export type EngineTaskOutput =
+export type EngineTaskOutput<> =
   | ThumbnailOutput
   | TranscodingOutput
   | SubtitleOutput

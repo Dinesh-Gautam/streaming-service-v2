@@ -62,6 +62,12 @@ import { PATHS } from '@/constants/paths';
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
 
+import MediaUploadSection from './components/MediaUploadSection';
+import SegmentedProgressBar, {
+  SparkelIcon,
+} from './components/SegmentedProgressBar';
+import { AIEngineOutput } from '@/lib/media/engine-outputs';
+
 const genreItems = [
   { id: 'action', label: 'Action' },
   { id: 'comedy', label: 'Comedy' },
@@ -78,7 +84,6 @@ const genreItems = [
 const mediaTypes = ['video', 'poster', 'backdrop'] as const;
 
 type MediaTypeFileType = Record<(typeof mediaTypes)[number], File | null>;
-
 
 // const mockTasks: MediaProcessingStatus['tasks'] = [
 //   {
@@ -108,9 +113,6 @@ type MediaTypeFileType = Record<(typeof mediaTypes)[number], File | null>;
 // ];
 
 // let index = 0;
-
-
-
 
 export default function EditMoviePage({
   isNewMovie,
@@ -300,9 +302,6 @@ export default function EditMoviePage({
     poster: form.watch('media.poster.originalPath'),
     backdrop: form.watch('media.backdrop.originalPath'),
   };
-
-  // Use Sparkles from lucide-react as the AI indicator icon
-  const AiIcon: React.ElementType = Sparkles;
 
   // // const tasks = processingStatus.tasks;
   // const [tasks, setTasks] = useState(mockTasks);
@@ -518,18 +517,7 @@ export default function EditMoviePage({
                     )}
                   />
 
-                  <div className="flex justify-end space-x-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.push('/movies')}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      {isNewMovie ? 'Create Movie' : 'Update Movie'}
-                    </Button>
-                  </div>
+
                 </form>
               </Form>
             </CardContent>
@@ -545,340 +533,165 @@ export default function EditMoviePage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-              {/* Video Upload */}
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <h3 className="text-lg font-medium">Video File</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Upload an MP4 video file. It will be automatically
-                    transcoded to MPD format.
-                  </p>
-                </div>
+              {/* Video Upload Section */}
+              <MediaUploadSection
+                mediaType="video"
+                title="Video File"
+                description="Upload an MP4 video file. It will be automatically transcoded to MPD format."
+                accept="video/mp4"
+                originalPath={OriginalPaths.video}
+                isUploading={videoUploadingPending}
+                onFileChange={(e) => handelMediaUpload(e, 'video')}
+                file={mediaFiles.video}
+              >
+                {OriginalPaths.video && (
+                  <div className="space-y-4">
+                    <video
+                      className="w-full max-w-3xl h-auto rounded-md"
+                      controls
+                      src={'/api/static/' + OriginalPaths.video}
+                    />
 
-                <div className="grid gap-4">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex-1">
-                      <Input
-                        type="file"
-                        accept="video/mp4"
-                        onChange={(e) => handelMediaUpload(e, 'video')}
-                        className="cursor-pointer"
-                      />
-                    </div>
-                    {OriginalPaths.video && (
-                      <video
-                        className="w-full max-w-3xl h-auto rounded-md"
-                        controls
-                        src={'/api/static/' + OriginalPaths.video}
-                      ></video>
-                    )}
-
-                    {videoUploadingPending ?
-                      <span className="animate-pulse">Uploading...</span>
-                      : OriginalPaths.video && (
-                        <>
-                          {mediaFiles.video && (
-                            <div className="text-sm text-muted-foreground">
-                              {mediaFiles.video.name} (
-                              {Math.round(
-                                (mediaFiles.video.size / 1024 / 1024) * 10,
-                              ) / 10}{' '}
-                              MB)
-                            </div>
-                          )}
-                          {/* Show Start Processing button if video exists and job hasn't started or has failed */}
-                          {OriginalPaths.video &&
-                            (!processingStatus.jobExists ||
-                              processingStatus.jobStatus === 'pending' ||
-                              processingStatus.jobStatus === 'failed') && (
-                              <div>
-                                <Button
-                                  onClick={videoProcessHandler}
-                                  disabled={
-                                    processingStatus.jobStatus === 'running'
-                                  } // Disable if already running from a previous attempt
-                                >
-                                  {processingStatus.jobStatus === 'failed' ?
-                                    'Retry Processing'
-                                    : 'Start Processing'}
-                                </Button>
-                              </div>
-                            )}
-                        </>
-                      )
-                    }
-                  </div>
-
-                  {/* Display progress for each task */}
-                  {
-                    processingStatus.jobExists &&
-                    tasks.length > 0 && (
-                      <div className="space-y-2 pt-4 border-t">
-                        {/* Dynamic Title */}
-                        <div className="flex items-center text-sm font-medium text-muted-foreground mb-1">
-                          {(() => {
-                            const totalTasks = tasks.length;
-                            // Find the first task that is not 'completed'
-                            let currentTaskIndex =
-                              tasks.findIndex(
-                                (task) => task.status !== 'completed', // Removed 'skipped' comparison
-                              );
-                            // If all tasks are completed, show the last one as current
-                            if (currentTaskIndex === -1) {
-                              currentTaskIndex = totalTasks - 1;
-                            }
-                            const currentTask =
-                              tasks[currentTaskIndex];
-                            const names = {
-                              "AIEngine": "Generating Metadata",
-                              "SubtitleEngine": "Generating Subtitles",
-                              "TranscodingEngine": "Transcoding",
-                              "ThumbnailEngine": "Generating Thumbnails",
-                            }
-                            const taskName = names[currentTask.engine as keyof typeof names] || currentTask.engine;
-
-                            // const statuses = {
-                            //   "completed": "Completed",
-                            //   "failed": "Failed",
-                            //   "running": "Running",
-                            //   "pending": "Pending",
-                            // }
-
-                            return (
-                              <div className="flex w-full gap-2 align-baseline mb-0.5">
-                                <span>
-                                  {currentTaskIndex + 1}/{totalTasks} {' '}
-                                </span>
-                                {
-                                  currentTask.engine === 'AIEngine' && (
-                                    <SparkelIcon />
-                                  )
-                                }
-
-                                <span className={`capitalize font-semibold text-primary `}>
-                                  {taskName}
-                                </span>
-                                {currentTask.status === 'failed' && (
-                                  <span className="text-red-400 font-normal">
-                                    Failed: {currentTask.error}
-                                  </span>
-                                )}
-                                {/* <span className={`capitalize ${statusColor}`}>
-                                  {' - '} {statuses[statusText as keyof typeof statuses]}
-                                </span> */}
-                              </div>
-                            );
-                          })()}
-                        </div >
-
-                        {/* Segmented Bar Container */}
-                        <div className="flex w-full space-x-1 h-3 rounded-full" >
-                          {
-                            tasks.map((task, indexs) => {
-                              const bgColor = "bg-secondary";
-                              const outlineClass = task.status === 'failed' ? "border-red-400" : "border-secondary";
-                              const progressColor =
-                                // task.status === 'failed' ? "bg-secondary" :
-                                task.engine === "AIEngine" ?
-                                  "bg-gradient-to-r from-pink-500 to-red-500" :
-                                  "bg-primary";
-                              const progress = task.progress;
-
-                              return (
-                                <div
-                                  key={task.taskId}
-                                  title={`${task.engine.replace('Engine', '').replace(/([A-Z])/g, ' $1').trim()}: ${task.status} (${task.progress.toFixed(1)}%)`}
-                                  className={`flex-1 h-full rounded-full overflow-hidden relative border-1 ${bgColor} ${outlineClass}`}
-                                >
-                                  <div
-                                    className={`h-full rounded-full absolute top-0 left-0 ${progressColor}`}
-                                    style={{ width: `${progress}%` }}
-                                  />
-                                </div>
-                              );
-                            })
-                          }
-                        </div>
-
-                        {/* Optional: Display individual task errors if the job failed */}
-                        {processingStatus.jobStatus === 'failed' && (
-                          <div className="pt-2 space-y-1">
-                            {processingStatus.tasks.filter(t => t.status === 'failed' && t.error).map(task => (
-                              <p key={`${task.taskId}-error`} className="text-xs text-red-500">
-                                <strong>{task.engine.replace('Engine', '').replace(/([A-Z])/g, ' $1').trim()} Error:</strong> {task.error}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                  {/* Show Copy URL button only if the overall job is complete */}
-                  {processingStatus.jobStatus === 'completed' && (
-                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md mt-4">
-                      <div className="flex-1 text-sm truncate">
-                        {getPlaybackUrl(id) || ''}
-                      </div>
+                    {(
+                      !processingStatus.jobExists ||
+                      processingStatus.jobStatus === 'pending' ||
+                      processingStatus.jobStatus === 'failed'
+                    ) ?
                       <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          copyToClipboard(getPlaybackUrl(id) || '')
-                        }
+                        onClick={videoProcessHandler}
+                        disabled={processingStatus.jobStatus === 'running'}
                       >
-                        {isCopied ?
-                          <Check className="h-4 w-4 mr-1" />
-                          : <Copy className="h-4 w-4 mr-1" />}
-                        {isCopied ? 'Copied' : 'Copy URL'}
+                        {processingStatus.jobStatus === 'failed' ?
+                          'Retry Processing'
+                          : 'Start Processing'}
                       </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      : null}
 
-              {/* Poster Upload */}
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <h3 className="text-lg font-medium">Poster Image</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Upload a poster image (recommended size: 400x600px).
-                  </p>
-                </div>
+                    {processingStatus.jobExists && (
+                      <SegmentedProgressBar
+                        tasks={processingStatus.tasks}
+                        jobStatus={processingStatus.jobStatus}
+                      />
+                    )}
 
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handelMediaUpload(e, 'poster')}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  {posterUploadPending ?
-                    'uploading...'
-                    : OriginalPaths.poster && (
-                      <div className="flex">
-                        <div className="relative w-[150px] h-[225px] border rounded-md overflow-hidden">
-                          <Image
-                            src={
-                              '/api/static/' + OriginalPaths.poster ||
-                              '/placeholder.svg'
-                            }
-                            alt="Movie poster"
-                            className="object-cover w-full h-full"
-                            fill
-                            unoptimized
-                          />
+                    {processingStatus.jobStatus === 'completed' && (
+                      <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                        <div className="flex-1 text-sm truncate">
+                          {getPlaybackUrl(id) || ''}
                         </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            copyToClipboard(getPlaybackUrl(id) || '')
+                          }
+                        >
+                          {isCopied ?
+                            <Check className="h-4 w-4 mr-1" />
+                            : <Copy className="h-4 w-4 mr-1" />}
+                          {isCopied ? 'Copied' : 'Copy URL'}
+                        </Button>
                       </div>
-                    )
-                  }
-                </div>
-              </div>
-
-              {/* Backdrop Upload */}
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <h3 className="text-lg font-medium">Backdrop Image</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Upload a backdrop image (recommended size: 1920x1080px).
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 w-full">
-                  <div>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handelMediaUpload(e, 'backdrop')}
-                      className="cursor-pointer"
-                    />
+                    )}
                   </div>
+                )}
+              </MediaUploadSection>
 
-                  {backdropUploadPending ?
-                    'Uploading...'
-                    : OriginalPaths.backdrop && (
-                      <div className="flex w-full ">
-                        <div className="relative w-[480px] h-[270px] border rounded-md overflow-hidden">
-                          <Image
-                            src={
-                              '/api/static/' + OriginalPaths.backdrop ||
-                              '/placeholder.svg'
-                            }
-                            fill
-                            alt="Movie backdrop"
-                            className="object-cover w-full h-full"
-                            unoptimized
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-                </div>
-              </div>
+              {/* Poster Upload Section */}
+              <MediaUploadSection
+                mediaType="poster"
+                title="Poster Image"
+                description="Upload a poster image (recommended size: 400x600px)."
+                accept="image/*"
+                originalPath={OriginalPaths.poster}
+                isUploading={posterUploadPending}
+                onFileChange={(e) => handelMediaUpload(e, 'poster')}
+                file={mediaFiles.poster}
+              />
 
-              {/* Optionally display AI generated data */}
-              {processingStatus.tasks.find(t => t.engine === 'AIEngine' && t.status === 'completed') && (
-                <div className="mt-4 p-4 border rounded-md bg-muted/30">
-                  <h5 className="font-semibold mb-2 flex items-center">
-                    <AiIcon className="h-5 w-5 mr-2 text-purple-500" />
-                    AI Generated Suggestions
-                  </h5>
-                  {/* TODO: Display AI output (title, description, genres etc.)
-                     Maybe add buttons to apply suggestions to form fields? */}
-                  <p className="text-sm text-muted-foreground">AI data display placeholder.</p>
-                </div>
-              )}
+              {/* Backdrop Upload Section */}
+              <MediaUploadSection
+                mediaType="backdrop"
+                title="Backdrop Image"
+                description="Upload a backdrop image (recommended size: 1920x1080px)."
+                accept="image/*"
+                originalPath={OriginalPaths.backdrop}
+                isUploading={backdropUploadPending}
+                onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
+                file={mediaFiles.backdrop}
+              />
+
+              {/* AI Suggestions Section */}
+              <AiSuggestions tasks={processingStatus.tasks} />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <div className="flex justify-end space-x-4 mt-6">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push('/movies')}
+        >
+          Cancel
+        </Button>
+        <Button type="submit">
+          {isNewMovie ? 'Create Movie' : 'Update Movie'}
+        </Button>
+      </div>
+
     </div>
   );
 }
 
-function SparkelIcon() {
+function AiSuggestions({ tasks }: { tasks: MediaProcessingStatus['tasks'] }) {
+  const aiTask = tasks.find(
+    (t) => t.engine === 'AIEngine' && t.status === 'completed',
+  );
+
+  if (!aiTask) return null;
+
+  const { title, description, genres } = (aiTask.output as AIEngineOutput)?.data || {};
+
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M7.45275 11.625C7.38579 11.3655 7.2505 11.1286 7.06096 10.939C6.87142 10.7495 6.63455 10.6142 6.375 10.5473L1.77375 9.36075C1.69525 9.33847 1.62616 9.29119 1.57696 9.22609C1.52776 9.16098 1.50114 9.08161 1.50114 9C1.50114 8.9184 1.52776 8.83902 1.57696 8.77392C1.62616 8.70882 1.69525 8.66154 1.77375 8.63925L6.375 7.452C6.63446 7.38511 6.87127 7.24993 7.0608 7.06053C7.25034 6.87113 7.38567 6.63442 7.45275 6.375L8.63925 1.77375C8.66131 1.69494 8.70854 1.62551 8.77374 1.57605C8.83894 1.52659 8.91854 1.49982 9.00038 1.49982C9.08221 1.49982 9.16181 1.52659 9.22701 1.57605C9.29221 1.62551 9.33945 1.69494 9.3615 1.77375L10.5473 6.375C10.6142 6.63456 10.7495 6.87143 10.939 7.06097C11.1286 7.25051 11.3654 7.3858 11.625 7.45275L16.2263 8.6385C16.3054 8.66033 16.3752 8.70751 16.4249 8.77281C16.4746 8.83811 16.5015 8.91792 16.5015 9C16.5015 9.08208 16.4746 9.1619 16.4249 9.2272C16.3752 9.2925 16.3054 9.33968 16.2263 9.3615L11.625 10.5473C11.3654 10.6142 11.1286 10.7495 10.939 10.939C10.7495 11.1286 10.6142 11.3655 10.5473 11.625L9.36075 16.2263C9.33869 16.3051 9.29146 16.3745 9.22626 16.424C9.16106 16.4734 9.08147 16.5002 8.99963 16.5002C8.91779 16.5002 8.83819 16.4734 8.77299 16.424C8.70779 16.3745 8.66056 16.3051 8.6385 16.2263L7.45275 11.625Z" fill="url(#paint0_linear_2_12)" />
-      <path d="M15 2.25V5.25Z" fill="url(#paint1_linear_2_12)" />
-      <path d="M16.5 3.75H13.5Z" fill="url(#paint2_linear_2_12)" />
-      <path d="M15 2.25V5.25M16.5 3.75H13.5" stroke="url(#paint3_linear_2_12)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="M3 12.75V14.25Z" fill="url(#paint4_linear_2_12)" />
-      <path d="M3.75 13.5H2.25Z" fill="url(#paint5_linear_2_12)" />
-      <path d="M3 12.75V14.25M3.75 13.5H2.25" stroke="url(#paint6_linear_2_12)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-      <defs>
-        <linearGradient id="paint0_linear_2_12" x1="9.00134" y1="1.49982" x2="9.00134" y2="16.5002" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#DC3639" />
-        </linearGradient>
-        <linearGradient id="paint1_linear_2_12" x1="15" y1="3.75" x2="15" y2="5.25" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#EA171B" />
-        </linearGradient>
-        <linearGradient id="paint2_linear_2_12" x1="15" y1="3.75" x2="15" y2="5.25" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#EA171B" />
-        </linearGradient>
-        <linearGradient id="paint3_linear_2_12" x1="15" y1="3.75" x2="15" y2="5.25" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#EA171B" />
-        </linearGradient>
-        <linearGradient id="paint4_linear_2_12" x1="3" y1="13.5" x2="3" y2="15" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#DC3639" />
-        </linearGradient>
-        <linearGradient id="paint5_linear_2_12" x1="3" y1="13.5" x2="3" y2="15" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#DC3639" />
-        </linearGradient>
-        <linearGradient id="paint6_linear_2_12" x1="3" y1="13.5" x2="3" y2="15" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#D130B9" />
-          <stop offset="1" stop-color="#DC3639" />
-        </linearGradient>
-      </defs>
-    </svg>
-  )
+    <div className="mt-4 p-4 border rounded-md bg-muted/30">
+      <h5 className="font-semibold mb-2 flex items-center gap-2">
+        <SparkelIcon />
+        AI Generated Suggestions
+      </h5>
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          AI has analyzed your video and generated the following suggestions:
+        </p>
+        <div className="grid gap-4">
+          {
+            title && (
+              <div className="p-3 bg-background rounded-md">
+                <h6 className="text-sm font-medium mb-1">Title Suggestion</h6>
+                <p className="text-sm text-muted-foreground">{title}</p>
+              </div>
+            )
+          }
+          {
+            description && (
+              <div className="p-3 bg-background rounded-md">
+                <h6 className="text-sm font-medium mb-1">Description Suggestion</h6>
+                <p className="text-sm text-muted-foreground">{description}</p>
+              </div>
+            )
+          }
+          {
+            genres && genres.length > 0 && (
+              <div className="p-3 bg-background rounded-md">
+                <h6 className="text-sm font-medium mb-1">Genre Suggestions</h6>
+                <p className="text-sm text-muted-foreground">{genres.join(', ')}</p>
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  );
 }
