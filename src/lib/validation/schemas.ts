@@ -54,27 +54,50 @@ export const MovieSchema = z.object({
         .optional(),
       poster: z
         .object({
-          originalPath: z.string().min(1, {
-            message: 'Please select a poster image.',
-          }),
-          id: z.string().min(1, {
-            message: 'Please select a poster image.',
-          }),
+          originalPath: z.string().optional(),
+          id: z.string().optional(),
+          aiGeneratedPath: z.string().optional(),
         })
         .optional(),
       backdrop: z
         .object({
-          originalPath: z.string().min(1, {
-            message: 'Please select a backdrop image.',
-          }),
-          id: z.string().min(1, {
-            message: 'Please select a backdrop image.',
-          }),
+          originalPath: z.string().optional(),
+          id: z.string().optional(),
+          aiGeneratedPath: z.string().optional(),
         })
         .optional(),
     })
-    .optional(),
-  isAIGenerated: z.boolean().optional(), // Add the new field
+    .optional()
+    .refine(
+      (media) => {
+        return media?.video?.originalPath && media?.video?.id;
+      },
+      {
+        message: 'A video file must be uploaded.',
+        path: ['media', 'video'],
+      },
+    )
+    .refine(
+      (media) => {
+        return media?.poster?.originalPath || media?.poster?.aiGeneratedPath;
+      },
+      {
+        message: 'Please upload a poster image or generate one using AI.',
+        path: ['media', 'poster'],
+      },
+    )
+    .refine(
+      (media) => {
+        return (
+          media?.backdrop?.originalPath || media?.backdrop?.aiGeneratedPath
+        );
+      },
+      {
+        message: 'Please upload a backdrop image or generate one using AI.',
+        path: ['media', 'backdrop'],
+      },
+    ),
+  isAIGenerated: z.boolean().optional(),
 });
 
 export type UserSchemaType = z.infer<typeof UserSchema>;

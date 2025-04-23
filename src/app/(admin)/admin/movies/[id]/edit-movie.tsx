@@ -1,12 +1,14 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useState, useTransition, type MouseEvent } from 'react';
+import { useEffect, useState, useTransition, type MouseEvent, useMemo } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Copy, Sparkles } from 'lucide-react';
+import { Check, Copy, Sparkles, Wand2 } from 'lucide-react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { Button } from '@/admin/components/ui/button';
@@ -52,7 +54,7 @@ import {
 } from '@/app/(admin)/admin/movies/_action';
 import { ShineBorder } from '@/components/magicui/shine-border';
 import { PATHS } from '@/constants/paths';
-import { AIEngineOutput } from '@/lib/media/engine-outputs'; // Keep this specific import
+import { AIEngineOutput } from '@/lib/media/engine-outputs';
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
 
@@ -105,6 +107,23 @@ export default function EditMoviePage({
   );
   const [genreItems, setGenreItems] = useState([...defaultGenreItems]);
   const [customGenreInput, setCustomGenreInput] = useState('');
+
+  // Derive AI image paths from processing status
+  const aiEngineTaskOutput = useMemo(() => {
+    const task = processingStatus.tasks.find((t) => {
+      // Check engine type and completion status first
+      if (t.engine !== 'AIEngine' || t.status !== 'completed' || !t.output) {
+        return false;
+      }
+      // Type guard: Check if 'data' exists and is an object (basic check for AIEngineOutput structure)
+      return typeof t.output === 'object' && t.output !== null && 'data' in t.output;
+    });
+    // If task found and passes guard, assert the type
+    return task?.output as AIEngineOutput | undefined;
+  }, [processingStatus.tasks]);
+
+  const aiGeneratedPosterPath = useMemo(() => aiEngineTaskOutput?.data?.posterImagePath || null, [aiEngineTaskOutput]);
+  const aiGeneratedBackdropPath = useMemo(() => aiEngineTaskOutput?.data?.backdropImagePath || null, [aiEngineTaskOutput]);
 
   const [mediaFiles, setMediaFiles] = useState<MediaTypeFileType>(
     Object.fromEntries(
@@ -235,11 +254,20 @@ export default function EditMoviePage({
           if (res.success && res.path && res.id) {
             form.setValue(`media.${type}.originalPath`, res.path);
             form.setValue(`media.${type}.id`, res.id);
+            // Clear AI path in form only for poster/backdrop
+            if (type === 'poster' || type === 'backdrop') {
+              form.setValue(`media.${type}.aiGeneratedPath`, undefined);
+            }
+            showToast('Upload Successful', `${type} uploaded successfully.`);
           } else {
             console.error(`Upload failed for ${type}:`, res);
+            // Check if res has a message property before accessing it
+            const message = typeof res === 'object' && res !== null && 'message' in res ? res.message : 'Unknown error';
+            showToast('Upload Failed', `${type} upload failed: ${message}`, true);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error uploading ${type}:`, error);
+          showToast('Upload Error', `Error uploading ${type}: ${error.message}`, true);
         }
       }
     });
@@ -261,21 +289,23 @@ export default function EditMoviePage({
       .then((res) => {
         if (res.success) {
           console.log('Processing initiated via action.');
+          showToast('Processing Started', 'Video processing initiated.');
           setIsPolling(true);
         } else {
           console.error('Failed to initiate processing:', res.message);
-          // Add user feedback
+          showToast('Processing Error', `Failed to start: ${res.message}`, true);
         }
       })
       .catch((err) => {
         console.error('Error calling processVideo action:', err);
-        // Add user feedback
+        showToast('Action Error', `Error starting process: ${err.message}`, true);
       });
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(window.location.origin + text);
     setIsCopied(true);
+    showToast('URL Copied', 'Playback URL copied to clipboard.');
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -310,6 +340,30 @@ export default function EditMoviePage({
     }
   };
 
+  // Add a toast for notifications
+  const showToast = (title: string, description: string, error = false) => {
+    if (error) {
+      toast.error(title, { description });
+    } else {
+      toast.success(title, { description });
+    }
+  };
+
+  // --- Handlers to use AI Images ---
+  const handleUseAIImage = (type: 'poster' | 'backdrop') => {
+    // Get path directly from derived state/memoized value
+    const path = type === 'poster' ? aiGeneratedPosterPath : aiGeneratedBackdropPath;
+
+    if (path) {
+      form.setValue(`media.${type}.originalPath`, path); // Set AI path as the main path
+      form.setValue(`media.${type}.id`, 'ai-generated'); // Use a marker for ID
+      form.setValue(`media.${type}.aiGeneratedPath`, path); // Ensure aiGeneratedPath is also set in form
+      showToast(`AI ${type} Selected`, `Using the AI-generated ${type}.`);
+    } else {
+      showToast(`AI ${type} Not Found`, `No AI-generated ${type} available.`, true);
+    }
+  };
+
   return (
     <form
       id="movie-details-form"
@@ -339,7 +393,7 @@ export default function EditMoviePage({
                   Fill in the information below to{' '}
                   {isNewMovie ?
                     'create a new movie entry'
-                  : "update the movie's information"}
+                    : "update the movie's information"}
                   .
                 </CardDescription>
               </CardHeader>
@@ -574,9 +628,9 @@ export default function EditMoviePage({
                         >
                           {processingStatus.jobStatus === 'failed' ?
                             'Retry Processing'
-                          : 'Start Processing'}
+                            : 'Start Processing'}
                         </Button>
-                      : null}
+                        : null}
 
                       {processingStatus.jobExists && (
                         <SegmentedProgressBar
@@ -600,7 +654,7 @@ export default function EditMoviePage({
                           >
                             {isCopied ?
                               <Check className="h-4 w-4 mr-1" />
-                            : <Copy className="h-4 w-4 mr-1" />}
+                              : <Copy className="h-4 w-4 mr-1" />}
                             {isCopied ? 'Copied' : 'Copy URL'}
                           </Button>
                         </div>
@@ -618,7 +672,34 @@ export default function EditMoviePage({
                   isUploading={posterUploadPending}
                   onFileChange={(e) => handelMediaUpload(e, 'poster')}
                   file={mediaFiles.poster}
-                />
+                >
+                  {/* AI Generated Poster Section - Reads from processing status */}
+                  {aiGeneratedPosterPath && (
+                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Wand2 className="w-4 h-4" /> AI Generated Poster
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <Image
+                          src={aiGeneratedPosterPath} // Use derived path
+                          alt="AI Generated Poster"
+                          width={100}
+                          height={150}
+                          className="rounded-md object-cover border"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUseAIImage('poster')} // Pass only type
+                          disabled={form.getValues('media.poster.originalPath') === aiGeneratedPosterPath}
+                        >
+                          {form.getValues('media.poster.originalPath') === aiGeneratedPosterPath ? 'Using AI Poster' : 'Use AI Poster'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </MediaUploadSection>
 
                 <MediaUploadSection
                   mediaType="backdrop"
@@ -629,7 +710,34 @@ export default function EditMoviePage({
                   isUploading={backdropUploadPending}
                   onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
                   file={mediaFiles.backdrop}
-                />
+                >
+                  {/* AI Generated Backdrop Section - Reads from processing status */}
+                  {aiGeneratedBackdropPath && (
+                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Wand2 className="w-4 h-4" /> AI Generated Backdrop
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <Image
+                          src={aiGeneratedBackdropPath} // Use derived path
+                          alt="AI Generated Backdrop"
+                          width={200}
+                          height={112}
+                          className="rounded-md object-cover border"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUseAIImage('backdrop')} // Pass only type
+                          disabled={form.getValues('media.backdrop.originalPath') === aiGeneratedBackdropPath}
+                        >
+                          {form.getValues('media.backdrop.originalPath') === aiGeneratedBackdropPath ? 'Using AI Backdrop' : 'Use AI Backdrop'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </MediaUploadSection>
 
                 <AiSuggestions
                   tasks={processingStatus.tasks}
@@ -697,7 +805,7 @@ function AiSuggestions({
   const aiOutput =
     aiTask?.output && 'data' in aiTask.output ?
       (aiTask.output as AIEngineOutput)
-    : null;
+      : null;
 
   if (!aiOutput?.data) return null; // Return early if no AI task or data
 
@@ -818,15 +926,15 @@ function AiSuggestions({
               <span className="relative z-10 flex items-center gap-2">
                 {isApplying ?
                   'Applying...'
-                : isApplied ?
-                  <>
-                    {' '}
-                    <Check className="h-4 w-4" /> Applied{' '}
-                  </>
-                : <>
-                    {' '}
-                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
-                  </>
+                  : isApplied ?
+                    <>
+                      {' '}
+                      <Check className="h-4 w-4" /> Applied{' '}
+                    </>
+                    : <>
+                      {' '}
+                      <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                    </>
                 }
               </span>
             </Button>

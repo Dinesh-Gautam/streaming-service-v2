@@ -6,7 +6,7 @@ import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import * as path from 'path';
 import { join } from 'path';
 
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { type Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
@@ -15,7 +15,7 @@ import { SubtitleEngine } from '@/lib/media/engines/subtitle';
 import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
 import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
 import { MediaManager } from '@/lib/media/media-manager';
-import type { MovieSchema } from '@/lib/validation/schemas';
+import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
 import {
   MediaProcessingJob,
@@ -23,6 +23,7 @@ import {
   type IMediaProcessingTask,
 } from '@/server/db/schemas/media-processing';
 import { Movie } from '@/server/db/schemas/movie';
+import { GenerateMovieImagesFlow } from '@/lib/ai/flow'; // Import the new flow
 
 await dbConnect();
 
@@ -144,8 +145,8 @@ export async function processVideo(
     await dbConnect(); // Ensure DB connection
 
     // Instantiate engines
-    const thumbnailEngine = new ThumbnailEngine();
-    const transcodingEngine = new TranscodingEngine();
+    // const thumbnailEngine = new ThumbnailEngine();
+    // const transcodingEngine = new TranscodingEngine()
     const subtitleEngine = new SubtitleEngine({
       sourceLanguage: 'en', // Specify source language
       targetLanguages: ['hi', 'pa'], // Specify target languages
@@ -155,8 +156,8 @@ export async function processVideo(
     // Instantiate manager with all engines in desired order
     // MediaManager will reorder if AI engine is before Subtitle engine
     const mediaManager = new MediaManager(mediaId, [
-      thumbnailEngine,
-      transcodingEngine,
+      // thumbnailEngine,
+      // transcodingEngine,
       subtitleEngine,
       aiEngine, // Add AI Engine to the list
     ]);
@@ -250,10 +251,10 @@ export async function getMediaProcessingJob(
         taskId: task.taskId,
         engine: task.engine,
         status: task.status,
-        progress: task.progress,
-        error: task.errorMessage,
-        // Cast the output from the DB (which is Mixed) to our specific TS type
-        output: task.output as EngineTaskOutput | undefined,
+        progress: task.progress || 0,
+        error: task.errorMessage || undefined,
+        // Ensure output is included and is serializable
+        output: task.output ? JSON.parse(JSON.stringify(task.output)) : undefined,
       }));
 
       result[job.mediaId] = {
@@ -266,40 +267,94 @@ export async function getMediaProcessingJob(
     return result;
   } catch (error: any) {
     console.error(
-      `[Action] Error fetching media processing jobs for ${ids.join(', ')}:`,
+      '[Action] Error fetching media processing jobs:',
+      ids,
       error,
     );
-    // Return error state for all requested IDs
-    return ids.reduce(
-      (acc, id) => ({
-        ...acc,
-        [id]: {
-          jobStatus: 'failed',
-          tasks: [],
-          jobExists: false,
-        },
-      }),
-      {},
-    );
+    // Return default pending status on error
+    const errorResult: { [key: string]: MediaProcessingStatus } = {};
+    ids.forEach((id) => {
+      errorResult[id] = {
+        jobStatus: 'pending',
+        tasks: [],
+        jobExists: false,
+      };
+    });
+    return errorResult;
   }
 }
 
+/**
+ * Saves movie data to the database (create or update).
+ * @param data - Movie data to save.
+ * @param id - Optional existing movie ID.
+ * @returns Object with success status and message.
+ */
 export async function saveMovieData(
   data: z.infer<typeof MovieSchema>,
   id?: string,
 ) {
   try {
-    await dbConnect(); // Ensure DB connection
-    if (!id) {
-      await Movie.create(data);
-    } else {
-      await Movie.findByIdAndUpdate(id, data);
-    }
+    const validatedData = MovieSchema.parse(data); // Validate data first
 
-    return { success: true };
+    await dbConnect();
+
+    const movieDataToSave = {
+      title: validatedData.title,
+      description: validatedData.description,
+      year: validatedData.year,
+      genres: validatedData.genres,
+      status: validatedData.status,
+      isAIGenerated: validatedData.isAIGenerated || false, // Default to false if undefined
+      // Ensure media paths are correctly structured and saved
+      media: {
+        video: validatedData.media?.video
+          ? {
+            id: validatedData.media.video.id,
+            originalPath: validatedData.media.video.originalPath,
+          }
+          : undefined,
+        poster: validatedData.media?.poster
+          ? {
+            id: validatedData.media.poster.id,
+            originalPath: validatedData.media.poster.originalPath,
+            aiGeneratedPath: validatedData.media.poster.aiGeneratedPath,
+          }
+          : undefined,
+        backdrop: validatedData.media?.backdrop
+          ? {
+            id: validatedData.media.backdrop.id,
+            originalPath: validatedData.media.backdrop.originalPath,
+            aiGeneratedPath: validatedData.media.backdrop.aiGeneratedPath,
+          }
+          : undefined,
+      },
+      // Add other fields as necessary
+    };
+
+    if (id) {
+      // Update existing movie
+      await Movie.findByIdAndUpdate(id, movieDataToSave);
+      console.log(`[Action] Updated movie with ID: ${id}`);
+    } else {
+      // Create new movie
+      const newMovie = new Movie(movieDataToSave);
+      await newMovie.save();
+      console.log(`[Action] Created new movie with ID: ${newMovie._id}`);
+    }
+    return { success: true, message: 'Movie saved successfully.' };
   } catch (error: any) {
-    console.error('Error saving movie data:', error);
-    return { success: false, message: `Error saving movie: ${error.message}` };
+    console.error('[Action] Error saving movie data:', error);
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        message: `Validation Error: ${error.errors.map((e) => `${e.path.join('.')} - ${e.message}`).join(', ')}`,
+      };
+    }
+    return {
+      success: false,
+      message: `Failed to save movie: ${error.message}`,
+    };
   }
 }
 

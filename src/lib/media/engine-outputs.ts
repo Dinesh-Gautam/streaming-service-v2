@@ -54,6 +54,9 @@ export interface AIEngineOutput {
     keywords?: string[];
     suggestedAgeRating?: string;
     contentWarnings?: string[];
+    // Add paths for AI-generated images
+    posterImagePath?: string; 
+    backdropImagePath?: string;
   };
   // Add any other AI-generated metadata here
 }
