@@ -80,6 +80,7 @@ export async function getOriginalMovieDetail(id: string): Promise<
     overview: movie.description,
     release_date: new Date(movie.year + '-01-01').toISOString(),
     genres: movie.genres.map((g, i) => ({ id: i, name: g })),
+    poster_path: movie.media?.poster?.originalPath,
     backdrop_path: movie.media?.backdrop?.originalPath,
     isOriginal: true,
     id,

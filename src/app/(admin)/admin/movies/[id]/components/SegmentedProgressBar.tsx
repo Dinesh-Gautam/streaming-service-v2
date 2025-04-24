@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useMemo } from 'react';
 
 import { type MediaProcessingStatus } from '@/app/(admin)/admin/movies/_action';
 import { TextAnimate } from '@/components/magicui/text-animate';
@@ -202,6 +203,18 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
     getTaskInfo(tasks);
   const totalTasks = tasks.length;
 
+  const Text = useMemo(() => {
+    return isAiTask ?
+        <TextAnimate
+          startOnView={false}
+          animation="blurIn"
+          as="h1"
+        >
+          {taskName}
+        </TextAnimate>
+      : taskName;
+  }, [taskName, isAiTask]);
+
   if (totalTasks === 0 || jobStatus === 'pending') {
     return null; // Don't render if no tasks or job hasn't started
   }
@@ -240,17 +253,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
               {currentTaskIndex + 1}/{totalTasks}
             </span>
             {isAiTask && <SparkelIcon />}
-            <span className="font-semibold text-primary">
-              {isAiTask ?
-                <TextAnimate
-                  startOnView={false}
-                  animation="blurIn"
-                  as="h1"
-                >
-                  {taskName}
-                </TextAnimate>
-              : taskName}
-            </span>
+            <span className="font-semibold text-primary">{Text}</span>
             <span className={`capitalize ml-1 ${getStatusColor(statusText)}`}>
               ({statusText})
             </span>

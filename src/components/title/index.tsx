@@ -138,7 +138,12 @@ function TitleView({
         setMoreInfoOpen={setMoreInfoOpen}
       />
 
-      {!animating && <Poster result={result} />}
+      {!animating && (
+        <Poster
+          result={result}
+          original={original}
+        />
+      )}
 
       <Backdrop
         original={original}
@@ -430,25 +435,35 @@ function Buttons({ result, original }: { result: Result; original: boolean }) {
   );
 }
 
-function Poster({ result }: { result: Result }) {
+function Poster({ result, original }: { result: Result; original: boolean }) {
   return (
     <HideWhenPlayerIsPlaying
       style={{
         pointerEvents: 'none',
       }}
     >
-      {result.poster_path && (
-        <FadeImageOnLoad
-          imageSrc={result.poster_path}
-          duration={2}
-          imageContainer={{
-            className: styles.backdropImage,
-          }}
-          image={{
-            layout: 'fill',
-          }}
-        />
-      )}
+      {result.poster_path &&
+        (!original ?
+          <FadeImageOnLoad
+            imageSrc={result.poster_path}
+            duration={2}
+            imageContainer={{
+              className: styles.backdropImage,
+            }}
+            image={{
+              layout: 'fill',
+            }}
+          />
+        : <FadeImageOnLoad
+            rawImageSrc={'/api/static/' + result.poster_path}
+            duration={2}
+            imageContainer={{
+              className: styles.backdropImage,
+            }}
+            image={{
+              layout: 'fill',
+            }}
+          />)}
     </HideWhenPlayerIsPlaying>
   );
 }

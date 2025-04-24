@@ -67,36 +67,8 @@ export const MovieSchema = z.object({
         })
         .optional(),
     })
-    .optional()
-    .refine(
-      (media) => {
-        return media?.video?.originalPath && media?.video?.id;
-      },
-      {
-        message: 'A video file must be uploaded.',
-        path: ['media', 'video'],
-      },
-    )
-    .refine(
-      (media) => {
-        return media?.poster?.originalPath || media?.poster?.aiGeneratedPath;
-      },
-      {
-        message: 'Please upload a poster image or generate one using AI.',
-        path: ['media', 'poster'],
-      },
-    )
-    .refine(
-      (media) => {
-        return (
-          media?.backdrop?.originalPath || media?.backdrop?.aiGeneratedPath
-        );
-      },
-      {
-        message: 'Please upload a backdrop image or generate one using AI.',
-        path: ['media', 'backdrop'],
-      },
-    ),
+    .optional(),
+
   isAIGenerated: z.boolean().optional(),
 });
 

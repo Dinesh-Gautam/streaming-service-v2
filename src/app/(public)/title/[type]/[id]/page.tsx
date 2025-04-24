@@ -67,6 +67,7 @@ export default async function TitlePage({ params, searchParams }: Props) {
     searchResult = await getOriginalMovieDetail(id);
   }
 
+  console.log(searchResult);
   if (!searchResult) {
     return notFound();
   }
