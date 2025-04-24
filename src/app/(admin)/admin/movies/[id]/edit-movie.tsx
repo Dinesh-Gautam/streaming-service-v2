@@ -1,17 +1,25 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useState, useTransition, type MouseEvent, useMemo } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type MouseEvent,
+} from 'react';
+// Added useCallback
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Copy, Sparkles, Wand2 } from 'lucide-react';
+import { Check, Copy, Loader2, Sparkles, Wand2 } from 'lucide-react'; // Added Loader2
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { Button } from '@/admin/components/ui/button';
+import { Button, buttonVariants } from '@/admin/components/ui/button'; // Added buttonVariants
 import {
   Card,
   CardContent,
@@ -30,6 +38,7 @@ import {
   FormMessage,
 } from '@/admin/components/ui/form';
 import { Input } from '@/admin/components/ui/input';
+import { Label } from '@/admin/components/ui/label'; // Add Label import
 import {
   Select,
   SelectContent,
@@ -46,7 +55,8 @@ import {
 import { Textarea } from '@/admin/components/ui/textarea';
 import {
   applyAISuggestions,
-  getMediaProcessingJob,
+  generateAIImagesWithPrompt, // Import the new action
+  getMediaProcessingJob, // Removed duplicate
   processVideo,
   saveMovieData,
   uploadAction,
@@ -62,6 +72,7 @@ import MediaUploadSection from './components/MediaUploadSection';
 import SegmentedProgressBar, {
   SparkelIcon,
 } from './components/SegmentedProgressBar';
+import { cn } from '@/admin/lib/utils';
 
 // Initial list of genres
 const defaultGenreItems = [
@@ -108,7 +119,23 @@ export default function EditMoviePage({
   const [genreItems, setGenreItems] = useState([...defaultGenreItems]);
   const [customGenreInput, setCustomGenreInput] = useState('');
 
-  // Derive AI image paths from processing status
+  // --- State for Prompt-Based Image Generation ---
+  const [posterPrompt, setPosterPrompt] = useState('');
+  const [backdropPrompt, setBackdropPrompt] = useState('');
+  const [isGeneratingPoster, startPosterGenerationTransition] = useTransition();
+  const [isGeneratingBackdrop, startBackdropGenerationTransition] =
+    useTransition();
+  const [promptGeneratedPosterPath, setPromptGeneratedPosterPath] = useState<
+    string | null
+  >(null);
+  const [promptGeneratedBackdropPath, setPromptGeneratedBackdropPath] =
+    useState<string | null>(null);
+
+  // For error message display
+  const [posterGenerationError, setPosterGenerationError] = useState<string | null>(null);
+  const [backdropGenerationError, setBackdropGenerationError] = useState<string | null>(null);
+
+  // Derive AI image paths from initial processing status
   const aiEngineTaskOutput = useMemo(() => {
     const task = processingStatus.tasks.find((t) => {
       // Check engine type and completion status first
@@ -116,14 +143,22 @@ export default function EditMoviePage({
         return false;
       }
       // Type guard: Check if 'data' exists and is an object (basic check for AIEngineOutput structure)
-      return typeof t.output === 'object' && t.output !== null && 'data' in t.output;
+      return (
+        typeof t.output === 'object' && t.output !== null && 'data' in t.output
+      );
     });
     // If task found and passes guard, assert the type
     return task?.output as AIEngineOutput | undefined;
   }, [processingStatus.tasks]);
 
-  const aiGeneratedPosterPath = useMemo(() => aiEngineTaskOutput?.data?.posterImagePath || null, [aiEngineTaskOutput]);
-  const aiGeneratedBackdropPath = useMemo(() => aiEngineTaskOutput?.data?.backdropImagePath || null, [aiEngineTaskOutput]);
+  const initialAiGeneratedPosterPath = useMemo(
+    () => aiEngineTaskOutput?.data?.posterImagePath || null,
+    [aiEngineTaskOutput],
+  );
+  const initialAiGeneratedBackdropPath = useMemo(
+    () => aiEngineTaskOutput?.data?.backdropImagePath || null,
+    [aiEngineTaskOutput],
+  );
 
   const [mediaFiles, setMediaFiles] = useState<MediaTypeFileType>(
     Object.fromEntries(
@@ -262,12 +297,23 @@ export default function EditMoviePage({
           } else {
             console.error(`Upload failed for ${type}:`, res);
             // Check if res has a message property before accessing it
-            const message = typeof res === 'object' && res !== null && 'message' in res ? res.message : 'Unknown error';
-            showToast('Upload Failed', `${type} upload failed: ${message}`, true);
+            const message =
+              typeof res === 'object' && res !== null && 'message' in res ?
+                res.message
+                : 'Unknown error';
+            showToast(
+              'Upload Failed',
+              `${type} upload failed: ${message}`,
+              true,
+            );
           }
         } catch (error: any) {
           console.error(`Error uploading ${type}:`, error);
-          showToast('Upload Error', `Error uploading ${type}: ${error.message}`, true);
+          showToast(
+            'Upload Error',
+            `Error uploading ${type}: ${error.message}`,
+            true,
+          );
         }
       }
     });
@@ -293,12 +339,20 @@ export default function EditMoviePage({
           setIsPolling(true);
         } else {
           console.error('Failed to initiate processing:', res.message);
-          showToast('Processing Error', `Failed to start: ${res.message}`, true);
+          showToast(
+            'Processing Error',
+            `Failed to start: ${res.message}`,
+            true,
+          );
         }
       })
       .catch((err) => {
         console.error('Error calling processVideo action:', err);
-        showToast('Action Error', `Error starting process: ${err.message}`, true);
+        showToast(
+          'Action Error',
+          `Error starting process: ${err.message}`,
+          true,
+        );
       });
   }
 
@@ -349,20 +403,166 @@ export default function EditMoviePage({
     }
   };
 
-  // --- Handlers to use AI Images ---
-  const handleUseAIImage = (type: 'poster' | 'backdrop') => {
-    // Get path directly from derived state/memoized value
-    const path = type === 'poster' ? aiGeneratedPosterPath : aiGeneratedBackdropPath;
+  // --- Handlers to use AI Images (Initial or Prompt-Generated) ---
+  const handleUseAIImage = (
+    type: 'poster' | 'backdrop',
+    source: 'initial' | 'prompt',
+  ) => {
+    let path: string | null = null;
+    if (source === 'initial') {
+      path =
+        type === 'poster' ?
+          initialAiGeneratedPosterPath
+          : initialAiGeneratedBackdropPath;
+    } else {
+      path =
+        type === 'poster' ?
+          promptGeneratedPosterPath
+          : promptGeneratedBackdropPath;
+    }
 
     if (path) {
       form.setValue(`media.${type}.originalPath`, path); // Set AI path as the main path
-      form.setValue(`media.${type}.id`, 'ai-generated'); // Use a marker for ID
+      form.setValue(`media.${type}.id`, `ai-generated-${source}`); // Use a marker for ID indicating source
       form.setValue(`media.${type}.aiGeneratedPath`, path); // Ensure aiGeneratedPath is also set in form
-      showToast(`AI ${type} Selected`, `Using the AI-generated ${type}.`);
+      showToast(
+        `AI ${type} Selected`,
+        `Using the ${source === 'initial' ? 'initially' : 'prompt-'}generated ${type}.`,
+      );
+      // Clear the other AI source path if one is selected
+      if (source === 'initial') {
+        setPromptGeneratedPosterPath(
+          type === 'poster' ? null : promptGeneratedPosterPath,
+        );
+        setPromptGeneratedBackdropPath(
+          type === 'backdrop' ? null : promptGeneratedBackdropPath,
+        );
+      }
     } else {
-      showToast(`AI ${type} Not Found`, `No AI-generated ${type} available.`, true);
+      showToast(
+        `AI ${type} Not Found`,
+        `No ${source}-generated AI ${type} available.`,
+        true,
+      );
     }
   };
+
+  // --- Handlers for Prompt-Based Image Generation ---
+  const handleSuggestPrompt = useCallback(
+    (type: 'poster' | 'backdrop') => {
+      const { title, description, genres } = form.getValues();
+      if (!title && !description && (!genres || genres.length === 0)) {
+        showToast(
+          'Cannot Suggest',
+          'Please fill in title, description, or genres first.',
+          true,
+        );
+        return;
+      }
+
+      let suggestion = `Movie ${type}: ${title || ''}.`;
+      if (description)
+        suggestion += ` Description: ${description.substring(0, 150)}${description.length > 150 ? '...' : ''}.`;
+      if (genres && genres.length > 0)
+        suggestion += ` Genres: ${genres.join(', ')}.`;
+      suggestion += ` Style: ${type === 'poster' ? 'Cinematic poster, high quality, vertical aspect ratio.' : 'Cinematic backdrop, wide aspect ratio, high quality.'}`;
+
+      if (type === 'poster') {
+        setPosterPrompt(suggestion);
+      } else {
+        setBackdropPrompt(suggestion);
+      }
+      showToast('Prompt Suggested', `Suggested prompt for ${type} generated.`);
+    },
+    [form],
+  ); // Dependency on form instance
+
+  const handleGenerateImage = (type: 'poster' | 'backdrop') => {
+    const prompt = type === 'poster' ? posterPrompt : backdropPrompt;
+    if (!prompt) {
+      showToast(
+        'Prompt Missing',
+        `Please enter a prompt for the ${type}.`,
+        true,
+      );
+      return;
+    }
+
+    // Clear previous error message
+    if (type === 'poster') {
+      setPosterGenerationError(null);
+    } else {
+      setBackdropGenerationError(null);
+    }
+
+    const transition =
+      type === 'poster' ?
+        startPosterGenerationTransition
+        : startBackdropGenerationTransition;
+
+    transition(async () => {
+      showToast(
+        'Generating Image...',
+        `Generating ${type} using AI. This may take a moment.`,
+      );
+      try {
+        // Fix: Pass only prompt and type parameters
+        const result = await generateAIImagesWithPrompt(prompt, type);
+        if (result.success) {
+          if (result.path) {
+            // If successful and has a path, set the generated path based on type
+            if (type === 'poster') {
+              setPromptGeneratedPosterPath(result.path);
+              showToast('Poster Generated', 'AI poster generated successfully.');
+            } else {
+              setPromptGeneratedBackdropPath(result.path);
+              showToast('Backdrop Generated', 'AI backdrop generated successfully.');
+            }
+          } else {
+            // Success but no path (rare case)
+            const errorMsg = `AI process completed, but the requested ${type} image was not generated. This may be due to content filters.`;
+            if (type === 'poster') {
+              setPosterGenerationError(errorMsg);
+            } else {
+              setBackdropGenerationError(errorMsg);
+            }
+            showToast('Generation Issue', errorMsg, true);
+          }
+        } else {
+          // Display error for unsuccessful generation
+          const errorMsg = result.error ?
+            String(result.error) :
+            `Failed to generate ${type} due to an unknown error`;
+          console.error(`Failed to generate ${type}:`, errorMsg);
+          if (type === 'poster') {
+            setPosterGenerationError(errorMsg);
+          } else {
+            setBackdropGenerationError(errorMsg);
+          }
+          showToast('Generation Failed', errorMsg, true);
+        }
+      } catch (error: any) {
+        console.error(`Error generating ${type}:`, error);
+        const errorMsg = error.message || `Error generating ${type}`;
+        if (type === 'poster') {
+          setPosterGenerationError(errorMsg);
+        } else {
+          setBackdropGenerationError(errorMsg);
+        }
+        showToast(
+          'Generation Error',
+          errorMsg,
+          true,
+        );
+      }
+    });
+  };
+
+  // Determine if suggest button should be enabled
+  const canSuggestPrompt = useMemo(() => {
+    const { title, description, genres } = form.getValues();
+    return !!title || !!description || (!!genres && genres.length > 0);
+  }, [form.watch('title'), form.watch('description'), form.watch('genres')]); // Watch relevant fields
 
   return (
     <form
@@ -673,16 +873,21 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'poster')}
                   file={mediaFiles.poster}
                 >
-                  {/* AI Generated Poster Section - Reads from processing status */}
-                  {aiGeneratedPosterPath && (
-                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20">
+                  {/* --- Initial AI Generated Poster --- */}
+                  {initialAiGeneratedPosterPath && (
+                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20 relative">
+                      <ShineBorder
+                        shineColor={['#A07CFE', '#FE8FB5', '#FFBE7B']}
+                      />{' '}
+                      {/* Corrected prop name */}
                       <h4 className="font-medium flex items-center gap-2">
-                        <Wand2 className="w-4 h-4" /> AI Generated Poster
+                        <Wand2 className="w-4 h-4 text-purple-500" /> Initially
+                        Generated Poster
                       </h4>
                       <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <Image
-                          src={aiGeneratedPosterPath} // Use derived path
-                          alt="AI Generated Poster"
+                          src={initialAiGeneratedPosterPath}
+                          alt="Initially Generated Poster"
                           width={100}
                           height={150}
                           className="rounded-md object-cover border"
@@ -691,14 +896,146 @@ export default function EditMoviePage({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUseAIImage('poster')} // Pass only type
-                          disabled={form.getValues('media.poster.originalPath') === aiGeneratedPosterPath}
+                          onClick={() => handleUseAIImage('poster', 'initial')}
+                          disabled={
+                            form.getValues('media.poster.originalPath') ===
+                            initialAiGeneratedPosterPath
+                          }
                         >
-                          {form.getValues('media.poster.originalPath') === aiGeneratedPosterPath ? 'Using AI Poster' : 'Use AI Poster'}
+                          {(
+                            form.getValues('media.poster.originalPath') ===
+                            initialAiGeneratedPosterPath
+                          ) ?
+                            'Using Initial AI Poster'
+                            : 'Use Initial AI Poster'}
                         </Button>
                       </div>
                     </div>
                   )}
+
+                  {/* --- Prompt-Based Poster Generation --- */}
+                  <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
+                    <ShineBorder
+                      shineColor={['#A07CFE', '#FE8FB5', '#FFBE7B']}
+                    />{' '}
+                    {/* Corrected prop name */}
+                    <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500">
+                      <Sparkles className="w-5 h-5" /> Generate Poster with AI
+                      Prompt
+                    </h4>
+                    {/* Replaced FormItem/Label/Control with div/Label */}
+                    <div className="space-y-2">
+                      <Label htmlFor="poster-prompt">Poster Prompt</Label>
+                      <Textarea
+                        id="poster-prompt"
+                        placeholder="e.g., A lone astronaut gazing at a swirling nebula, cinematic, detailed..."
+                        value={posterPrompt}
+                        onChange={(e) => setPosterPrompt(e.target.value)}
+                        className="min-h-[80px] bg-background/80 backdrop-blur-sm"
+                        disabled={isGeneratingPoster}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSuggestPrompt('poster')}
+                        disabled={!canSuggestPrompt || isGeneratingPoster}
+                        className="relative overflow-hidden group transition-opacity duration-300"
+                      >
+                        <span
+                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="absolute inset-0 bg-background rounded-[5px] z-[-1] group-hover:opacity-90 transition-opacity duration-300"
+                          aria-hidden="true"
+                        ></span>
+                        <span className="relative z-10 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Suggest
+                        </span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleGenerateImage('poster')}
+                        disabled={!posterPrompt || isGeneratingPoster}
+                        className={cn(
+                          'relative overflow-hidden group transition-opacity duration-300',
+                          'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white',
+                        )}
+                      >
+                        {isGeneratingPoster && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        {isGeneratingPoster ?
+                          'Generating...'
+                          : 'Generate Poster'}
+                      </Button>
+                    </div>
+                    {/* Display Prompt-Generated Poster */}
+                    {promptGeneratedPosterPath && (
+                      <div className="mt-4 pt-4 border-t border-dashed">
+                        <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                          <Wand2 className="w-4 h-4 text-pink-500" />{' '}
+                          Prompt-Generated Poster
+                        </h5>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center relative">
+                          {isGeneratingPoster && (
+                            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-white" />
+                            </div>
+                          )}
+                          <Image
+                            src={'/api/static/' + promptGeneratedPosterPath}
+                            alt="Prompt Generated Poster"
+                            width={100}
+                            height={150}
+                            className={cn(
+                              'rounded-md object-cover border transition-opacity duration-300',
+                              isGeneratingPoster ? 'opacity-50' : 'opacity-100',
+                            )}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUseAIImage('poster', 'prompt')}
+                            disabled={
+                              form.getValues('media.poster.originalPath') ===
+                              promptGeneratedPosterPath || isGeneratingPoster
+                            }
+                          >
+                            {(
+                              form.getValues('media.poster.originalPath') ===
+                              promptGeneratedPosterPath
+                            ) ?
+                              'Using This Poster'
+                              : 'Use This Poster'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Add shimmer/loading effect when generating */}
+                    {isGeneratingPoster && !promptGeneratedPosterPath && (
+                      <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-center h-[180px] bg-muted/30 rounded-md relative overflow-hidden">
+                        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-purple-200/30 via-pink-200/30 to-orange-200/30"></div>
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    {/* Display error message if generation failed */}
+                    {!isGeneratingPoster && posterGenerationError && (
+                      <div className="mt-4 pt-4 border-t border-dashed">
+                        <div className="p-3 bg-red-50 text-red-800 rounded-md border border-red-200">
+                          <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
+                            <span className="text-red-500">⚠️</span> Generation Error
+                          </h5>
+                          <p className="text-sm">{posterGenerationError}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </MediaUploadSection>
 
                 <MediaUploadSection
@@ -711,16 +1048,21 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
                   file={mediaFiles.backdrop}
                 >
-                  {/* AI Generated Backdrop Section - Reads from processing status */}
-                  {aiGeneratedBackdropPath && (
-                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20">
+                  {/* --- Initial AI Generated Backdrop --- */}
+                  {initialAiGeneratedBackdropPath && (
+                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20 relative">
+                      <ShineBorder
+                        shineColor={['#A07CFE', '#FE8FB5', '#FFBE7B']}
+                      />{' '}
+                      {/* Corrected prop name */}
                       <h4 className="font-medium flex items-center gap-2">
-                        <Wand2 className="w-4 h-4" /> AI Generated Backdrop
+                        <Wand2 className="w-4 h-4 text-purple-500" /> Initially
+                        Generated Backdrop
                       </h4>
                       <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <Image
-                          src={aiGeneratedBackdropPath} // Use derived path
-                          alt="AI Generated Backdrop"
+                          src={'/api/static/' + initialAiGeneratedBackdropPath}
+                          alt="Initially Generated Backdrop"
                           width={200}
                           height={112}
                           className="rounded-md object-cover border"
@@ -729,14 +1071,152 @@ export default function EditMoviePage({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUseAIImage('backdrop')} // Pass only type
-                          disabled={form.getValues('media.backdrop.originalPath') === aiGeneratedBackdropPath}
+                          onClick={() =>
+                            handleUseAIImage('backdrop', 'initial')
+                          }
+                          disabled={
+                            form.getValues('media.backdrop.originalPath') ===
+                            initialAiGeneratedBackdropPath
+                          }
                         >
-                          {form.getValues('media.backdrop.originalPath') === aiGeneratedBackdropPath ? 'Using AI Backdrop' : 'Use AI Backdrop'}
+                          {(
+                            form.getValues('media.backdrop.originalPath') ===
+                            initialAiGeneratedBackdropPath
+                          ) ?
+                            'Using Initial AI Backdrop'
+                            : 'Use Initial AI Backdrop'}
                         </Button>
                       </div>
                     </div>
                   )}
+
+                  {/* --- Prompt-Based Backdrop Generation --- */}
+                  <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
+                    <ShineBorder
+                      shineColor={['#A07CFE', '#FE8FB5', '#FFBE7B']}
+                    />{' '}
+                    {/* Corrected prop name */}
+                    <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 w-fit">
+                      <SparkelIcon /> Generate Backdrop with AI Prompt
+                    </h4>
+                    {/* Replaced FormItem/Label/Control with div/Label */}
+                    <div className="space-y-2">
+                      <Label htmlFor="backdrop-prompt">Backdrop Prompt</Label>
+                      <Textarea
+                        id="backdrop-prompt"
+                        placeholder="e.g., A vast futuristic cityscape at sunset, wide angle, cinematic..."
+                        value={backdropPrompt}
+                        onChange={(e) => setBackdropPrompt(e.target.value)}
+                        className="min-h-[80px] bg-background/80 backdrop-blur-sm"
+                        disabled={isGeneratingBackdrop}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSuggestPrompt('backdrop')}
+                        disabled={!canSuggestPrompt || isGeneratingBackdrop}
+                        className="relative overflow-hidden group transition-opacity duration-300"
+                      >
+                        <span
+                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="absolute inset-0 bg-background rounded-[5px] z-[-1] group-hover:opacity-90 transition-opacity duration-300"
+                          aria-hidden="true"
+                        ></span>
+                        <span className="relative z-10 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Suggest
+                        </span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleGenerateImage('backdrop')}
+                        disabled={!backdropPrompt || isGeneratingBackdrop}
+                        className={cn(
+                          'relative overflow-hidden group transition-opacity duration-300',
+                          'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white',
+                        )}
+                      >
+                        {isGeneratingBackdrop && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        {isGeneratingBackdrop ?
+                          'Generating...'
+                          : 'Generate Backdrop'}
+                      </Button>
+                    </div>
+                    {/* Display Prompt-Generated Backdrop */}
+                    {promptGeneratedBackdropPath && (
+                      <div className="mt-4 pt-4 border-t border-dashed">
+                        <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                          <Wand2 className="w-4 h-4 text-pink-500" />{' '}
+                          Prompt-Generated Backdrop
+                        </h5>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center relative">
+                          {isGeneratingBackdrop && (
+                            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                              <Loader2 className="h-8 w-8 animate-spin text-white" />
+                            </div>
+                          )}
+                          <Image
+                            src={promptGeneratedBackdropPath}
+                            alt="Prompt Generated Backdrop"
+                            width={200}
+                            height={112}
+                            className={cn(
+                              'rounded-md object-cover border transition-opacity duration-300',
+                              isGeneratingBackdrop ? 'opacity-50' : (
+                                'opacity-100'
+                              ),
+                            )}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleUseAIImage('backdrop', 'prompt')
+                            }
+                            disabled={
+                              form.getValues('media.backdrop.originalPath') ===
+                              promptGeneratedBackdropPath ||
+                              isGeneratingBackdrop
+                            }
+                          >
+                            {(
+                              form.getValues('media.backdrop.originalPath') ===
+                              promptGeneratedBackdropPath
+                            ) ?
+                              'Using This Backdrop'
+                              : 'Use This Backdrop'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Add shimmer/loading effect when generating */}
+                    {isGeneratingBackdrop && !promptGeneratedBackdropPath && (
+                      <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-center h-[140px] bg-muted/30 rounded-md relative overflow-hidden">
+                        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-purple-200/30 via-pink-200/30 to-orange-200/30"></div>
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    {/* Display error message if generation failed */}
+                    {!isGeneratingBackdrop && backdropGenerationError && (
+                      <div className="mt-4 pt-4 border-t border-dashed">
+                        <div className="p-3 bg-red-50 text-red-800 rounded-md border border-red-200">
+                          <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
+                            <span className="text-red-500">⚠️</span> Generation Error
+                          </h5>
+                          <p className="text-sm">{backdropGenerationError}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </MediaUploadSection>
 
                 <AiSuggestions

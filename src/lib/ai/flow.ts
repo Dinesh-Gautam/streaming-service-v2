@@ -76,7 +76,7 @@ export const AiImageResponseSchema = z.object({
 
 const sourceLangCode = 'en';
 
-const ai = genkit({
+export const ai = genkit({
   plugins: [vertexAI({ location: 'us-central1', projectId: '' })],
 });
 
@@ -154,7 +154,10 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
         temperature: 0.2, // Allow for some creativity in prompt generation
       },
       output: {
-        format: 'text',
+        schema: z.object({
+          prompt: z.string().describe('Generated image prompt.'),
+        }),
+        format: 'json',
       },
     });
 

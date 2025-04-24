@@ -24,6 +24,7 @@ import {
 } from '@/server/db/schemas/media-processing';
 import { Movie } from '@/server/db/schemas/movie';
 import { GenerateMovieImagesFlow } from '@/lib/ai/flow'; // Import the new flow
+import { generateImageWithPrompt } from '@/lib/ai/images';
 
 await dbConnect();
 
@@ -400,5 +401,22 @@ export async function applyAISuggestions(
       success: false,
       message: `Error applying AI suggestions: ${error.message}`,
     };
+  }
+}
+
+export async function generateAIImagesWithPrompt(
+  prompt: string,
+  type: 'poster' | 'backdrop',
+) {
+  try {
+    console.log('[Action] Generating AI images with prompt:', prompt, 'of type:', type);
+    const { success, path, id } = await generateImageWithPrompt(prompt, {
+      type,
+    });
+
+    return { success, path, id };
+  } catch (error) {
+    console.error('Error generating AI images:', error);
+    return { success: false, error: error };
   }
 }
