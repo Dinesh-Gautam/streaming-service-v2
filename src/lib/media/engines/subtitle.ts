@@ -310,7 +310,7 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
       const combinedError =
         Object.keys(translationErrors).length > 0 ?
           `${errorMessage}. Non-fatal translation errors occurred before this: ${JSON.stringify(translationErrors)}`
-          : errorMessage;
+        : errorMessage;
       return { success: false, error: combinedError }; // Return fatal error status
     } finally {
       // --- 6. Cleanup temporary audio file ---
@@ -349,7 +349,10 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
   private async _transcribeAudio(audioPath: string): Promise<any> {
     try {
       // Read from temp.json instead of transcribing
-      const jsonData = await fs.promises.readFile('temp_transcoding.json', 'utf8');
+      const jsonData = await fs.promises.readFile(
+        'temp_transcoding.json',
+        'utf8',
+      );
       return JSON.parse(jsonData);
 
       const audioBuffer = await fs.promises.readFile(audioPath);
@@ -467,6 +470,7 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
       const response: any = JSON.parse(
         await fs.promises.readFile('temp_translations.json', 'utf-8'),
       );
+
       // await fs.promises.writeFile(
       //   'temp_translations.json',
       //   JSON.stringify(response, null, 2),

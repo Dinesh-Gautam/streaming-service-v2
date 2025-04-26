@@ -307,7 +307,7 @@ export default function EditMoviePage({
             const message =
               typeof res === 'object' && res !== null && 'message' in res ?
                 res.message
-              : 'Unknown error';
+                : 'Unknown error';
             showToast(
               'Upload Failed',
               `${type} upload failed: ${message}`,
@@ -420,12 +420,12 @@ export default function EditMoviePage({
       path =
         type === 'poster' ?
           initialAiGeneratedPosterPath
-        : initialAiGeneratedBackdropPath;
+          : initialAiGeneratedBackdropPath;
     } else {
       path =
         type === 'poster' ?
           promptGeneratedPosterPath
-        : promptGeneratedBackdropPath;
+          : promptGeneratedBackdropPath;
     }
 
     if (path) {
@@ -505,7 +505,7 @@ export default function EditMoviePage({
     const transition =
       type === 'poster' ?
         startPosterGenerationTransition
-      : startBackdropGenerationTransition;
+        : startBackdropGenerationTransition;
 
     transition(async () => {
       showToast(
@@ -546,7 +546,7 @@ export default function EditMoviePage({
           const errorMsg =
             result.error ?
               String(result.error)
-            : `Failed to generate ${type} due to an unknown error`;
+              : `Failed to generate ${type} due to an unknown error`;
           console.error(`Failed to generate ${type}:`, errorMsg);
           if (type === 'poster') {
             setPosterGenerationError(errorMsg);
@@ -603,7 +603,7 @@ export default function EditMoviePage({
                   Fill in the information below to{' '}
                   {isNewMovie ?
                     'create a new movie entry'
-                  : "update the movie's information"}
+                    : "update the movie's information"}
                   .
                 </CardDescription>
               </CardHeader>
@@ -838,9 +838,9 @@ export default function EditMoviePage({
                         >
                           {processingStatus.jobStatus === 'failed' ?
                             'Retry Processing'
-                          : 'Start Processing'}
+                            : 'Start Processing'}
                         </Button>
-                      : null}
+                        : null}
 
                       {processingStatus.jobExists && (
                         <SegmentedProgressBar
@@ -864,7 +864,7 @@ export default function EditMoviePage({
                           >
                             {isCopied ?
                               <Check className="h-4 w-4 mr-1" />
-                            : <Copy className="h-4 w-4 mr-1" />}
+                              : <Copy className="h-4 w-4 mr-1" />}
                             {isCopied ? 'Copied' : 'Copy URL'}
                           </Button>
                         </div>
@@ -894,11 +894,12 @@ export default function EditMoviePage({
                       </h4>
                       <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <Image
-                          src={initialAiGeneratedPosterPath}
+                          src={'/api/static/' + initialAiGeneratedPosterPath}
                           alt="Initially Generated Poster"
                           width={100}
                           height={150}
                           className="rounded-md object-cover border"
+                          unoptimized
                         />
                         <Button
                           type="button"
@@ -915,7 +916,7 @@ export default function EditMoviePage({
                             initialAiGeneratedPosterPath
                           ) ?
                             'Using Initial AI Poster'
-                          : 'Use Initial AI Poster'}
+                            : 'Use Initial AI Poster'}
                         </Button>
                       </div>
                     </div>
@@ -976,7 +977,7 @@ export default function EditMoviePage({
                         )}
                         {isGeneratingPoster ?
                           'Generating...'
-                        : 'Generate Poster'}
+                          : 'Generate Poster'}
                       </Button>
                     </div>
                     {/* Display Prompt-Generated Poster */}
@@ -1009,7 +1010,7 @@ export default function EditMoviePage({
                             onClick={() => handleUseAIImage('poster', 'prompt')}
                             disabled={
                               form.getValues('media.poster.originalPath') ===
-                                promptGeneratedPosterPath || isGeneratingPoster
+                              promptGeneratedPosterPath || isGeneratingPoster
                             }
                           >
                             {(
@@ -1017,7 +1018,7 @@ export default function EditMoviePage({
                               promptGeneratedPosterPath
                             ) ?
                               'Using This Poster'
-                            : 'Use This Poster'}
+                              : 'Use This Poster'}
                           </Button>
                         </div>
                       </div>
@@ -1072,6 +1073,7 @@ export default function EditMoviePage({
                           width={200}
                           height={112}
                           className="rounded-md object-cover border"
+                          unoptimized
                         />
                         <Button
                           type="button"
@@ -1090,7 +1092,7 @@ export default function EditMoviePage({
                             initialAiGeneratedBackdropPath
                           ) ?
                             'Using Initial AI Backdrop'
-                          : 'Use Initial AI Backdrop'}
+                            : 'Use Initial AI Backdrop'}
                         </Button>
                       </div>
                     </div>
@@ -1151,7 +1153,7 @@ export default function EditMoviePage({
                         )}
                         {isGeneratingBackdrop ?
                           'Generating...'
-                        : 'Generate Backdrop'}
+                          : 'Generate Backdrop'}
                       </Button>
                     </div>
                     {/* Display Prompt-Generated Backdrop */}
@@ -1188,7 +1190,7 @@ export default function EditMoviePage({
                             }
                             disabled={
                               form.getValues('media.backdrop.originalPath') ===
-                                promptGeneratedBackdropPath ||
+                              promptGeneratedBackdropPath ||
                               isGeneratingBackdrop
                             }
                           >
@@ -1197,7 +1199,7 @@ export default function EditMoviePage({
                               promptGeneratedBackdropPath
                             ) ?
                               'Using This Backdrop'
-                            : 'Use This Backdrop'}
+                              : 'Use This Backdrop'}
                           </Button>
                         </div>
                       </div>
@@ -1225,6 +1227,7 @@ export default function EditMoviePage({
                 </MediaUploadSection>
 
                 <AiSuggestions
+                  isNewMovie={isNewMovie}
                   tasks={processingStatus.tasks}
                   form={form}
                   movieId={id}
@@ -1257,6 +1260,7 @@ export default function EditMoviePage({
 }
 
 interface AiSuggestionsProps {
+  isNewMovie: boolean;
   tasks: MediaProcessingStatus['tasks'];
   form: UseFormReturn<z.infer<typeof formSchema>>;
   movieId: string;
@@ -1270,6 +1274,7 @@ interface AiSuggestionsProps {
 }
 
 function AiSuggestions({
+  isNewMovie,
   tasks,
   form,
   movieId,
@@ -1287,7 +1292,7 @@ function AiSuggestions({
   const aiOutput =
     aiTask?.output && 'data' in aiTask.output ?
       (aiTask.output as AIEngineOutput)
-    : null;
+      : null;
 
   if (!aiOutput?.data) return null; // Return early if no AI task or data
 
@@ -1318,6 +1323,11 @@ function AiSuggestions({
         });
         form.setValue('genres', genres);
         form.setValue('isAIGenerated', true);
+
+        if (isNewMovie) {
+          setApplied(true)
+          return
+        }
 
         const result = await applyAISuggestions(movieId, {
           title,
@@ -1408,15 +1418,15 @@ function AiSuggestions({
               <span className="relative z-10 flex items-center gap-2">
                 {isApplying ?
                   'Applying...'
-                : isApplied ?
-                  <>
-                    {' '}
-                    <Check className="h-4 w-4" /> Applied{' '}
-                  </>
-                : <>
-                    {' '}
-                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
-                  </>
+                  : isApplied ?
+                    <>
+                      {' '}
+                      <Check className="h-4 w-4" /> Applied{' '}
+                    </>
+                    : <>
+                      {' '}
+                      <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                    </>
                 }
               </span>
             </Button>

@@ -134,7 +134,7 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
     const promptGenerator = await ai.generate({
       model: gemini20Flash001,
       prompt: `Based on the following movie details, create a concise and evocative prompt suitable for an AI image generator. The prompt should capture the essence, mood, and visual style implied by the title, description, and genres. it is very important that the prompt should not offend any one wether it is an organization or a person. the prompt should not contain any name of person, organization. the prompt should not mention generation of any person.
-     
+
 
       Title: ${input.title}
       Description: ${input.description}
@@ -175,13 +175,7 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
     // Define target directory for saving images (relative to project root)
     // Ensure this directory exists and is writable by the server process.
     // It should also be accessible via a static file server if you plan to serve them directly.
-    const outputDir = path.join(
-      process.cwd(),
-      'public',
-      'uploads',
-      'ai-generated',
-      input.movieId,
-    );
+    const outputDir = path.join(process.cwd(), 'tmp', 'ai-generated');
     await fs.mkdir(outputDir, { recursive: true }); // Ensure directory exists
 
     let posterImagePath: string | undefined = undefined;
@@ -190,21 +184,37 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
     // Generate Poster Image
     try {
       console.log('[GenerateMovieImagesFlow] Generating Poster Image...');
-      const { media: posterImage } = await ai.generate({
-        model: imagen3, // Use for image generation
-        prompt: `${imagePrompt} - movie poster style, cinematic, high quality`,
-        config: {
-          temperature: 0.3,
-          // mumbai
-          location: 'asia-south1',
-          aspectRatio: '9:16',
-          language: 'en',
-          safetySetting: 'block_few',
-        },
-        output: {
-          format: 'media', // Expecting image data
-        },
-      });
+      // const { media: posterImage } = await ai.generate({
+      //   model: imagen3, // Use for image generation
+      //   prompt: `${imagePrompt} - movie poster style, cinematic, high quality`,
+      //   config: {
+      //     temperature: 0.3,
+      //     // mumbai
+      //     location: 'asia-south1',
+      //     aspectRatio: '9:16',
+      //     language: 'en',
+      //     safetySetting: 'block_few',
+      //   },
+      //   output: {
+      //     format: 'media', // Expecting image data
+      //   },
+      // });
+
+      //todo: remove this
+      let posterImage: any = await fs.readFile(
+        path.join(
+          process.cwd(),
+          'public',
+          'uploads',
+          'ai-generated',
+          'poster-66cc3214-783b-4232-a14d-b3fa789cdfc5.png',
+        ),
+      );
+
+      // covert buffer to data url
+      posterImage = {
+        url: `data:image/png;base64,${posterImage.toString('base64')}`,
+      };
 
       if (!posterImage) {
         throw new Error('Failed to generate poster image.');
@@ -220,8 +230,10 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
         await fs.writeFile(fullPosterPath, posterImageData.body);
         // Store path relative to the 'public' directory for web access
         posterImagePath = path
-          .join('/', 'uploads', 'ai-generated', input.movieId, posterFilename) // Prepend '/' for root-relative path
-          .replace(/\\/g, '/'); // Ensure forward slashes for URL
+          .join('tmp', 'ai-generated', posterFilename) // Prepend '/' for root-relative path
+          .replace(/\\/g, '/') // Ensure forward slashes for URL
+          .replaceAll('tmp', '');
+
         console.log(
           '[GenerateMovieImagesFlow] Poster image saved to:',
           fullPosterPath, // Log the actual file path
@@ -243,24 +255,40 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
 
     // Generate Backdrop Image
     try {
-      console.log('[GenerateMovieImagesFlow] Generating Backdrop Image...');
-      const { media: backdropImage } = await ai.generate({
-        model: imagen3, // Use for image generation
-        prompt: `${imagePrompt} - cinematic wide aspect ratio movie backdrop style, high quality`,
-        config: {
-          temperature: 0.3,
-          aspectRatio: '16:9',
-          language: 'en',
-          safetySetting: 'block_few',
-        },
-        output: {
-          format: 'media',
-        },
-      });
+      // console.log('[GenerateMovieImagesFlow] Generating Backdrop Icmage...');
+      // const { media: backdropImage } = await ai.generate({
+      //   model: imagen3, // Use for image generation
+      //   prompt: `${imagePrompt} - cinematic wide aspect ratio movie backdrop style, high quality`,
+      //   config: {
+      //     temperature: 0.3,
+      //     aspectRatio: '16:9',
+      //     language: 'en',
+      //     safetySetting: 'block_few',
+      //   },
+      //   output: {
+      //     format: 'media',
+      //   },
+      // });
 
-      if (!backdropImage) {
-        throw new Error('Failed to generate backdrop image.');
-      }
+      // if (!backdropImage) {
+      //   throw new Error('Failed to generate backdrop image.');
+      // }
+
+      //todo: remove this
+      let backdropImage: any = await fs.readFile(
+        path.join(
+          process.cwd(),
+          'public',
+          'uploads',
+          'ai-generated',
+          'backdrop-76d5faa1-6af3-4467-9b61-74d42aa8ff61.png',
+        ),
+      );
+
+      // covert buffer to data url
+      backdropImage = {
+        url: `data:image/png;base64,${backdropImage.toString('base64')}`,
+      };
 
       const backdropImageData = parseDataURL(backdropImage.url);
       if (backdropImageData) {
@@ -270,8 +298,9 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
 
         await fs.writeFile(fullBackdropPath, backdropImageData.body);
         backdropImagePath = path
-          .join('/', 'uploads', 'ai-generated', input.movieId, backdropFilename) // Prepend '/' for root-relative path
-          .replace(/\\/g, '/'); // Ensure forward slashes for URL
+          .join('tmp', 'ai-generated', backdropFilename) // Prepend '/' for root-relative path
+          .replace(/\\/g, '/') // Ensure forward slashes for URL
+          .replaceAll('tmp', '');
         console.log(
           '[GenerateMovieImagesFlow] Backdrop image saved to:',
           fullBackdropPath, // Log the actual file path

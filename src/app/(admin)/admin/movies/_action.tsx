@@ -8,7 +8,7 @@ import { join } from 'path';
 
 import { z } from 'zod';
 
-import { type Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
+import { generateImageWithPrompt } from '@/lib/ai/images';
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
 import { AIEngine } from '@/lib/media/engines/ai-engine'; // Import the new AI Engine
 import { SubtitleEngine } from '@/lib/media/engines/subtitle';
@@ -23,8 +23,6 @@ import {
   type IMediaProcessingTask,
 } from '@/server/db/schemas/media-processing';
 import { Movie } from '@/server/db/schemas/movie';
-import { GenerateMovieImagesFlow } from '@/lib/ai/flow'; // Import the new flow
-import { generateImageWithPrompt } from '@/lib/ai/images';
 
 await dbConnect();
 
@@ -147,7 +145,7 @@ export async function processVideo(
 
     // Instantiate engines
     // const thumbnailEngine = new ThumbnailEngine();
-    // const transcodingEngine = new TranscodingEngine()
+    // const transcodingEngine = new TranscodingEngine();
     const subtitleEngine = new SubtitleEngine({
       sourceLanguage: 'en', // Specify source language
       targetLanguages: ['hi', 'pa'], // Specify target languages
@@ -255,7 +253,8 @@ export async function getMediaProcessingJob(
         progress: task.progress || 0,
         error: task.errorMessage || undefined,
         // Ensure output is included and is serializable
-        output: task.output ? JSON.parse(JSON.stringify(task.output)) : undefined,
+        output:
+          task.output ? JSON.parse(JSON.stringify(task.output)) : undefined,
       }));
 
       result[job.mediaId] = {
@@ -267,11 +266,7 @@ export async function getMediaProcessingJob(
 
     return result;
   } catch (error: any) {
-    console.error(
-      '[Action] Error fetching media processing jobs:',
-      ids,
-      error,
-    );
+    console.error('[Action] Error fetching media processing jobs:', ids, error);
     // Return default pending status on error
     const errorResult: { [key: string]: MediaProcessingStatus } = {};
     ids.forEach((id) => {
@@ -309,26 +304,29 @@ export async function saveMovieData(
       isAIGenerated: validatedData.isAIGenerated || false, // Default to false if undefined
       // Ensure media paths are correctly structured and saved
       media: {
-        video: validatedData.media?.video
-          ? {
-            id: validatedData.media.video.id,
-            originalPath: validatedData.media.video.originalPath,
-          }
-          : undefined,
-        poster: validatedData.media?.poster
-          ? {
-            id: validatedData.media.poster.id,
-            originalPath: validatedData.media.poster.originalPath,
-            aiGeneratedPath: validatedData.media.poster.aiGeneratedPath,
-          }
-          : undefined,
-        backdrop: validatedData.media?.backdrop
-          ? {
-            id: validatedData.media.backdrop.id,
-            originalPath: validatedData.media.backdrop.originalPath,
-            aiGeneratedPath: validatedData.media.backdrop.aiGeneratedPath,
-          }
-          : undefined,
+        video:
+          validatedData.media?.video ?
+            {
+              id: validatedData.media.video.id,
+              originalPath: validatedData.media.video.originalPath,
+            }
+            : undefined,
+        poster:
+          validatedData.media?.poster ?
+            {
+              id: validatedData.media.poster.id,
+              originalPath: validatedData.media.poster.originalPath,
+              aiGeneratedPath: validatedData.media.poster.aiGeneratedPath,
+            }
+            : undefined,
+        backdrop:
+          validatedData.media?.backdrop ?
+            {
+              id: validatedData.media.backdrop.id,
+              originalPath: validatedData.media.backdrop.originalPath,
+              aiGeneratedPath: validatedData.media.backdrop.aiGeneratedPath,
+            }
+            : undefined,
       },
       // Add other fields as necessary
     };
@@ -383,6 +381,13 @@ export async function applyAISuggestions(
     genres: string[];
   },
 ) {
+  if (!movieId) {
+    return {
+      success: false,
+      message: 'No movie ID provided',
+    };
+  }
+
   try {
     await dbConnect(); // Ensure DB connection
     const updateData = {
@@ -409,7 +414,12 @@ export async function generateAIImagesWithPrompt(
   type: 'poster' | 'backdrop',
 ) {
   try {
-    console.log('[Action] Generating AI images with prompt:', prompt, 'of type:', type);
+    console.log(
+      '[Action] Generating AI images with prompt:',
+      prompt,
+      'of type:',
+      type,
+    );
     const { success, path, id } = await generateImageWithPrompt(prompt, {
       type,
     });
