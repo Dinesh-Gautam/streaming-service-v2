@@ -115,8 +115,6 @@ export async function getOriginalMovieDetail(id: string): Promise<
         }
 
         if (task.engine === 'ThumbnailEngine') {
-          const thumbnailOutput = task.output as ThumbnailOutput;
-
           return {
             ...acc,
             thumbnailUrl: `/api/static/playback/${mediaId}/thumbnails.vtt`,
@@ -131,11 +129,20 @@ export async function getOriginalMovieDetail(id: string): Promise<
         }
 
         if (task.engine === 'AIEngine') {
-          // const aiOutput = task.output as AIEngineOutput;
+          const aiOutput = task.output as AIEngineOutput;
+          const subtitles = aiOutput.data.subtitles;
+
+          const paths = subtitles?.vttPaths;
 
           return {
             ...acc,
             chaptersUrl: `/api/static/playback/${mediaId}/${mediaId}.chapters.vtt`,
+            ...(paths && {
+              subtitles: Object.entries(paths).map(([language, path]) => ({
+                language,
+                url: `/api/static/playback/${mediaId}/${mediaId}.${language}.ai.vtt`,
+              })),
+            }),
           };
         }
 

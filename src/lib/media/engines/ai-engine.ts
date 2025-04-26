@@ -8,12 +8,12 @@ import * as path from 'path';
 import { z } from 'zod'; // Using Zod for parsing the structured output
 
 import {
-  AiResponseSchema,
-  AnalyzeSubtitlesFlow,
+  AiVideoAnalysisResponseSchema,
   GenerateMovieImagesFlow,
+  VideoAnalysisFlow,
 } from '@/lib/ai/flow';
 
-import { AIEngineOutput, SubtitleOutput } from '../engine-outputs';
+import { AIEngineOutput, SubtitleOutput } from '../engine-outputs'; // Will need update later
 import { EngineOutput, MediaEngine } from '../media-engine';
 
 // Interface for options passed to the AI Engine's process method
@@ -21,7 +21,30 @@ interface AIEngineProcessOptions {
   subtitleOutput?: SubtitleOutput;
 }
 
-type AiResponseType = z.infer<typeof AiResponseSchema>;
+// Define the structure for a single subtitle entry from the AI response
+// Based on src/lib/ai/flow.ts AiVideoAnalysisResponseSchema.subtities
+type AiSubtitleEntry = {
+  startTimecode: string; // Changed from startTime: number
+  endTimecode: string; // Changed from endTime: number
+  text: string;
+  voiceGender: 'male' | 'female';
+  voiceType: 'neutral' | 'angry' | 'happy';
+};
+
+// Define the structure for the subtitles object from the AI response
+type AiSubtitlesData = {
+  [langCode: string]: AiSubtitleEntry[];
+};
+
+// Define the structure for the chapters array from the AI response
+type AiChaptersData = {
+  timecode: string; // Changed from startTime: number
+  chapterTitle: string;
+}[];
+
+type AiVideoAnalysisResponseType = z.infer<
+  typeof AiVideoAnalysisResponseSchema
+>;
 
 // Specify the output type for this engine
 export class AIEngine extends MediaEngine<AIEngineOutput> {
@@ -52,31 +75,9 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
       return { success: false, error: errorMsg };
     }
 
-    // --- Input Validation ---
-    const subtitleOutput = options?.subtitleOutput;
-    if (
-      !subtitleOutput?.paths?.vtt ||
-      Object.keys(subtitleOutput.paths.vtt).length === 0
-    ) {
-      const errorMsg = 'Missing subtitle VTT file paths in input options.';
-      console.error(`[${this.engineName}] ${errorMsg}`);
-      this.fail(errorMsg);
-      return { success: false, error: errorMsg };
-    }
-
-    const vttPaths = subtitleOutput.paths.vtt;
-    const sourceLangCode = Object.keys(vttPaths)[0];
-    const sourceVttPath = vttPaths[sourceLangCode];
-
-    if (!sourceVttPath || !fs.existsSync(sourceVttPath)) {
-      const errorMsg = `Source VTT file not found at path: ${sourceVttPath}`;
-      console.error(`[${this.engineName}] ${errorMsg}`);
-      this.fail(errorMsg);
-      return { success: false, error: errorMsg };
-    }
-
     // Extract movieId from outputDir (assuming outputDir path ends with the ID)
     const movieId = path.basename(outputDir);
+    const baseName = path.parse(inputFile).name; // Get base filename without extension
     if (!movieId) {
       const errorMsg = `Could not determine movieId from outputDir: ${outputDir}`;
       console.error(`[${this.engineName}] ${errorMsg}`);
@@ -86,49 +87,31 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     console.log(`[${this.engineName}] Using movieId: ${movieId}`);
 
     try {
-      // --- Read VTT Content ---
+      // --- Call Genkit Generate for Video Analysis ---
       console.log(
-        `[${this.engineName}] Reading VTT content from: ${sourceVttPath}`,
-      );
-      let vttContent = await fs.promises.readFile(sourceVttPath, 'utf-8');
-      this.updateProgress({ percent: 10 });
-
-      // --- Basic VTT Cleaning (Optional but recommended) ---
-      // Remove VTT header and empty lines to reduce token count
-      vttContent = vttContent
-        .replace(/^WEBVTT\s*/, '')
-        .replace(/^\s*[\r\n]/gm, '');
-      // Consider further cleaning/chunking if VTT is very large
-
-      // --- Call Genkit Generate for Text Analysis ---
-      console.log(
-        `[${this.engineName}] Sending subtitle analysis request to Gemini...`,
+        `[${this.engineName}] Sending video analysis request to Gemini...`,
       );
       this.updateProgress({ percent: 15 });
 
-      const analysisResult = await AnalyzeSubtitlesFlow({ vttContent });
+      const analysisResult = await VideoAnalysisFlow({
+        videoFilePath: inputFile,
+      });
+
       this.updateProgress({ percent: 40 });
 
-      if (!analysisResult.text) {
-        throw new Error('AI subtitle analysis returned empty or invalid data.');
-      }
-
-      const aiData = JSON.parse(analysisResult.text) as AiResponseType;
+      // --- Parse AI Response ---
+      // Use the inferred type for better type safety
+      const aiData = analysisResult as AiVideoAnalysisResponseType;
       console.log(
-        `[${this.engineName}] Received and parsed AI text analysis response.`,
+        `[${this.engineName}] Received and parsed AI video analysis response.`,
       );
 
-      // --- Construct Chapters VTT (if generated) ---
-      const chaptersVttContent =
-        aiData.chaptersVtt ?
-          this._constructChapters(aiData.chaptersVtt)
-        : undefined;
-
-      if (chaptersVttContent) {
-        const chaptersVttPath = path.join(
-          outputDir,
-          `${path.parse(inputFile).name}.chapters.vtt`,
-        );
+      // --- Construct and Save Chapters VTT (if generated) ---
+      let chaptersVttContent: string | undefined = undefined;
+      let chaptersVttPath: string | undefined = undefined;
+      if (aiData.chaptersVtt && aiData.chaptersVtt.length > 0) {
+        chaptersVttContent = this._constructChaptersVtt(aiData.chaptersVtt);
+        chaptersVttPath = path.join(outputDir, `${baseName}.chapters.vtt`);
         try {
           await fs.promises.writeFile(chaptersVttPath, chaptersVttContent);
           console.log(
@@ -138,11 +121,60 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
           console.warn(
             `[${this.engineName}] Failed to save chapters VTT file: ${writeError.message}`,
           );
+          chaptersVttPath = undefined; // Reset path if saving failed
+          chaptersVttContent = undefined;
         }
       } else {
         console.log(`[${this.engineName}] No chapter VTT generated by AI.`);
       }
-      this.updateProgress({ percent: 50 });
+      this.updateProgress({ percent: 45 });
+
+      // --- Construct and Save Subtitles VTT (if generated) ---
+      const subtitlePaths: Record<string, string> = {}; // Store paths like { 'hi': 'path/to/hi.vtt' }
+      const subtitleSaveErrors: Record<string, string> = {};
+
+      // IMPORTANT: Accessing using the typo 'subtities' from the schema
+      if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
+        console.log(`[${this.engineName}] Processing generated subtitles...`);
+        const languages = Object.keys(aiData.subtities);
+        const totalLangs = languages.length;
+        let langsProcessed = 0;
+
+        for (const langCode of languages) {
+          // Cast langCode to the correct key type
+          const subtitles =
+            aiData.subtities[langCode as keyof typeof aiData.subtities];
+          if (subtitles && subtitles.length > 0) {
+            const vttContent = this._constructSubtitlesVtt(subtitles);
+            const vttPath = path.join(
+              outputDir,
+              `${baseName}.${langCode}.ai.vtt`,
+            );
+            try {
+              await fs.promises.writeFile(vttPath, vttContent);
+              subtitlePaths[langCode] = vttPath;
+              console.log(
+                `[${this.engineName}] Subtitles VTT for '${langCode}' saved to: ${vttPath}`,
+              );
+            } catch (writeError: any) {
+              const errorMsg = `Failed to save subtitles VTT for '${langCode}': ${writeError.message}`;
+              console.warn(`[${this.engineName}] ${errorMsg}`);
+              subtitleSaveErrors[langCode] = errorMsg;
+            }
+          } else {
+            console.log(
+              `[${this.engineName}] No subtitle entries found for language '${langCode}'.`,
+            );
+          }
+          langsProcessed++;
+          // Update progress within the subtitle loop (45% to 60% range)
+          const subtitleProgress = 45 + (langsProcessed / totalLangs) * 15;
+          this.updateProgress({ percent: subtitleProgress });
+        }
+      } else {
+        console.log(`[${this.engineName}] No subtitles generated by AI.`);
+        this.updateProgress({ percent: 60 }); // Skip subtitle progress if none
+      }
 
       // === Step 2: Generate Images (if text analysis succeeded) ===
       let posterImagePath: string | undefined = undefined;
@@ -150,12 +182,14 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
 
       if (aiData.title && aiData.description && aiData.genres) {
         console.log(`[${this.engineName}] Starting AI image generation...`);
+        this.updateProgress({ percent: 65 });
         try {
           const imageResult = await GenerateMovieImagesFlow({
             movieId: movieId,
             title: aiData.title,
             description: aiData.description,
             genres: aiData.genres,
+            imageGenerationPrompt: aiData.imageGenerationPrompt,
           });
           posterImagePath = imageResult.posterImagePath;
           backdropImagePath = imageResult.backdropImagePath;
@@ -166,13 +200,13 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
             `[${this.engineName}] AI image generation failed: ${imageError.message}`,
             imageError,
           );
-          this.updateProgress({ percent: 90 });
+          this.updateProgress({ percent: 90 }); // Still update progress even if images fail
         }
       } else {
         console.warn(
           `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
         );
-        this.updateProgress({ percent: 90 });
+        this.updateProgress({ percent: 90 }); // Skip image gen progress
       }
 
       // === Step 3: Construct Final Output ===
@@ -180,13 +214,22 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         title: aiData.title,
         description: aiData.description,
         genres: aiData.genres,
-        keywords: aiData.keywords,
-        suggestedAgeRating: aiData.suggestedAgeRating,
-        contentWarnings: aiData.contentWarnings,
-        chapters:
-          chaptersVttContent ? { vttContent: chaptersVttContent } : undefined,
+        // These fields are not in AiVideoAnalysisResponseSchema, remove or add to schema
+        // keywords: aiData.keywords,
+        // suggestedAgeRating: aiData.suggestedAgeRating,
+        // contentWarnings: aiData.contentWarnings,
+        chapters: chaptersVttPath ? { vttPath: chaptersVttPath } : undefined, // Store path instead of content
+        // Add the generated subtitle paths
+        subtitles:
+          Object.keys(subtitlePaths).length > 0 ?
+            { vttPaths: subtitlePaths }
+          : undefined,
         posterImagePath: posterImagePath,
         backdropImagePath: backdropImagePath,
+        // Include subtitle saving errors if any occurred
+        ...(Object.keys(subtitleSaveErrors).length > 0 && {
+          subtitleErrors: subtitleSaveErrors,
+        }),
       };
 
       this.updateProgress({ percent: 100 });
@@ -216,25 +259,103 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     }
   }
 
-  private _constructChapters(
-    chaptersVtt: NonNullable<AiResponseType['chaptersVtt']>,
-  ): string {
-    const vttContent = chaptersVtt.map((chapter, index) => {
-      return `${this._formatVttTime(chapter.startTime)} --> ${chaptersVtt[index + 1] ? this._formatVttTime(chaptersVtt[index + 1].startTime - 1) : 'end'}\n${chapter.chapterTitle}\n\n`;
-    });
+  // --- VTT Generation Helpers ---
 
-    vttContent.unshift('WEBVTT\n\n');
+  private _constructChaptersVtt(chapters: AiChaptersData): string {
+    let vttContent = 'WEBVTT\n\n';
+    // Sort chapters by timecode after converting to seconds
+    chapters.sort(
+      (a, b) =>
+        this._timecodeToSeconds(a.timecode) -
+        this._timecodeToSeconds(b.timecode),
+    );
 
-    return vttContent.join('');
+    for (let i = 0; i < chapters.length; i++) {
+      const chapter = chapters[i];
+      const nextChapter = chapters[i + 1];
+      const startTimeFormatted = this._formatVttTime(chapter.timecode); // Use timecode string
+
+      // Determine end time: use next chapter's timecode or add a default duration (e.g., 5 minutes)
+      let endTimeFormattedFinal: string;
+      if (nextChapter) {
+        endTimeFormattedFinal = this._formatVttTime(nextChapter.timecode);
+      } else {
+        // If last chapter, add a default duration (e.g., 5 minutes = 300 seconds)
+        const startSeconds = this._timecodeToSeconds(chapter.timecode);
+        // Need a function to convert seconds back to HH:MM:SS.mmm for the end time
+        endTimeFormattedFinal = this._secondsToVttTime(startSeconds + 300);
+      }
+
+      // Format according to common VTT chapter structure:
+      // Start time --> End time (Next start time or calculated end)
+      // Chapter Title
+      vttContent += `${startTimeFormatted} --> ${endTimeFormattedFinal}\n`;
+      vttContent += `${chapter.chapterTitle}\n\n`;
+    }
+
+    return vttContent;
   }
 
-  private _formatVttTime(seconds: number): string {
-    const date = new Date(0);
-    date.setSeconds(seconds);
-    const hours = date.getUTCHours().toString().padStart(2, '0');
-    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-    const secs = date.getUTCSeconds().toString().padStart(2, '0');
-    const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
+  private _constructSubtitlesVtt(subtitles: AiSubtitleEntry[]): string {
+    let vttContent = 'WEBVTT\n\n';
+
+    for (const sub of subtitles) {
+      if (sub.text.trim() === '') continue; // Skip empty subtitles
+
+      const startTime = this._formatVttTime(sub.startTimecode); // Use startTimecode string
+      const endTime = this._formatVttTime(sub.endTimecode); // Use endTimecode string
+
+      // Basic VTT entry:
+      // StartTime --> EndTime
+      // Text
+      vttContent += `${startTime} --> ${endTime}\n`;
+      vttContent += `${sub.text.trim()}\n\n`;
+
+      // Could add voice info as comments if needed later:
+      // vttContent += `NOTE voice: ${sub.voiceGender}, ${sub.voiceType}\n\n`;
+    }
+
+    return vttContent;
+  }
+
+  // Helper to convert "M:SS" or "H:MM:SS" string to seconds
+  private _timecodeToSeconds(timecode: string): number {
+    const parts = timecode.split(':').map(Number);
+    let seconds = 0;
+    if (parts.length === 3) {
+      // H:MM:SS
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+      // M:SS
+      seconds = parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) {
+      // SS (maybe?)
+      seconds = parts[0];
+    }
+    // Handle potential NaN from parsing
+    return isNaN(seconds) ? 0 : Math.max(0, seconds);
+  }
+
+  // Helper to convert seconds number back to HH:MM:SS.mmm format
+  private _secondsToVttTime(seconds: number): string {
+    const validSeconds = Math.max(0, seconds);
+    const totalMilliseconds = Math.round(validSeconds * 1000);
+
+    const ms = (totalMilliseconds % 1000).toString().padStart(3, '0');
+    const totalSecondsInt = Math.floor(totalMilliseconds / 1000);
+    const secs = (totalSecondsInt % 60).toString().padStart(2, '0');
+    const totalMinutesInt = Math.floor(totalSecondsInt / 60);
+    const minutes = (totalMinutesInt % 60).toString().padStart(2, '0'); // Renamed _minutes
+    const hours = Math.floor(totalMinutesInt / 60)
+      .toString()
+      .padStart(2, '0');
+
     return `${hours}:${minutes}:${secs}.${ms}`;
+  }
+
+  // Main function to format timecode string to VTT time string
+  private _formatVttTime(timecode: string): string {
+    const seconds = this._timecodeToSeconds(timecode);
+    return this._secondsToVttTime(seconds);
   }
 }
