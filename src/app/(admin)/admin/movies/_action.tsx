@@ -155,8 +155,8 @@ export async function processVideo(
     // Instantiate manager with all engines in desired order
     // MediaManager will reorder if AI engine is before Subtitle engine
     const mediaManager = new MediaManager(mediaId, [
-      thumbnailEngine,
-      transcodingEngine,
+      // thumbnailEngine,
+      // transcodingEngine,
       subtitleEngine,
       aiEngine, // Add AI Engine to the list
     ]);

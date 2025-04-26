@@ -1,5 +1,11 @@
+import { exec } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+import { promisify } from 'util';
+
+import TextToSpeech from '@google-cloud/text-to-speech'; // Import Google TTS
+import ffmpeg from 'fluent-ffmpeg'; // Import fluent-ffmpeg
 
 // Genkit Core and Google AI Plugin
 // Assume genkit is configured globally, e.g., in genkit.config.ts
@@ -14,7 +20,11 @@ import {
 } from '@/lib/ai/flow';
 
 import { AIEngineOutput, SubtitleOutput } from '../engine-outputs'; // Will need update later
-import { EngineOutput, MediaEngine } from '../media-engine';
+import {
+  EngineOutput,
+  MediaEngine,
+  MediaEngineProgressDetail,
+} from '../media-engine';
 
 // Interface for options passed to the AI Engine's process method
 interface AIEngineProcessOptions {
@@ -46,11 +56,26 @@ type AiVideoAnalysisResponseType = z.infer<
   typeof AiVideoAnalysisResponseSchema
 >;
 
+const execPromise = promisify(exec); // Promisify exec for async/await usage
+
 // Specify the output type for this engine
 export class AIEngine extends MediaEngine<AIEngineOutput> {
+  private ttsClient: TextToSpeech.TextToSpeechClient;
+
   constructor() {
     super('AIEngine');
-    // Constructor remains minimal, API key checked in process
+    // Initialize TTS Client - ensure GOOGLE_APPLICATION_CREDENTIALS is set
+    try {
+      this.ttsClient = new TextToSpeech.TextToSpeechClient();
+      console.log(`[${this.engineName}] Google TTS Client Initialized.`);
+    } catch (error: any) {
+      console.error(
+        `[${this.engineName}] Failed to initialize Google TTS Client: ${error.message}`,
+      );
+      // Decide how to handle this - maybe throw or set a flag
+      // For now, we'll let it potentially fail later in process()
+      this.ttsClient = null as any; // Assign null if initialization fails
+    }
   }
 
   async process(
@@ -74,6 +99,12 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
       this.fail(errorMsg);
       return { success: false, error: errorMsg };
     }
+    if (!this.ttsClient) {
+      const errorMsg = 'Google TTS Client failed to initialize.';
+      console.error(`[${this.engineName}] ${errorMsg}`);
+      this.fail(errorMsg);
+      return { success: false, error: errorMsg };
+    }
 
     // Extract movieId from outputDir (assuming outputDir path ends with the ID)
     const movieId = path.basename(outputDir);
@@ -85,6 +116,13 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
       return { success: false, error: errorMsg };
     }
     console.log(`[${this.engineName}] Using movieId: ${movieId}`);
+
+    // Create a temporary directory for intermediate audio files
+    const tempAudioDir = await fs.promises.mkdir(
+      path.join('temp/' + `ai-dub-${movieId}-`),
+      { recursive: true },
+    );
+    console.log(`[${this.engineName}] Created temp directory: ${tempAudioDir}`);
 
     try {
       // --- Call Genkit Generate for Video Analysis ---
@@ -208,8 +246,140 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         );
         this.updateProgress({ percent: 90 }); // Skip image gen progress
       }
+      this.updateProgress({ percent: 90 }); // Progress after image gen attempt
 
-      // === Step 3: Construct Final Output ===
+      // === Step 3: Audio Dubbing ===
+      let dubbedAudioPaths: Record<string, string> = {};
+      let audioProcessingErrors: Record<string, string> = {};
+      const originalAudioPath = path.join(
+        tempAudioDir,
+        `${baseName}_original.wav`,
+      );
+      const instrumentalAudioPath = path.join(
+        tempAudioDir,
+        `${baseName}_original_Instruments.wav`, // Vocal remover output name convention
+      );
+      const vocalAudioPath = path.join(
+        tempAudioDir,
+        `${baseName}_original_Vocals.wav`, // Vocal remover output name convention
+      );
+
+      try {
+        // 3.1 Extract Original Audio (as WAV for vocal remover)
+        console.log(`[${this.engineName}] Extracting original audio...`);
+        this.updateProgress({ message: 'Extracting audio' });
+        await this._extractAudio(inputFile, originalAudioPath);
+        console.log(
+          `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
+        );
+        this.updateProgress({ percent: 91, message: 'Removing vocals' });
+
+        // 3.2 Remove Vocals
+        console.log(`[${this.engineName}] Removing vocals...`);
+        const binDir = path.resolve('bin'); // Absolute path to bin directory
+        const vocalRemoverExe = 'vocal_remover.exe'; // Executable name
+        const absoluteInputAudioPath = path.resolve(originalAudioPath); // Absolute path to input audio
+        const absoluteOutputDir = path.resolve(tempAudioDir); // Absolute path to temp output dir
+
+        // Construct the command to be run *from* the bin directory
+        // Use relative path for the model, absolute paths for input/output
+        const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
+
+        console.log(
+          `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
+        );
+        // Set CWD to the bin directory for execution
+        await this._runCommand(vocalRemoverCommand, binDir);
+        console.log(
+          `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
+        );
+
+        // Check if instrumental file exists
+        try {
+          await fs.promises.access(instrumentalAudioPath);
+        } catch (accessError) {
+          throw new Error(
+            `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
+          );
+        }
+        this.updateProgress({ percent: 93, message: 'Generating TTS' });
+
+        // 3.3 Generate TTS and Merge for each language
+        if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
+          const languages = Object.keys(
+            aiData.subtities,
+          ) as (keyof typeof aiData.subtities)[];
+          const totalLangs = languages.length;
+          let langsProcessed = 0;
+
+          for (const langCode of languages) {
+            const langSubtitles = aiData.subtities[langCode];
+            if (langSubtitles && langSubtitles.length > 0) {
+              console.log(
+                `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
+              );
+              const langProgressStart = 93 + (langsProcessed / totalLangs) * 6; // Allocate 6% total for dubbing (93-99)
+              this.updateProgress({
+                percent: langProgressStart,
+                message: `Dubbing ${langCode}`,
+              });
+
+              try {
+                const finalDubbedPath = path.join(
+                  outputDir,
+                  `${baseName}.${langCode}.dubbed.mp3`, // Save final dubbed audio in outputDir
+                );
+                await this._generateDubbedAudio(
+                  instrumentalAudioPath,
+                  langSubtitles,
+                  langCode,
+                  tempAudioDir, // Use temp dir for intermediate files
+                  finalDubbedPath, // Specify final output path
+                  (detail) =>
+                    this.updateProgress({
+                      ...detail, // Pass message through
+                      percent: langProgressStart + (detail.percent ?? 0) * 0.06, // Scale lang progress within its 6% slot
+                    }),
+                );
+                dubbedAudioPaths[langCode] = finalDubbedPath;
+                console.log(
+                  `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
+                );
+              } catch (dubError: any) {
+                const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
+                console.error(`[${this.engineName}] ${errorMsg}`, dubError);
+                audioProcessingErrors[langCode] = errorMsg;
+              }
+            }
+            langsProcessed++;
+          }
+        } else {
+          console.log(`[${this.engineName}] No subtitles found for dubbing.`);
+        }
+      } catch (audioError: any) {
+        const errorMsg = `Audio processing failed: ${audioError.message}`;
+        console.error(`[${this.engineName}] ${errorMsg}`, audioError);
+        // Store a general audio processing error if specific language errors didn't cover it
+        if (Object.keys(audioProcessingErrors).length === 0) {
+          audioProcessingErrors['general'] = errorMsg;
+        }
+      } finally {
+        // Clean up temporary directory
+        try {
+          console.log(
+            `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
+          );
+          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
+          console.log(`[${this.engineName}] Temporary directory removed.`);
+        } catch (cleanupError: any) {
+          console.warn(
+            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
+          );
+        }
+      }
+      this.updateProgress({ percent: 99, message: 'Finalizing' });
+
+      // === Step 4: Construct Final Output ===
       const outputData: AIEngineOutput['data'] = {
         title: aiData.title,
         description: aiData.description,
@@ -231,6 +401,13 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
           subtitleErrors: subtitleSaveErrors,
         }),
       };
+      // Add dubbed audio paths and any errors to the output
+      if (Object.keys(dubbedAudioPaths).length > 0) {
+        outputData.dubbedAudioPaths = dubbedAudioPaths;
+      }
+      if (Object.keys(audioProcessingErrors).length > 0) {
+        outputData.audioProcessingErrors = audioProcessingErrors;
+      }
 
       this.updateProgress({ percent: 100 });
       console.log(`[${this.engineName}] AI processing completed successfully.`);
@@ -357,5 +534,285 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
   private _formatVttTime(timecode: string): string {
     const seconds = this._timecodeToSeconds(timecode);
     return this._secondsToVttTime(seconds);
+  }
+
+  // --- Audio Processing Helpers ---
+
+  private async _runCommand(
+    command: string,
+    cwd?: string,
+  ): Promise<{ stdout: string; stderr: string }> {
+    console.log(
+      `[${this.engineName}] Executing command: ${command} in ${cwd || process.cwd()}`,
+    );
+    try {
+      const { stdout, stderr } = await execPromise(command, { cwd });
+      if (stderr) {
+        // Log stderr as warning, as some tools output info here
+        console.warn(`[${this.engineName}] Command stderr:\n${stderr}`);
+      }
+      console.log(`[${this.engineName}] Command stdout:\n${stdout}`);
+      return { stdout, stderr };
+    } catch (error: any) {
+      console.error(
+        `[${this.engineName}] Command failed: ${command}\nError: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`,
+      );
+      throw new Error(
+        `Command execution failed: ${error.message}. Stderr: ${error.stderr}`,
+      );
+    }
+  }
+
+  private _extractAudio(
+    inputFile: string,
+    outputAudioFile: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputFile)
+        .noVideo() // Extract only audio
+        .audioCodec('pcm_s16le') // Use WAV format (pcm_s16le) for compatibility
+        .audioFrequency(44100) // Standard frequency
+        .audioChannels(2) // Stereo
+        .output(outputAudioFile)
+        .on('error', (err) => {
+          console.error(
+            `[${this.engineName}] Error extracting audio: ${err.message}`,
+          );
+          reject(new Error(`Failed to extract audio: ${err.message}`));
+        })
+        .on('end', () => {
+          console.log(
+            `[${this.engineName}] Audio extraction finished: ${outputAudioFile}`,
+          );
+          resolve();
+        })
+        .run();
+    });
+  }
+
+  private async _generateTTSAudio(
+    text: string,
+    languageCode: string, // e.g., 'hi-IN', 'pa-IN'
+    voiceGender: 'male' | 'female',
+    outputFile: string,
+  ): Promise<void> {
+    // Select voice based on language and gender
+    // Using standard WaveNet voices. Adjust if specific voices are needed.
+    let voiceName = '';
+    if (languageCode.startsWith('hi')) {
+      voiceName =
+        voiceGender === 'male' ? 'hi-IN-Wavenet-B' : 'hi-IN-Wavenet-C';
+    } else if (languageCode.startsWith('pa')) {
+      voiceName =
+        voiceGender === 'male' ? 'pa-IN-Wavenet-B' : 'pa-IN-Wavenet-C';
+    } else {
+      throw new Error(`Unsupported language code for TTS: ${languageCode}`);
+    }
+
+    const request = {
+      input: { text: text },
+      voice: { languageCode: languageCode, name: voiceName },
+      // Use MP3 encoding for smaller file size, adjust if WAV is needed
+      audioConfig: { audioEncoding: 'MP3' as const },
+    };
+
+    try {
+      console.log(
+        `[${this.engineName}] Requesting TTS for "${text.substring(0, 30)}..." (Voice: ${voiceName})`,
+      );
+      const [response] = await this.ttsClient.synthesizeSpeech(request);
+      if (!response.audioContent) {
+        throw new Error('TTS response did not contain audio content.');
+      }
+      await fs.promises.writeFile(outputFile, response.audioContent, 'binary');
+      console.log(
+        `[${this.engineName}] TTS audio content written to file: ${outputFile}`,
+      );
+    } catch (error: any) {
+      console.error(
+        `[${this.engineName}] Google TTS API error for voice ${voiceName}: ${error.message}`,
+      );
+      throw new Error(`TTS generation failed: ${error.message}`);
+    }
+  }
+
+  // Main function to generate the dubbed audio track for one language
+  private async _generateDubbedAudio(
+    instrumentalAudioPath: string,
+    subtitles: AiSubtitleEntry[],
+    langCode: string, // e.g., 'hi', 'pa' -> map to 'hi-IN', 'pa-IN'
+    tempDir: string,
+    finalOutputPath: string,
+    onProgress: (detail: MediaEngineProgressDetail) => void, // Callback for progress updates
+  ): Promise<void> {
+    const ttsLangCode = langCode === 'hi' ? 'hi-IN' : 'pa-IN'; // Map to Google TTS codes
+    const segmentFiles: string[] = []; // To store paths of generated TTS segments
+    const ffmpegConcatListPath = path.join(
+      tempDir,
+      `ffmpeg_concat_${langCode}.txt`,
+    );
+    let concatFileContent = '';
+    let lastEndTimeSec = 0;
+
+    onProgress({ message: `Generating ${langCode} TTS segments` });
+
+    // 1. Generate TTS for each subtitle entry
+    for (let i = 0; i < subtitles.length; i++) {
+      const sub = subtitles[i];
+      const startTimeSec = this._timecodeToSeconds(sub.startTimecode);
+      const endTimeSec = this._timecodeToSeconds(sub.endTimecode);
+      const segmentPath = path.join(tempDir, `tts_${langCode}_${i}.mp3`);
+
+      if (sub.text.trim()) {
+        await this._generateTTSAudio(
+          sub.text,
+          ttsLangCode,
+          sub.voiceGender,
+          segmentPath,
+        );
+
+        // Add silence before this segment if needed
+        const silenceDuration = Math.max(0, startTimeSec - lastEndTimeSec);
+        if (silenceDuration > 0.01) {
+          // Add entry for silence using ffmpeg's anullsrc
+          // Note: Generating actual silence files might be more reliable than concat demuxer with anullsrc
+          // For simplicity here, we'll assume the merge handles timing.
+          // A more robust approach involves creating silence files or using adelay filter.
+          // Let's try the adelay approach during merge.
+        }
+
+        segmentFiles.push(segmentPath); // Store path for later use
+        lastEndTimeSec = endTimeSec; // Update last end time
+      }
+      // Update progress within the loop
+      onProgress({ percent: (i / subtitles.length) * 50 }); // TTS generation is ~50% of this step
+    }
+
+    onProgress({ message: `Assembling ${langCode} audio track`, percent: 50 });
+
+    // 2. Assemble the full TTS track using fluent-ffmpeg (complex filtergraph)
+    const assembledTTSPath = path.join(tempDir, `assembled_${langCode}.mp3`);
+
+    if (segmentFiles.length === 0) {
+      console.log(
+        `[${this.engineName}] No TTS segments generated for ${langCode}, skipping assembly and merge.`,
+      );
+      // If there are no segments, we can't create the final output, so we should stop here.
+      // Depending on requirements, you might want to create an empty file or just log.
+      // For now, we return, indicating this language couldn't be dubbed.
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg();
+      const filterComplex: string[] = [];
+      let outputStreams = '';
+
+      // Add each segment file as an input
+      segmentFiles.forEach((segmentPath, index) => {
+        command.input(segmentPath);
+        const sub = subtitles[index]; // Assuming segmentFiles aligns with subtitles that had text
+        const startTimeMs = Math.round(
+          this._timecodeToSeconds(sub.startTimecode) * 1000,
+        );
+        // Delay each input stream
+        filterComplex.push(
+          `[${index}:a]adelay=${startTimeMs}|${startTimeMs}[aud${index}]`,
+        );
+        outputStreams += `[aud${index}]`; // Collect stream names for mixing
+      });
+
+      // Add the final mixing filter with normalization
+      filterComplex.push(
+        `${outputStreams}amix=inputs=${segmentFiles.length}:normalize=1:dropout_transition=0[mixed]`,
+      );
+      // Add loudness normalization to ensure consistent volume
+      filterComplex.push(`[mixed]dynaudnorm=p=0.95:m=20[mixout]`);
+
+      command
+        .complexFilter(filterComplex) // Apply the complex filtergraph
+        .map('[mixout]') // Map the final mixed stream
+        .audioCodec('libmp3lame')
+        .audioQuality(2) // Equivalent to -q:a 2
+        .output(assembledTTSPath)
+        .on('start', (commandLine) => {
+          console.log(
+            `[${this.engineName}] Assembling TTS track for ${langCode} with command: ${commandLine}`,
+          );
+        })
+        .on('error', (err, stdout, stderr) => {
+          console.error(
+            `[${this.engineName}] Error assembling TTS track for ${langCode}: ${err.message}`,
+          );
+          console.error(`[${this.engineName}] ffmpeg stderr: ${stderr}`);
+          reject(
+            new Error(
+              `Failed to assemble TTS track for ${langCode}: ${err.message}`,
+            ),
+          );
+        })
+        .on('end', () => {
+          console.log(
+            `[${this.engineName}] Assembled TTS track saved to: ${assembledTTSPath}`,
+          );
+          resolve();
+        })
+        .run();
+    });
+
+    onProgress({
+      message: `Merging ${langCode} with instrumental`,
+      percent: 80,
+    });
+
+    // 3. Merge Assembled TTS with Instrumental Track using fluent-ffmpeg
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(instrumentalAudioPath) // Input 0: Instrumental
+        .input(assembledTTSPath) // Input 1: Assembled TTS
+        .complexFilter([
+          // First normalize the instrumental track for consistency
+          '[0:a]dynaudnorm=p=0.95:m=20[instr_norm]',
+          // Lower instrumental volume significantly to function as background
+          '[instr_norm]volume=0.2:precision=fixed[instr_lowered]',
+
+          // Normalize TTS volume for consistency
+          '[1:a]dynaudnorm=p=0.95:m=20[tts_normalized]',
+          // Apply boost to normalized TTS (voice)
+          '[tts_normalized]volume=2.0[tts_boosted]',
+
+          // Merge with volume-controlled instrumental (no additional normalization)
+          '[instr_lowered][tts_boosted]amerge=inputs=2[aout]',
+        ])
+        .map('[aout]') // Map the final merged audio stream
+        .audioCodec('libmp3lame')
+        .audioQuality(2) // MP3 quality
+        .output(finalOutputPath)
+        .on('start', (commandLine) => {
+          console.log(
+            `[${this.engineName}] Merging final audio for ${langCode} with command: ${commandLine}`,
+          );
+        })
+        .on('error', (err, stdout, stderr) => {
+          console.error(
+            `[${this.engineName}] Error merging final audio for ${langCode}: ${err.message}`,
+          );
+          console.error(`[${this.engineName}] ffmpeg stderr: ${stderr}`);
+          reject(
+            new Error(
+              `Failed to merge final audio for ${langCode}: ${err.message}`,
+            ),
+          );
+        })
+        .on('end', () => {
+          console.log(
+            `[${this.engineName}] Final dubbed audio saved to: ${finalOutputPath}`,
+          );
+          resolve();
+        })
+        .run();
+    });
+
+    onProgress({ percent: 100 }); // Mark this language as done
   }
 }

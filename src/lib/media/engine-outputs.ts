@@ -62,18 +62,16 @@ export interface AIEngineOutputData extends BaseEngineOutputData {
   subtitleErrors?: Record<string, string>; // Added to report subtitle saving errors
   posterImagePath?: string;
   backdropImagePath?: string;
+  dubbedAudioPaths?: Record<string, string>; // e.g., { 'hi': 'path/to/hi.dubbed.mp3' }
+  audioProcessingErrors?: Record<string, string>; // Errors during vocal removal, TTS, or merging
 }
 
 export interface AIEngineOutput {
   data: AIEngineOutputData;
 }
 
-// --- Combined Output Type (Example for MediaManager) ---
-// This could represent the final combined output after all engines run
-export interface CombinedMediaOutput {
-  subtitle?: SubtitleOutputData;
-  thumbnail?: ThumbnailOutputData;
-  transcoding?: TranscodingOutputData;
-  ai?: AIEngineOutputData;
-  // Add other engine outputs as needed
-}
+export type EngineTaskOutput =
+  | SubtitleOutputData
+  | ThumbnailOutputData
+  | TranscodingOutputData
+  | AIEngineOutputData;

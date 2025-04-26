@@ -23,6 +23,9 @@ importers:
       '@genkit-ai/vertexai':
         specifier: ^1.6.2
         version: 1.6.2(genkit@1.6.2)(ws@8.18.1)(zod@3.24.2)
+      '@google-cloud/text-to-speech':
+        specifier: ^6.0.1
+        version: 6.0.1
       '@google-cloud/translate':
         specifier: ^9.0.1
         version: 9.0.1
@@ -715,6 +718,10 @@ packages:
   '@google-cloud/storage@7.16.0':
     resolution: {integrity: sha512-7/5LRgykyOfQENcm6hDKP8SX/u9XxE5YOiWOkgkwcoO+cG8xT/cyOvp9wwN3IxfdYgpHs8CE7Nq2PKX2lNaEXw==}
     engines: {node: '>=14'}
+
+  '@google-cloud/text-to-speech@6.0.1':
+    resolution: {integrity: sha512-d9BLvmrAHTc1is38VdFxFLORvkzhDcfBz4h+j6Af21znj5pMlomX8VV7vD0SyRznORAXcwUaBDQ7zvCfChSA1A==}
+    engines: {node: '>=18'}
 
   '@google-cloud/translate@9.0.1':
     resolution: {integrity: sha512-NuIPXoSfdKBZPuWAIQPHCIMin0wlZPRcFxrhbKtByNNxFUjk3p2VKplw2C3O20/nWexhtFdkN8EwL58n+Lh5gw==}
@@ -5738,6 +5745,12 @@ snapshots:
       - encoding
       - supports-color
     optional: true
+
+  '@google-cloud/text-to-speech@6.0.1':
+    dependencies:
+      google-gax: 5.0.1-rc.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@google-cloud/translate@9.0.1':
     dependencies:
