@@ -4,12 +4,7 @@ import type {
 } from 'tmdb-js-web';
 
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
-import {
-  AIEngineOutput,
-  SubtitleOutput,
-  ThumbnailOutput,
-  TranscodingOutput,
-} from '@/lib/media/engine-outputs';
+import { AIEngineOutput, SubtitleOutputData } from '@/lib/media/engine-outputs';
 import type { MediaType } from '@/lib/types';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
@@ -52,7 +47,7 @@ export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
   });
 }
 
-export async function getOriginalMovieDetail(id: string): Promise<
+export type OriginalMovieDetail = Promise<
   | (OriginalMovieResult &
       Partial<{
         subtitles: {
@@ -72,7 +67,11 @@ export async function getOriginalMovieDetail(id: string): Promise<
         chaptersUrl: string;
       }>)
   | null
-> {
+>;
+
+export async function getOriginalMovieDetail(
+  id: string,
+): Promise<OriginalMovieDetail> {
   const movie = await Movie.findById(id).lean<MovieType>();
 
   if (!movie) return null;
@@ -103,7 +102,7 @@ export async function getOriginalMovieDetail(id: string): Promise<
         if (task.status !== 'completed') return acc;
 
         if (task.engine === 'SubtitleEngine') {
-          const subtitleOutput = task.output as SubtitleOutput;
+          const subtitleOutput = task.output as SubtitleOutputData;
 
           const paths = subtitleOutput.data.paths?.vtt;
 

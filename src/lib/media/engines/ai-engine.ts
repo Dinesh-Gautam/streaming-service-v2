@@ -1,6 +1,5 @@
 import { exec } from 'child_process';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 
@@ -18,17 +17,12 @@ import {
   VideoAnalysisFlow,
 } from '@/lib/ai/flow';
 
-import { AIEngineOutput, SubtitleOutput } from '../engine-outputs'; // Will need update later
+import { AIEngineOutput } from '../engine-outputs'; // Will need update later
 import {
   EngineOutput,
   MediaEngine,
   MediaEngineProgressDetail,
 } from '../media-engine';
-
-// Interface for options passed to the AI Engine's process method
-interface AIEngineProcessOptions {
-  subtitleOutput?: SubtitleOutput;
-}
 
 // Define the structure for a single subtitle entry from the AI response
 // Based on src/lib/ai/flow.ts AiVideoAnalysisResponseSchema.subtities
@@ -38,11 +32,6 @@ type AiSubtitleEntry = {
   text: string;
   voiceGender: 'male' | 'female';
   voiceType: 'neutral' | 'angry' | 'happy';
-};
-
-// Define the structure for the subtitles object from the AI response
-type AiSubtitlesData = {
-  [langCode: string]: AiSubtitleEntry[];
 };
 
 // Define the structure for the chapters array from the AI response
@@ -80,7 +69,6 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
   async process(
     inputFile: string,
     outputDir: string,
-    options?: AIEngineProcessOptions,
   ): Promise<EngineOutput<AIEngineOutput>> {
     this.updateStatus('running');
     this._progress = 0;

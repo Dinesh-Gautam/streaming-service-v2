@@ -16,10 +16,6 @@ export interface SubtitleOutputData extends BaseEngineOutputData {
   };
 }
 
-export interface SubtitleOutput {
-  data: SubtitleOutputData;
-}
-
 // --- Thumbnail Engine Output ---
 export interface ThumbnailOutputData extends BaseEngineOutputData {
   paths: {
