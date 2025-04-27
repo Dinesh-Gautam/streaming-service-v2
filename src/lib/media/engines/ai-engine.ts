@@ -638,7 +638,9 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     let voiceName = '';
     if (languageCode.startsWith('hi')) {
       voiceName =
-        voiceGender === 'male' ? 'hi-IN-Wavenet-B' : 'hi-IN-Wavenet-C';
+        voiceGender === 'male' ?
+          'hi-IN-Chirp3-HD-Charon'
+        : 'hi-IN-Chirp3-HD-Aoede';
     } else if (languageCode.startsWith('pa')) {
       voiceName =
         voiceGender === 'male' ? 'pa-IN-Wavenet-B' : 'pa-IN-Wavenet-C';
