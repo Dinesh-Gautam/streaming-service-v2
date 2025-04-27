@@ -20,36 +20,26 @@ export const UserSchema = z.object({
     .optional(),
 });
 
-export const MovieSchema = z.object({
-  title: z.string().min(2, {
-    message: 'Title must be at least 2 characters.',
-  }),
-  description: z.string().min(10, {
-    message: 'Description must be at least 10 characters.',
-  }),
+// Create a base schema with all fields optional
+const BaseMovieSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
   year: z.coerce
     .number()
     .int()
     .min(1900)
     .max(new Date().getFullYear(), {
       message: `Year must be between 1900 and ${new Date().getFullYear()}.`,
-    }),
-  genres: z.array(z.string()).min(1, {
-    message: 'Please select at least one genre.',
-  }),
-  status: z.string().min(1, {
-    message: 'Please select a status.',
-  }),
+    })
+    .optional(),
+  genres: z.array(z.string()).optional(),
+  status: z.enum(['Draft', 'Published']),
   media: z
     .object({
       video: z
         .object({
-          originalPath: z.string().min(1, {
-            message: 'Please select a video file.',
-          }),
-          id: z.string().min(1, {
-            message: 'Please select a video file.',
-          }),
+          originalPath: z.string().min(1),
+          id: z.string().min(1),
         })
         .optional(),
       poster: z
@@ -68,9 +58,35 @@ export const MovieSchema = z.object({
         .optional(),
     })
     .optional(),
-
   isAIGenerated: z.boolean().optional(),
 });
+
+// Add refinement to validate that when status is "Published", all required fields are present
+export const MovieSchema = BaseMovieSchema.refine(
+  (data) => {
+    // If status is Draft, no additional validation needed
+    if (data.status === 'Draft') return true;
+
+    // If status is Published, all these fields must be present
+    return !!(
+      data.title &&
+      data.description &&
+      data.year &&
+      data.genres &&
+      data.genres.length > 0 &&
+      data.media?.video?.originalPath &&
+      (data.media?.poster?.originalPath ||
+        data.media?.poster?.aiGeneratedPath) &&
+      (data.media?.backdrop?.originalPath ||
+        data.media?.backdrop?.aiGeneratedPath)
+    );
+  },
+  {
+    message:
+      'All fields must be filled to publish a movie. Make sure you have title, description, year, at least one genre, video, poster, and backdrop.',
+    path: ['status'], // This shows the error on the status field
+  },
+);
 
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type MovieSchemaType = z.infer<typeof MovieSchema>;

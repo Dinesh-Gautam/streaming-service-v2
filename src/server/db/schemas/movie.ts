@@ -10,11 +10,11 @@ const videoTranscodingProgressSchema = new Schema({
 });
 
 const MovieSchema = new Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  year: { type: Number, required: true },
-  genres: { type: [String], requried: true }, // Changed to array of strings with default empty array
-  status: { type: String, required: true },
+  title: { type: String, required: false },
+  description: { type: String, required: false },
+  year: { type: Number, required: false },
+  genres: { type: [String], required: false, default: [] },
+  status: { type: String, required: true, default: 'Draft' },
   media: {
     video: {
       originalPath: { type: String },

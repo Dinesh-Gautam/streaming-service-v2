@@ -19,7 +19,7 @@ import { useForm, type UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { Button, buttonVariants } from '@/admin/components/ui/button'; // Added buttonVariants
+import { Button } from '@/admin/components/ui/button'; // Added buttonVariants
 import {
   Card,
   CardContent,
@@ -179,6 +179,11 @@ export default function EditMoviePage({
       genres: [],
       status: 'Draft',
       isAIGenerated: false,
+      media: {
+        video: undefined,
+        poster: undefined,
+        backdrop: undefined
+      }
     },
   });
 
@@ -249,6 +254,45 @@ export default function EditMoviePage({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log('Form submitted');
+
+    // Check if at least one field has content (title, description, year, genres, or any media file)
+    const hasContent = !!(
+      values.title ||
+      values.description ||
+      values.year ||
+      (values.genres && values.genres.length > 0) ||
+      values.media?.video?.originalPath ||
+      values.media?.poster?.originalPath ||
+      values.media?.backdrop?.originalPath
+    );
+
+    if (!hasContent) {
+      toast.error('Cannot save movie', {
+        description: 'Please fill in at least one field or upload media before saving.'
+      });
+      return;
+    }
+
+    // If trying to publish, verify all required fields are present
+    if (values.status === 'Published') {
+      const missingFields = [];
+
+      if (!values.title) missingFields.push('Title');
+      if (!values.description) missingFields.push('Description');
+      if (!values.year) missingFields.push('Year');
+      if (!values.genres || values.genres.length === 0) missingFields.push('Genres');
+      if (!values.media?.video?.originalPath) missingFields.push('Video');
+      if (!values.media?.poster?.originalPath && !values.media?.poster?.aiGeneratedPath) missingFields.push('Poster');
+      if (!values.media?.backdrop?.originalPath && !values.media?.backdrop?.aiGeneratedPath) missingFields.push('Backdrop');
+
+      if (missingFields.length > 0) {
+        toast.error('Cannot publish movie', {
+          description: `Please fill in all required fields: ${missingFields.join(', ')}`
+        });
+        return;
+      }
+    }
+
     const finalValues = {
       ...values,
       genres: Array.from(new Set(values.genres || [])),
@@ -265,7 +309,7 @@ export default function EditMoviePage({
       router.push(PATHS.ADMIN.MOVIES);
     } else {
       console.error('Failed to save movie:', res.message);
-      // Consider adding user feedback here (e.g., toast notification)
+      toast.error('Failed to save movie', { description: res.message });
     }
   }
 
