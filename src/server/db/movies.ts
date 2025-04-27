@@ -38,7 +38,7 @@ export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
       title: plainMovie.title,
       overview: plainMovie.description,
       release_date: new Date(plainMovie.year + '-01-01').toISOString(),
-      genres: plainMovie.genres.map((g, i) => ({ id: i, name: g })),
+      genres: plainMovie.genres?.map((g, i) => ({ id: i, name: g })) || [],
       backdrop_path: plainMovie.media?.backdrop?.originalPath,
       isOriginal: true,
       id: _id.toString(),
@@ -72,7 +72,10 @@ export type OriginalMovieDetail = Promise<
 export async function getOriginalMovieDetail(
   id: string,
 ): Promise<OriginalMovieDetail> {
-  const movie = await Movie.findById(id).lean<MovieType>();
+  const movie = await Movie.findOne<MovieType>({
+    _id: id,
+    status: 'Published',
+  }).lean<MovieType>();
 
   if (!movie) return null;
 
@@ -86,7 +89,7 @@ export async function getOriginalMovieDetail(
     title: movie.title,
     overview: movie.description,
     release_date: new Date(movie.year + '-01-01').toISOString(),
-    genres: movie.genres.map((g, i) => ({ id: i, name: g })),
+    genres: movie.genres?.map((g, i) => ({ id: i, name: g })) || [],
     poster_path: movie.media?.poster?.originalPath,
     backdrop_path: movie.media?.backdrop?.originalPath,
     isOriginal: true,

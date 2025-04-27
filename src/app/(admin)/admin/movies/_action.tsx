@@ -8,7 +8,7 @@ import { join } from 'path';
 
 import { z } from 'zod';
 
-import { generateImageWithPrompt } from '@/lib/ai/images';
+import { generateImagePrompt, generateImageWithPrompt } from '@/lib/ai/images';
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
 import { AIEngine } from '@/lib/media/engines/ai-engine'; // Import the new AI Engine
 import { SubtitleEngine } from '@/lib/media/engines/subtitle';
@@ -428,5 +428,30 @@ export async function generateAIImagesWithPrompt(
   } catch (error) {
     console.error('Error generating AI images:', error);
     return { success: false, error: error };
+  }
+}
+
+export async function suggestImagePrompt(
+  type: 'poster' | 'backdrop',
+  movieData: {
+    title: string;
+    description: string;
+    genres: string[];
+    initialPrompt: string;
+  }
+) {
+  try {
+    const prompt = await generateImagePrompt({
+      input: movieData,
+      type,
+    });
+
+    return { success: true, prompt };
+  } catch (error) {
+    console.error('Error suggesting image prompt:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error generating prompt'
+    };
   }
 }

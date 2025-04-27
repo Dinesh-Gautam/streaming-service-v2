@@ -285,7 +285,7 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
         posterImagePath = path
           .join('tmp', 'ai-generated', posterFilename) // Prepend '/' for root-relative path
           .replace(/\\/g, '/') // Ensure forward slashes for URL
-          .replaceAll('tmp', '');
+          .replaceAll('/tmp', '');
 
         console.log(
           '[GenerateMovieImagesFlow] Poster image saved to:',
@@ -350,7 +350,7 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
         backdropImagePath = path
           .join('tmp', 'ai-generated', backdropFilename) // Prepend '/' for root-relative path
           .replace(/\\/g, '/') // Ensure forward slashes for URL
-          .replaceAll('tmp', '');
+          .replaceAll('/tmp', '');
         console.log(
           '[GenerateMovieImagesFlow] Backdrop image saved to:',
           fullBackdropPath, // Log the actual file path

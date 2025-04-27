@@ -60,6 +60,7 @@ import {
   getMediaProcessingJob, // Removed duplicate
   processVideo,
   saveMovieData,
+  suggestImagePrompt,
   uploadAction,
   type MediaProcessingStatus,
 } from '@/app/(admin)/admin/movies/_action';
@@ -138,6 +139,10 @@ export default function EditMoviePage({
   const [backdropGenerationError, setBackdropGenerationError] = useState<
     string | null
   >(null);
+
+  // Add state variables for prompt suggestion loading states
+  const [isPosterPromptLoading, setIsPosterPromptLoading] = useState(false);
+  const [isBackdropPromptLoading, setIsBackdropPromptLoading] = useState(false);
 
   // Derive AI image paths from initial processing status
   const aiEngineTaskOutput = useMemo(() => {
@@ -500,9 +505,23 @@ export default function EditMoviePage({
 
   // --- Handlers for Prompt-Based Image Generation ---
   const handleSuggestPrompt = useCallback(
-    (type: 'poster' | 'backdrop') => {
+    async (type: 'poster' | 'backdrop') => {
       const { title, description, genres } = form.getValues();
-      if (!title && !description && (!genres || genres.length === 0)) {
+      const promptField = type === 'poster' ? posterPrompt : backdropPrompt;
+      const isEnhance = !!promptField.trim();
+
+      // If attempting to enhance with no base prompt, show error
+      if (isEnhance && !promptField.trim()) {
+        showToast(
+          'Cannot Enhance',
+          'Please enter a prompt to enhance first.',
+          true
+        );
+        return;
+      }
+
+      // If no data to build on, show error
+      if (!isEnhance && !title && !description && (!genres || genres.length === 0)) {
         showToast(
           'Cannot Suggest',
           'Please fill in title, description, or genres first.',
@@ -511,22 +530,74 @@ export default function EditMoviePage({
         return;
       }
 
-      let suggestion = `Movie ${type}: ${title || ''}.`;
-      if (description)
-        suggestion += ` Description: ${description.substring(0, 150)}${description.length > 150 ? '...' : ''}.`;
-      if (genres && genres.length > 0)
-        suggestion += ` Genres: ${genres.join(', ')}.`;
-      suggestion += ` Style: ${type === 'poster' ? 'Cinematic poster, high quality, vertical aspect ratio.' : 'Cinematic backdrop, wide aspect ratio, high quality.'}`;
-
+      // Set loading state based on type
       if (type === 'poster') {
-        setPosterPrompt(suggestion);
+        setIsPosterPromptLoading(true);
       } else {
-        setBackdropPrompt(suggestion);
+        setIsBackdropPromptLoading(true);
       }
-      showToast('Prompt Suggested', `Suggested prompt for ${type} generated.`);
+
+      try {
+        // For direct suggestion (no existing prompt)
+        if (!isEnhance) {
+          const result = await suggestImagePrompt(type, {
+            title: title || '',
+            description: description || '',
+            genres: genres || [],
+            initialPrompt: '',
+          });
+
+          if (result.success && result.prompt) {
+            if (type === 'poster') {
+              setPosterPrompt(result.prompt);
+            } else {
+              setBackdropPrompt(result.prompt);
+            }
+            showToast('Prompt Generated', `Generated prompt for ${type}.`);
+          } else {
+            const errorMsg = result.error || 'Failed to generate prompt';
+            showToast('Generation Failed', errorMsg, true);
+          }
+        }
+        // For enhancement (existing prompt)
+        else {
+          const result = await suggestImagePrompt(type, {
+            title: title || '',
+            description: description || '',
+            genres: genres || [],
+            initialPrompt: promptField,
+          });
+
+          if (result.success && result.prompt) {
+            if (type === 'poster') {
+              setPosterPrompt(result.prompt);
+            } else {
+              setBackdropPrompt(result.prompt);
+            }
+            showToast('Prompt Enhanced', `Enhanced prompt for ${type}.`);
+          } else {
+            const errorMsg = result.error || 'Failed to enhance prompt';
+            showToast('Enhancement Failed', errorMsg, true);
+          }
+        }
+      } catch (error) {
+        console.error(`Error generating prompt for ${type}:`, error);
+        showToast(
+          'Error',
+          `Failed to generate prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          true
+        );
+      } finally {
+        // Clear loading state
+        if (type === 'poster') {
+          setIsPosterPromptLoading(false);
+        } else {
+          setIsBackdropPromptLoading(false);
+        }
+      }
     },
-    [form],
-  ); // Dependency on form instance
+    [form, posterPrompt, backdropPrompt, showToast]
+  );
 
   const handleGenerateImage = (type: 'poster' | 'backdrop') => {
     const prompt = type === 'poster' ? posterPrompt : backdropPrompt;
@@ -615,8 +686,15 @@ export default function EditMoviePage({
   // Determine if suggest button should be enabled
   const canSuggestPrompt = useMemo(() => {
     const { title, description, genres } = form.getValues();
-    return !!title || !!description || (!!genres && genres.length > 0);
-  }, [form.watch('title'), form.watch('description'), form.watch('genres')]); // Watch relevant fields
+    // Either existing movie data OR existing prompt content justifies enabling the button
+    return (
+      !!title ||
+      !!description ||
+      (!!genres && genres.length > 0) ||
+      !!posterPrompt.trim() ||
+      !!backdropPrompt.trim()
+    );
+  }, [form.watch('title'), form.watch('description'), form.watch('genres'), posterPrompt, backdropPrompt]);
 
   return (
     <form
@@ -927,66 +1005,84 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'poster')}
                   file={mediaFiles.poster}
                 >
-                  {/* --- Initial AI Generated Poster --- */}
-                  {initialAiGeneratedPosterPath && (
-                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20 relative">
-                      <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
-                      {/* Corrected prop name */}
-                      <h4 className="font-medium flex items-center gap-2">
-                        <SparkelIcon />
-                        <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
-                          Initially
-                          Generated Poster
-                        </span>
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-4 items-center">
-                        <Image
-                          src={'/api/static/' + initialAiGeneratedPosterPath}
-                          alt="Initially Generated Poster"
-                          width={100}
-                          height={150}
-                          className="rounded-md object-cover border"
-                          unoptimized
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUseAIImage('poster', 'initial')}
-                          disabled={
-                            form.getValues('media.poster.originalPath') ===
-                            initialAiGeneratedPosterPath
-                          }
-                        >
-                          {(
-                            form.getValues('media.poster.originalPath') ===
-                            initialAiGeneratedPosterPath
-                          ) ?
-                            'Using Initial AI Poster'
-                            : 'Use Initial AI Poster'}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* --- Prompt-Based Poster Generation --- */}
                   <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
+
                     <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
+                    {/* --- Initial AI Generated Poster --- */}
+                    {initialAiGeneratedPosterPath && (
+                      <div className="space-y-3  relative">
+                        {/* Corrected prop name */}
+                        <h4 className="font-medium flex items-center gap-2">
+                          <SparkelIcon />
+                          <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
+                            Initially
+                            Generated Poster
+                          </span>
+                        </h4>
+                        <div className="flex flex-col gap-2 items-start">
+                          <Image
+                            src={'/api/static/' + initialAiGeneratedPosterPath}
+                            alt="Initially Generated Poster"
+                            width={100}
+                            height={150}
+                            className="rounded-md object-cover border"
+                            unoptimized
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUseAIImage('poster', 'initial')}
+                            disabled={
+                              form.getValues('media.poster.originalPath') ===
+                              initialAiGeneratedPosterPath
+                            }
+                          >
+                            {(
+                              form.getValues('media.poster.originalPath') ===
+                              initialAiGeneratedPosterPath
+                            ) ?
+                              'Using Initial AI Poster'
+                              : 'Use Initial AI Poster'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {initialAiGeneratedBackdropPath && <span className='block *: text-sm text-muted-foreground self-center'>or</span>}
+
                     {/* Corrected prop name */}
                     <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 w-fit">
                       <SparkelIcon /> Generate Poster with AI Prompt
                     </h4>
                     {/* Replaced FormItem/Label/Control with div/Label */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 relative">
                       <Label htmlFor="poster-prompt">Poster Prompt</Label>
-                      <Textarea
-                        id="poster-prompt"
-                        placeholder="e.g., A lone astronaut gazing at a swirling nebula, cinematic, detailed..."
-                        value={posterPrompt}
-                        onChange={(e) => setPosterPrompt(e.target.value)}
-                        className="min-h-[80px] bg-background/80 backdrop-blur-sm"
-                        disabled={isGeneratingPoster}
-                      />
+                      <div className="relative">
+                        {isPosterPromptLoading && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-pink-100/20 via-background/5 to-purple-100/20 animate-pulse rounded-md z-0"></div>
+                        )}
+                        <Textarea
+                          id="poster-prompt"
+                          placeholder="e.g., A lone astronaut gazing at a swirling nebula, cinematic, detailed..."
+                          value={posterPrompt}
+                          onChange={(e) => setPosterPrompt(e.target.value)}
+                          className={cn(
+                            "min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10",
+                            isPosterPromptLoading && "opacity-70"
+                          )}
+                          disabled={isGeneratingPoster || isPosterPromptLoading}
+                        />
+                      </div>
+                      {isPosterPromptLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {posterPrompt.trim() ? 'Enhancing prompt...' : 'Generating prompt...'}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       <Button
@@ -994,7 +1090,7 @@ export default function EditMoviePage({
                         variant="outline"
                         size="sm"
                         onClick={() => handleSuggestPrompt('poster')}
-                        disabled={!canSuggestPrompt || isGeneratingPoster}
+                        disabled={!canSuggestPrompt || isGeneratingPoster || isPosterPromptLoading}
                         className="relative overflow-hidden group transition-opacity duration-300"
                       >
                         <span
@@ -1006,7 +1102,16 @@ export default function EditMoviePage({
                           aria-hidden="true"
                         ></span>
                         <span className="relative z-10 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" /> Suggest
+                          {isPosterPromptLoading ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {posterPrompt.trim() ? 'Enhancing...' : 'Suggesting...'}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" /> {posterPrompt.trim() ? 'Enhance' : 'Suggest'}
+                            </>
+                          )}
                         </span>
                       </Button>
                       <Button
@@ -1157,16 +1262,30 @@ export default function EditMoviePage({
                       <SparkelIcon /> Generate Backdrop with AI Prompt
                     </h4>
                     {/* Replaced FormItem/Label/Control with div/Label */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 relative">
                       <Label htmlFor="backdrop-prompt">Backdrop Prompt</Label>
-                      <Textarea
-                        id="backdrop-prompt"
-                        placeholder="e.g., A vast futuristic cityscape at sunset, wide angle, cinematic..."
-                        value={backdropPrompt}
-                        onChange={(e) => setBackdropPrompt(e.target.value)}
-                        className="min-h-[80px] bg-background/80 backdrop-blur-sm"
-                        disabled={isGeneratingBackdrop}
-                      />
+                      <div className="relative">
+                        {isBackdropPromptLoading && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-100/20 via-background/5 to-purple-100/20 animate-pulse rounded-md z-0"></div>
+                        )}
+                        <Textarea
+                          id="backdrop-prompt"
+                          placeholder="e.g., A vast futuristic cityscape at sunset, wide angle, cinematic..."
+                          value={backdropPrompt}
+                          onChange={(e) => setBackdropPrompt(e.target.value)}
+                          className={cn(
+                            "min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10",
+                            isBackdropPromptLoading && "opacity-70"
+                          )}
+                          disabled={isGeneratingBackdrop || isBackdropPromptLoading}
+                        />
+                      </div>
+                      {isBackdropPromptLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {backdropPrompt.trim() ? 'Enhancing prompt...' : 'Generating prompt...'}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       <Button
@@ -1174,11 +1293,11 @@ export default function EditMoviePage({
                         variant="outline"
                         size="sm"
                         onClick={() => handleSuggestPrompt('backdrop')}
-                        disabled={!canSuggestPrompt || isGeneratingBackdrop}
+                        disabled={!canSuggestPrompt || isGeneratingBackdrop || isBackdropPromptLoading}
                         className="relative overflow-hidden group transition-opacity duration-300"
                       >
                         <span
-                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r  from-pink-500 to-orange-500 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
+                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r from-pink-500 to-orange-500 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
                           aria-hidden="true"
                         />
                         <span
@@ -1186,7 +1305,16 @@ export default function EditMoviePage({
                           aria-hidden="true"
                         ></span>
                         <span className="relative z-10 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" /> Suggest
+                          {isBackdropPromptLoading ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              {backdropPrompt.trim() ? 'Enhancing...' : 'Suggesting...'}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" /> {backdropPrompt.trim() ? 'Enhance' : 'Suggest'}
+                            </>
+                          )}
                         </span>
                       </Button>
                       <Button

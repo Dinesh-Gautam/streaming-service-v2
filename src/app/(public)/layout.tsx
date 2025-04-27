@@ -5,7 +5,8 @@ import '@/styles/global.scss';
 
 import { AuthProvider } from '@/context/auth-context';
 import { BannerProvider } from '@/context/banner-context';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/admin/components/ui/sonner';
+
 
 const inter = Poppins({
   weight: ['400', '500', '600', '700', '800', '900'],
@@ -25,10 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Toaster />
         <AuthProvider>
           <BannerProvider>{children}</BannerProvider>
         </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );
