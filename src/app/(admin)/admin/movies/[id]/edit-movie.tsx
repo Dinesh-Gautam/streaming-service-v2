@@ -889,8 +889,11 @@ export default function EditMoviePage({
                       <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
                       {/* Corrected prop name */}
                       <h4 className="font-medium flex items-center gap-2">
-                        <Wand2 className="w-4 h-4 text-purple-500" /> Initially
-                        Generated Poster
+                        <SparkelIcon />
+                        <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
+                          Initially
+                          Generated Poster
+                        </span>
                       </h4>
                       <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <Image
@@ -1033,9 +1036,9 @@ export default function EditMoviePage({
                     {/* Display error message if generation failed */}
                     {!isGeneratingPoster && posterGenerationError && (
                       <div className="mt-4 pt-4 border-t border-dashed">
-                        <div className="p-3 bg-red-50 text-red-800 rounded-md border border-red-200">
+                        <div className="p-2 px-3 bg-secondary text-red-400 shadow-md">
                           <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
-                            <span className="text-red-500">⚠️</span> Generation
+                            Generation
                             Error
                           </h5>
                           <p className="text-sm">{posterGenerationError}</p>
@@ -1059,14 +1062,18 @@ export default function EditMoviePage({
                   {initialAiGeneratedBackdropPath && (
                     <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20 relative">
                       <ShineBorder
-                        shineColor={['#A07CFE', '#FE8FB5', '#FFBE7B']}
-                      />{' '}
+                        borderWidth={1}
+                        shineColor={['#D130B9', '#DC3639']}
+                      />
                       {/* Corrected prop name */}
                       <h4 className="font-medium flex items-center gap-2">
-                        <Wand2 className="w-4 h-4 text-purple-500" /> Initially
-                        Generated Backdrop
+                        <SparkelIcon />
+                        <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
+                          Initially
+                          Generated Backdrop
+                        </span>
                       </h4>
-                      <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <div className="flex flex-col gap-4  items-start">
                         <Image
                           src={'/api/static/' + initialAiGeneratedBackdropPath}
                           alt="Initially Generated Backdrop"
@@ -1127,7 +1134,7 @@ export default function EditMoviePage({
                         className="relative overflow-hidden group transition-opacity duration-300"
                       >
                         <span
-                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
+                          className="absolute inset-[-1px] rounded-md z-[-1] bg-gradient-to-r  from-pink-500 to-orange-500 opacity-0 group-hover:opacity-80 transition-opacity duration-300"
                           aria-hidden="true"
                         />
                         <span
@@ -1214,9 +1221,9 @@ export default function EditMoviePage({
                     {/* Display error message if generation failed */}
                     {!isGeneratingBackdrop && backdropGenerationError && (
                       <div className="mt-4 pt-4 border-t border-dashed">
-                        <div className="p-3 bg-red-50 text-red-800 rounded-md border border-red-200">
+                        <div className="p-2 px-3 bg-secondary text-red-400 shadow-md">
                           <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
-                            <span className="text-red-500">⚠️</span> Generation
+                            Generation
                             Error
                           </h5>
                           <p className="text-sm">{backdropGenerationError}</p>

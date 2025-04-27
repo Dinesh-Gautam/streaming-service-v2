@@ -104,7 +104,7 @@ export async function getOriginalMovieDetail(
         if (task.engine === 'SubtitleEngine') {
           const subtitleOutput = task.output as SubtitleOutputData;
 
-          const paths = subtitleOutput.data.paths?.vtt;
+          const paths = subtitleOutput.paths?.vtt;
 
           if (!paths) return acc;
 

@@ -6,7 +6,7 @@ import { TranslationServiceClient } from '@google-cloud/translate';
 import ffmpeg from 'fluent-ffmpeg';
 
 // Standardized output structure (aligning with plan, though process returns void for now)
-import { SubtitleOutput } from '../engine-outputs'; // Import specific output type
+import { SubtitleOutputData } from '../engine-outputs'; // Import specific output type
 import { EngineOutput, MediaEngine } from '../media-engine';
 
 // Define potential options for the subtitle engine
@@ -36,7 +36,7 @@ const DEFAULT_OPTIONS: SubtitleEngineOptions = {
 const TEMP_DIR = './tmp'; // Temporary directory for audio extraction
 
 // Specify the output type for this engine
-export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
+export class SubtitleEngine extends MediaEngine<SubtitleOutputData> {
   private options: SubtitleEngineOptions;
   private deepgram: DeepgramClient;
   private translateClient: TranslationServiceClient | null = null;
@@ -116,7 +116,7 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
     inputFile: string,
     outputDir: string,
     options?: any, // Keep options signature consistent with base class
-  ): Promise<EngineOutput<SubtitleOutput>> {
+  ): Promise<EngineOutput<SubtitleOutputData>> {
     this.updateStatus('running');
     this._progress = 0;
     this._errorMessage = null;
@@ -349,11 +349,11 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
   private async _transcribeAudio(audioPath: string): Promise<any> {
     try {
       // Read from temp.json instead of transcribing
-      const jsonData = await fs.promises.readFile(
-        'temp_transcoding.json',
-        'utf8',
-      );
-      return JSON.parse(jsonData);
+      // const jsonData = await fs.promises.readFile(
+      //   'temp_transcoding.json',
+      //   'utf8',
+      // );
+      // return JSON.parse(jsonData);
 
       const audioBuffer = await fs.promises.readFile(audioPath);
       const { result, error } =
@@ -464,12 +464,12 @@ export class SubtitleEngine extends MediaEngine<SubtitleOutput> {
         targetLanguageCode: targetLanguage,
       };
 
-      // const [response] = await this.translateClient.translateText(request);
+      const [response] = await this.translateClient.translateText(request);
 
-      // Todo: remove this (optional, keep for debugging if needed)
-      const response: any = JSON.parse(
-        await fs.promises.readFile('temp_translations.json', 'utf-8'),
-      );
+      // // Todo: remove this (optional, keep for debugging if needed)
+      // const response: any = JSON.parse(
+      //   await fs.promises.readFile('temp_translations.json', 'utf-8'),
+      // );
 
       // await fs.promises.writeFile(
       //   'temp_translations.json',

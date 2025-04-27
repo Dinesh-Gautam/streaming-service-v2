@@ -105,10 +105,9 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     console.log(`[${this.engineName}] Using movieId: ${movieId}`);
 
     // Create a temporary directory for intermediate audio files
-    const tempAudioDir = await fs.promises.mkdir(
-      path.join('temp/' + `ai-dub-${movieId}-`),
-      { recursive: true },
-    );
+    const tempAudioDir = await fs.promises.mkdir(path.join('temp/'), {
+      recursive: true,
+    });
     console.log(`[${this.engineName}] Created temp directory: ${tempAudioDir}`);
 
     if (!tempAudioDir) {
@@ -257,138 +256,138 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         `${baseName}_original_Vocals.wav`, // Vocal remover output name convention
       );
 
-      // try {
-      //   // 3.1 Extract Original Audio (as WAV for vocal remover)
-      //   console.log(`[${this.engineName}] Extracting original audio...`);
-      //   await this._extractAudio(inputFile, originalAudioPath);
-      //   console.log(
-      //     `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
-      //   );
-      //   this.updateProgress({ percent: 91 });
+      try {
+        // 3.1 Extract Original Audio (as WAV for vocal remover)
+        console.log(`[${this.engineName}] Extracting original audio...`);
+        await this._extractAudio(inputFile, originalAudioPath);
+        console.log(
+          `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
+        );
+        this.updateProgress({ percent: 91 });
 
-      //   // 3.2 Remove Vocals
-      //   console.log(`[${this.engineName}] Removing vocals...`);
-      //   const binDir = path.resolve('bin'); // Absolute path to bin directory
-      //   const vocalRemoverExe = 'vocal_remover.exe'; // Executable name
-      //   const absoluteInputAudioPath = path.resolve(originalAudioPath); // Absolute path to input audio
+        // 3.2 Remove Vocals
+        console.log(`[${this.engineName}] Removing vocals...`);
+        const binDir = path.resolve('bin'); // Absolute path to bin directory
+        const vocalRemoverExe = 'vocal_remover.exe'; // Executable name
+        const absoluteInputAudioPath = path.resolve(originalAudioPath); // Absolute path to input audio
 
-      //   // Construct the command to be run *from* the bin directory
-      //   // Use relative path for the model, absolute paths for input/output
-      //   const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
+        // Construct the command to be run *from* the bin directory
+        // Use relative path for the model, absolute paths for input/output
+        const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
 
-      //   console.log(
-      //     `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
-      //   );
-      //   // Set CWD to the bin directory for execution
-      //   await this._runCommand(vocalRemoverCommand, binDir);
-      //   console.log(
-      //     `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
-      //   );
+        console.log(
+          `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
+        );
+        // Set CWD to the bin directory for execution
+        await this._runCommand(vocalRemoverCommand, binDir);
+        console.log(
+          `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
+        );
 
-      //   // Check if instrumental file exists
-      //   try {
-      //     await fs.promises.access(instrumentalAudioPath);
-      //   } catch (accessError) {
-      //     throw new Error(
-      //       `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
-      //     );
-      //   }
-      //   this.updateProgress({ percent: 93 });
+        // Check if instrumental file exists
+        try {
+          await fs.promises.access(instrumentalAudioPath);
+        } catch (accessError) {
+          throw new Error(
+            `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
+          );
+        }
+        this.updateProgress({ percent: 93 });
 
-      //   // 3.3 Generate TTS and Merge for each language
-      //   if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
-      //     const languages = Object.keys(
-      //       aiData.subtities,
-      //     ) as (keyof typeof aiData.subtities)[];
-      //     const totalLangs = languages.length;
-      //     let langsProcessed = 0;
+        // 3.3 Generate TTS and Merge for each language
+        if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
+          const languages = Object.keys(
+            aiData.subtities,
+          ) as (keyof typeof aiData.subtities)[];
+          const totalLangs = languages.length;
+          let langsProcessed = 0;
 
-      //     for (const langCode of languages) {
-      //       const langSubtitles = aiData.subtities[langCode];
-      //       if (langSubtitles && langSubtitles.length > 0) {
-      //         console.log(
-      //           `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
-      //         );
-      //         const langProgressStart = 93 + (langsProcessed / totalLangs) * 6; // Allocate 6% total for dubbing (93-99)
-      //         this.updateProgress({
-      //           percent: langProgressStart,
-      //         });
+          for (const langCode of languages) {
+            const langSubtitles = aiData.subtities[langCode];
+            if (langSubtitles && langSubtitles.length > 0) {
+              console.log(
+                `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
+              );
+              const langProgressStart = 93 + (langsProcessed / totalLangs) * 6; // Allocate 6% total for dubbing (93-99)
+              this.updateProgress({
+                percent: langProgressStart,
+              });
 
-      //         try {
-      //           const finalDubbedPath = path.join(
-      //             outputDir,
-      //             `${baseName}.${langCode}.dubbed.mp3`, // Save final dubbed audio in outputDir
-      //           );
+              try {
+                const finalDubbedPath = path.join(
+                  outputDir,
+                  `${baseName}.${langCode}.dubbed.mp3`, // Save final dubbed audio in outputDir
+                );
 
-      //           await this._generateDubbedAudio(
-      //             instrumentalAudioPath,
-      //             langSubtitles,
-      //             langCode,
-      //             tempAudioDir, // Use temp dir for intermediate files
-      //             finalDubbedPath, // Specify final output path
-      //             (detail) =>
-      //               this.updateProgress({
-      //                 percent: langProgressStart + (detail.percent ?? 0) * 0.06,
-      //               }),
-      //           );
-      //           dubbedAudioPaths[langCode] = finalDubbedPath;
-      //           console.log(
-      //             `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
-      //           );
-      //         } catch (dubError: any) {
-      //           const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
-      //           console.error(`[${this.engineName}] ${errorMsg}`, dubError);
-      //           audioProcessingErrors[langCode] = errorMsg;
-      //         }
-      //       }
-      //       langsProcessed++;
-      //     }
-      //   } else {
-      //     console.log(`[${this.engineName}] No subtitles found for dubbing.`);
-      //   }
-      // } catch (audioError: any) {
-      //   const errorMsg = `Audio processing failed: ${audioError.message}`;
-      //   console.error(`[${this.engineName}] ${errorMsg}`, audioError);
-      //   // Store a general audio processing error if specific language errors didn't cover it
-      //   if (Object.keys(audioProcessingErrors).length === 0) {
-      //     audioProcessingErrors['general'] = errorMsg;
-      //   }
-      // } finally {
-      //   // Clean up temporary directory
-      //   try {
-      //     console.log(
-      //       `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
-      //     );
-      //     await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
-      //     console.log(`[${this.engineName}] Temporary directory removed.`);
-      //   } catch (cleanupError: any) {
-      //     console.warn(
-      //       `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
-      //     );
-      //   }
-      // }
+                await this._generateDubbedAudio(
+                  instrumentalAudioPath,
+                  langSubtitles,
+                  langCode,
+                  tempAudioDir, // Use temp dir for intermediate files
+                  finalDubbedPath, // Specify final output path
+                  (detail) =>
+                    this.updateProgress({
+                      percent: langProgressStart + (detail.percent ?? 0) * 0.06,
+                    }),
+                );
+                dubbedAudioPaths[langCode] = finalDubbedPath;
+                console.log(
+                  `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
+                );
+              } catch (dubError: any) {
+                const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
+                console.error(`[${this.engineName}] ${errorMsg}`, dubError);
+                audioProcessingErrors[langCode] = errorMsg;
+              }
+            }
+            langsProcessed++;
+          }
+        } else {
+          console.log(`[${this.engineName}] No subtitles found for dubbing.`);
+        }
+      } catch (audioError: any) {
+        const errorMsg = `Audio processing failed: ${audioError.message}`;
+        console.error(`[${this.engineName}] ${errorMsg}`, audioError);
+        // Store a general audio processing error if specific language errors didn't cover it
+        if (Object.keys(audioProcessingErrors).length === 0) {
+          audioProcessingErrors['general'] = errorMsg;
+        }
+      } finally {
+        // Clean up temporary directory
+        try {
+          console.log(
+            `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
+          );
+          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
+          console.log(`[${this.engineName}] Temporary directory removed.`);
+        } catch (cleanupError: any) {
+          console.warn(
+            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
+          );
+        }
+      }
 
       this.updateProgress({ percent: 99 });
 
-      const tempMovieId = '2fj6lumx893';
-      const _dubbedAudioPaths = {
-        hi: path.resolve(
-          path.join(
-            'converted',
-            'playback',
-            tempMovieId,
-            `${tempMovieId}.hi.dubbed.mp3`,
-          ),
-        ),
-        pa: path.resolve(
-          path.join(
-            'converted',
-            'playback',
-            tempMovieId,
-            `${tempMovieId}.pa.dubbed.mp3`,
-          ),
-        ),
-      };
+      // const tempMovieId = '2fj6lumx893';
+      // const _dubbedAudioPaths = {
+      //   hi: path.resolve(
+      //     path.join(
+      //       'converted',
+      //       'playback',
+      //       tempMovieId,
+      //       `${tempMovieId}.hi.dubbed.mp3`,
+      //     ),
+      //   ),
+      //   pa: path.resolve(
+      //     path.join(
+      //       'converted',
+      //       'playback',
+      //       tempMovieId,
+      //       `${tempMovieId}.pa.dubbed.mp3`,
+      //     ),
+      //   ),
+      // };
       // === Step 4: Construct Final Output ===
       const outputData: AIEngineOutput['data'] = {
         title: aiData.title,
@@ -411,8 +410,8 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
           subtitleErrors: subtitleSaveErrors,
         }),
         // Add dubbed audio paths (pointing to temp files)
-        ...(Object.keys(_dubbedAudioPaths).length > 0 && {
-          dubbedAudioPaths: _dubbedAudioPaths,
+        ...(Object.keys(dubbedAudioPaths).length > 0 && {
+          dubbedAudioPaths: dubbedAudioPaths,
         }),
         // Add the temporary directory path for cleanup by MediaManager
         ...(Object.keys(audioProcessingErrors).length > 0 && {
