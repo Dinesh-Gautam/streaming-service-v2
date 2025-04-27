@@ -2,12 +2,17 @@ import * as path from 'path';
 
 import ffmpeg from 'fluent-ffmpeg';
 
-import { TranscodingOutput } from '../engine-outputs'; // Import specific output type
+import { AIEngineOutput, TranscodingOutput } from '../engine-outputs'; // Import AIEngineOutput
 import {
   EngineOutput,
   MediaEngine,
   MediaEngineProgressDetail,
 } from '../media-engine';
+
+// Define interface for transcoding engine options to support dubbed audio
+interface TranscodingEngineOptions {
+  aiOutput?: AIEngineOutput; // Optional AI engine output containing dubbed audio paths
+}
 
 // Define potential options for the transcoding engine if needed in the future
 // interface TranscodingEngineOptions { ... }
@@ -22,14 +27,24 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
   async process(
     inputFile: string,
     outputDir: string,
-    options?: any, // Options could include target formats, bitrates etc.
+    options?: TranscodingEngineOptions, // Updated to use typed options
   ): Promise<EngineOutput<TranscodingOutput>> {
     this.updateStatus('running');
     this._progress = 0;
     this._errorMessage = null;
 
-    const outputFileName = options?.outputFileName || 'video'; // Default output name
+    const outputFileName = 'video'; // Default output name
     const outputManifest = path.join(outputDir, `${outputFileName}.mpd`);
+
+    // Extract dubbed audio paths from AI engine output if available
+    const dubbedAudioPaths = options?.aiOutput?.data?.dubbedAudioPaths || {};
+    const hasDubbedAudio = Object.keys(dubbedAudioPaths).length > 0;
+
+    if (hasDubbedAudio) {
+      console.log(
+        `[${this.engineName}] Found ${Object.keys(dubbedAudioPaths).length} dubbed audio tracks to include in manifest`,
+      );
+    }
 
     // Note: The 'async' keyword on 'process' is technically not needed when returning a new Promise directly,
     // but it doesn't hurt and keeps the signature consistent.
@@ -42,6 +57,41 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
         cwd: outputDir, // Run ffmpeg in the target directory
       });
 
+      // Add dubbed audio tracks as additional inputs if available
+      const dubbedAudioLanguages: string[] = [];
+      if (hasDubbedAudio) {
+        Object.entries(dubbedAudioPaths).forEach(([langCode, audioPath]) => {
+          command.input(audioPath);
+          dubbedAudioLanguages.push(langCode);
+        });
+      }
+
+      // Calculate total number of adaptation sets needed
+      // 1 for video + 1 for original audio + N for dubbed audio
+      const totalAdaptationSets = 1 + 1 + dubbedAudioLanguages.length;
+
+      // Generate simpler adaptation sets string with explicitly separated adaptation sets
+      let adaptationSets = '';
+
+      // Video adaptation set
+      adaptationSets = 'id=0,streams=v';
+
+      // Audio adaptation sets - explicitly list each one with their own ID
+      // Original audio
+      adaptationSets += ' id=1,streams=a:0';
+
+      // Dubbed audio tracks
+      if (hasDubbedAudio) {
+        dubbedAudioLanguages.forEach((langCode, index) => {
+          // Each dubbed audio track gets its own adaptation set
+          adaptationSets += ` id=${index + 2},streams=a:${index + 1},lang=${langCode}`;
+        });
+      }
+
+      console.log(
+        `[${this.engineName}] Using adaptation sets: ${adaptationSets}`,
+      );
+
       command
         // Video codec settings (using options from original _action.tsx)
         .videoCodec('libx264')
@@ -51,7 +101,7 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
         .addOption('-g', '60')
         .addOption('-sc_threshold', '0')
 
-        // Audio codec settings
+        // Audio codec settings - only for original audio
         .audioCodec('aac')
         .audioBitrate('128k')
 
@@ -59,23 +109,64 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
         .addOption('-use_timeline', '1')
         .addOption('-use_template', '1')
         .addOption('-seg_duration', '5') // Segment duration in seconds
-        .addOption('-adaptation_sets', 'id=0,streams=v id=1,streams=a') // Map video and audio streams
+
+        // Explicitly list the stream indexes as they appear in the output
+        // The FFmpeg output streams will be:
+        // 0-4: Video (different resolutions)
+        // 5: Original audio
+        // 6+: Dubbed audio
+        // Use simple format without lang attribute - rely on -metadata for language info
+        .addOption(
+          '-adaptation_sets',
+          `id=0,streams=0,1,2,3,4 id=1,streams=5 ${dubbedAudioLanguages
+            .map((lang, i) => `id=${i + 2},streams=${i + 6}`)
+            .join(' ')}`,
+        )
+
         .addOption('-init_seg_name', 'init-stream$RepresentationID$.$ext$') // Naming for init segments
         .addOption(
           '-media_seg_name',
           'chunk-stream$RepresentationID$-$Number%05d$.$ext$', // Naming for media segments
-        )
+        );
 
-        // --- Multiple Video Representations ---
-        // Map video stream multiple times for different quality levels
+      // --- Multiple Video Representations ---
+      // Map video stream multiple times for different quality levels
+      command
         .addOption('-map', '0:v') // Map video stream (index 0)
         .addOption('-map', '0:v')
         .addOption('-map', '0:v')
         .addOption('-map', '0:v')
-        .addOption('-map', '0:v')
-        // Map audio stream once
-        .addOption('-map', '0:a') // Map audio stream (index 0)
+        .addOption('-map', '0:v');
 
+      // Add video metadata
+      command.addOption('-metadata:s:v', 'content_type=video');
+
+      // Map original audio stream
+      command.addOption('-map', '0:a:0'); // Map audio stream explicitly with index
+      command.addOption('-metadata:s:a:0', 'content_type=audio');
+      command.addOption('-metadata:s:a:0', 'language=original');
+
+      // Map dubbed audio streams if available
+      if (hasDubbedAudio) {
+        dubbedAudioLanguages.forEach((langCode, index) => {
+          // Map each dubbed audio from its corresponding input file (1, 2, etc.)
+          // First audio stream (a:0) from each input
+          command.addOption('-map', `${index + 1}:a:0`);
+
+          // Add language and content type metadata
+          const outputStreamIndex = index + 1; // Index in output stream order
+          command.addOption(
+            `-metadata:s:a:${outputStreamIndex}`,
+            `language=${langCode}`,
+          );
+          command.addOption(
+            `-metadata:s:a:${outputStreamIndex}`,
+            'content_type=audio',
+          );
+        });
+      }
+
+      command
         // Representation 0: 240p
         .addOption('-s:v:0', '426x240')
         .addOption('-b:v:0', '400k')
@@ -104,9 +195,21 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
         .addOption('-s:v:4', '1920x1080')
         .addOption('-b:v:4', '4800k')
         .addOption('-maxrate:v:4', '5760k')
-        .addOption('-bufsize:v:4', '9600k')
+        .addOption('-bufsize:v:4', '9600k');
 
-        // Output format and file
+      // Audio codec settings for dubbed tracks
+      if (hasDubbedAudio) {
+        dubbedAudioLanguages.forEach((langCode, index) => {
+          // Set codec and bitrate for each dubbed audio track
+          // Index must match the output stream order (starting from 1 after the original audio)
+          const outputStreamIndex = index + 1;
+          command.addOption(`-c:a:${outputStreamIndex}`, 'aac');
+          command.addOption(`-b:a:${outputStreamIndex}`, '128k');
+        });
+      }
+
+      // Output format and file
+      command
         .format('dash') // Output format DASH
         .output(outputManifest); // Output manifest file
 
@@ -159,7 +262,7 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
         })
         .on('stderr', (stderrLine) => {
           // Log stderr for debugging if needed, but can be very verbose
-          // console.log(`[${this.engineName}] stderr: ${stderrLine}`);
+          console.log(`[${this.engineName}] stderr: ${stderrLine}`);
         })
         .on('error', (err, stdout, stderr) => {
           console.error(
@@ -176,18 +279,31 @@ export class TranscodingEngine extends MediaEngine<TranscodingOutput> {
             `[${this.engineName}] Transcoding finished successfully.`,
           );
           this.complete(); // Set status and emit complete event
+
+          // Create output data matching TranscodingOutputData structure
+          const dubbedLanguages = hasDubbedAudio ? dubbedAudioLanguages : [];
+
           // Resolve with success object, including the path to the manifest
           resolve({
             success: true,
             output: {
-              paths: { manifest: outputManifest },
-              // data is undefined for this engine
+              data: {
+                manifest: outputManifest,
+                dubbedLanguages: dubbedLanguages,
+                dubbedAudioTracks: dubbedLanguages,
+              },
             },
           });
         });
 
       // Start the ffmpeg process
       console.log(`[${this.engineName}] Starting transcoding process...`);
+
+      // Log the command to help with debugging
+      command.on('start', (commandLine) => {
+        console.log(`[${this.engineName}] FFmpeg command: ${commandLine}`);
+      });
+
       command.run();
     });
   }

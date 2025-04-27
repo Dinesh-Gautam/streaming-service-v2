@@ -59,6 +59,14 @@ export async function getOriginalMovieDetail(id: string): Promise<
           language: string;
           url: string;
         }[];
+        aiGeneratedSubtitles: {
+          language: string;
+          url: string;
+        }[];
+        aiGeneratedAudio: {
+          language: string;
+          url: string;
+        }[];
         thumbnailUrl: string;
         playbackUrl: string;
         chaptersUrl: string;
@@ -97,7 +105,7 @@ export async function getOriginalMovieDetail(id: string): Promise<
         if (task.engine === 'SubtitleEngine') {
           const subtitleOutput = task.output as SubtitleOutput;
 
-          const paths = subtitleOutput.paths?.vtt;
+          const paths = subtitleOutput.data.paths?.vtt;
 
           if (!paths) return acc;
 
@@ -131,18 +139,30 @@ export async function getOriginalMovieDetail(id: string): Promise<
         if (task.engine === 'AIEngine') {
           const aiOutput = task.output as AIEngineOutput;
           const subtitles = aiOutput.data.subtitles;
-
+          const audio = aiOutput.data.dubbedAudioPaths;
           const paths = subtitles?.vttPaths;
 
           return {
             ...acc,
             chaptersUrl: `/api/static/playback/${mediaId}/${mediaId}.chapters.vtt`,
-            ...(paths && {
-              subtitles: Object.entries(paths).map(([language, path]) => ({
-                language,
-                url: `/api/static/playback/${mediaId}/${mediaId}.${language}.ai.vtt`,
-              })),
-            }),
+            ...(audio ?
+              {
+                aiGeneratedAudio: Object.entries(audio).map(([language]) => ({
+                  language,
+                  url: `/api/static/playback/${mediaId}/${mediaId}.${language}.dubbed.mp3`,
+                })),
+              }
+            : {}),
+            ...(paths ?
+              {
+                aiGeneratedSubtitles: Object.entries(paths).map(
+                  ([language]) => ({
+                    language,
+                    url: `/api/static/playback/${mediaId}/${mediaId}.${language}.ai.vtt`,
+                  }),
+                ),
+              }
+            : {}),
           };
         }
 

@@ -209,7 +209,8 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
 
     posterImagePath = path
       .join(
-        'tmp',
+        'public',
+        'uploads',
         'ai-generated',
         'poster-4afbeb96-5b7d-4207-a617-1b4d382cc9d4.png',
       ) // Prepend '/' for root-relative path
@@ -217,7 +218,8 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
       .replaceAll('tmp', '');
     backdropImagePath = path
       .join(
-        'tmp',
+        'public',
+        'uploads',
         'ai-generated',
         'backdrop-2e0a51fb-d2a2-4f81-9763-40bacfa6a194.png',
       ) // Prepend '/' for root-relative path

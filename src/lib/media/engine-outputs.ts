@@ -34,10 +34,13 @@ export interface ThumbnailOutput {
 
 // --- Transcoding Engine Output ---
 export interface TranscodingOutputData extends BaseEngineOutputData {
-  paths: {
+  paths?: {
     playlist: string; // Path to the HLS playlist (m3u8)
     outputDir: string; // Directory containing segments and playlist
   };
+  manifest?: string; // Path to the DASH manifest file (mpd)
+  dubbedLanguages?: string[]; // List of language codes for dubbed audio tracks
+  dubbedAudioTracks?: string[]; // For compatibility with clients expecting an array
   // Add any other relevant transcoding data, e.g., resolutions, bitrates
 }
 export interface TranscodingOutput {

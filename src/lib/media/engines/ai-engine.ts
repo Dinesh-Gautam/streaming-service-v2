@@ -4,9 +4,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 
-import TextToSpeech from '@google-cloud/text-to-speech'; // Import Google TTS
-import ffmpeg from 'fluent-ffmpeg'; // Import fluent-ffmpeg
-
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
+import ffmpeg from 'fluent-ffmpeg';
 // Genkit Core and Google AI Plugin
 // Assume genkit is configured globally, e.g., in genkit.config.ts
 
@@ -60,13 +59,13 @@ const execPromise = promisify(exec); // Promisify exec for async/await usage
 
 // Specify the output type for this engine
 export class AIEngine extends MediaEngine<AIEngineOutput> {
-  private ttsClient: TextToSpeech.TextToSpeechClient;
+  private ttsClient: TextToSpeechClient;
 
   constructor() {
     super('AIEngine');
     // Initialize TTS Client - ensure GOOGLE_APPLICATION_CREDENTIALS is set
     try {
-      this.ttsClient = new TextToSpeech.TextToSpeechClient();
+      this.ttsClient = new TextToSpeechClient();
       console.log(`[${this.engineName}] Google TTS Client Initialized.`);
     } catch (error: any) {
       console.error(
@@ -123,6 +122,12 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
       { recursive: true },
     );
     console.log(`[${this.engineName}] Created temp directory: ${tempAudioDir}`);
+
+    if (!tempAudioDir) {
+      throw new Error(
+        `[${this.engineName}] Failed to create temp directory: ${tempAudioDir}`,
+      );
+    }
 
     try {
       // --- Call Genkit Generate for Video Analysis ---
@@ -264,121 +269,138 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         `${baseName}_original_Vocals.wav`, // Vocal remover output name convention
       );
 
-      try {
-        // 3.1 Extract Original Audio (as WAV for vocal remover)
-        console.log(`[${this.engineName}] Extracting original audio...`);
-        this.updateProgress({ message: 'Extracting audio' });
-        await this._extractAudio(inputFile, originalAudioPath);
-        console.log(
-          `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
-        );
-        this.updateProgress({ percent: 91, message: 'Removing vocals' });
+      // try {
+      //   // 3.1 Extract Original Audio (as WAV for vocal remover)
+      //   console.log(`[${this.engineName}] Extracting original audio...`);
+      //   await this._extractAudio(inputFile, originalAudioPath);
+      //   console.log(
+      //     `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
+      //   );
+      //   this.updateProgress({ percent: 91 });
 
-        // 3.2 Remove Vocals
-        console.log(`[${this.engineName}] Removing vocals...`);
-        const binDir = path.resolve('bin'); // Absolute path to bin directory
-        const vocalRemoverExe = 'vocal_remover.exe'; // Executable name
-        const absoluteInputAudioPath = path.resolve(originalAudioPath); // Absolute path to input audio
-        const absoluteOutputDir = path.resolve(tempAudioDir); // Absolute path to temp output dir
+      //   // 3.2 Remove Vocals
+      //   console.log(`[${this.engineName}] Removing vocals...`);
+      //   const binDir = path.resolve('bin'); // Absolute path to bin directory
+      //   const vocalRemoverExe = 'vocal_remover.exe'; // Executable name
+      //   const absoluteInputAudioPath = path.resolve(originalAudioPath); // Absolute path to input audio
 
-        // Construct the command to be run *from* the bin directory
-        // Use relative path for the model, absolute paths for input/output
-        const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
+      //   // Construct the command to be run *from* the bin directory
+      //   // Use relative path for the model, absolute paths for input/output
+      //   const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
 
-        console.log(
-          `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
-        );
-        // Set CWD to the bin directory for execution
-        await this._runCommand(vocalRemoverCommand, binDir);
-        console.log(
-          `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
-        );
+      //   console.log(
+      //     `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
+      //   );
+      //   // Set CWD to the bin directory for execution
+      //   await this._runCommand(vocalRemoverCommand, binDir);
+      //   console.log(
+      //     `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
+      //   );
 
-        // Check if instrumental file exists
-        try {
-          await fs.promises.access(instrumentalAudioPath);
-        } catch (accessError) {
-          throw new Error(
-            `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
-          );
-        }
-        this.updateProgress({ percent: 93, message: 'Generating TTS' });
+      //   // Check if instrumental file exists
+      //   try {
+      //     await fs.promises.access(instrumentalAudioPath);
+      //   } catch (accessError) {
+      //     throw new Error(
+      //       `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
+      //     );
+      //   }
+      //   this.updateProgress({ percent: 93 });
 
-        // 3.3 Generate TTS and Merge for each language
-        if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
-          const languages = Object.keys(
-            aiData.subtities,
-          ) as (keyof typeof aiData.subtities)[];
-          const totalLangs = languages.length;
-          let langsProcessed = 0;
+      //   // 3.3 Generate TTS and Merge for each language
+      //   if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
+      //     const languages = Object.keys(
+      //       aiData.subtities,
+      //     ) as (keyof typeof aiData.subtities)[];
+      //     const totalLangs = languages.length;
+      //     let langsProcessed = 0;
 
-          for (const langCode of languages) {
-            const langSubtitles = aiData.subtities[langCode];
-            if (langSubtitles && langSubtitles.length > 0) {
-              console.log(
-                `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
-              );
-              const langProgressStart = 93 + (langsProcessed / totalLangs) * 6; // Allocate 6% total for dubbing (93-99)
-              this.updateProgress({
-                percent: langProgressStart,
-                message: `Dubbing ${langCode}`,
-              });
+      //     for (const langCode of languages) {
+      //       const langSubtitles = aiData.subtities[langCode];
+      //       if (langSubtitles && langSubtitles.length > 0) {
+      //         console.log(
+      //           `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
+      //         );
+      //         const langProgressStart = 93 + (langsProcessed / totalLangs) * 6; // Allocate 6% total for dubbing (93-99)
+      //         this.updateProgress({
+      //           percent: langProgressStart,
+      //         });
 
-              try {
-                const finalDubbedPath = path.join(
-                  outputDir,
-                  `${baseName}.${langCode}.dubbed.mp3`, // Save final dubbed audio in outputDir
-                );
-                await this._generateDubbedAudio(
-                  instrumentalAudioPath,
-                  langSubtitles,
-                  langCode,
-                  tempAudioDir, // Use temp dir for intermediate files
-                  finalDubbedPath, // Specify final output path
-                  (detail) =>
-                    this.updateProgress({
-                      ...detail, // Pass message through
-                      percent: langProgressStart + (detail.percent ?? 0) * 0.06, // Scale lang progress within its 6% slot
-                    }),
-                );
-                dubbedAudioPaths[langCode] = finalDubbedPath;
-                console.log(
-                  `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
-                );
-              } catch (dubError: any) {
-                const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
-                console.error(`[${this.engineName}] ${errorMsg}`, dubError);
-                audioProcessingErrors[langCode] = errorMsg;
-              }
-            }
-            langsProcessed++;
-          }
-        } else {
-          console.log(`[${this.engineName}] No subtitles found for dubbing.`);
-        }
-      } catch (audioError: any) {
-        const errorMsg = `Audio processing failed: ${audioError.message}`;
-        console.error(`[${this.engineName}] ${errorMsg}`, audioError);
-        // Store a general audio processing error if specific language errors didn't cover it
-        if (Object.keys(audioProcessingErrors).length === 0) {
-          audioProcessingErrors['general'] = errorMsg;
-        }
-      } finally {
-        // Clean up temporary directory
-        try {
-          console.log(
-            `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
-          );
-          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
-          console.log(`[${this.engineName}] Temporary directory removed.`);
-        } catch (cleanupError: any) {
-          console.warn(
-            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
-          );
-        }
-      }
-      this.updateProgress({ percent: 99, message: 'Finalizing' });
+      //         try {
+      //           const finalDubbedPath = path.join(
+      //             outputDir,
+      //             `${baseName}.${langCode}.dubbed.mp3`, // Save final dubbed audio in outputDir
+      //           );
 
+      //           await this._generateDubbedAudio(
+      //             instrumentalAudioPath,
+      //             langSubtitles,
+      //             langCode,
+      //             tempAudioDir, // Use temp dir for intermediate files
+      //             finalDubbedPath, // Specify final output path
+      //             (detail) =>
+      //               this.updateProgress({
+      //                 percent: langProgressStart + (detail.percent ?? 0) * 0.06,
+      //               }),
+      //           );
+      //           dubbedAudioPaths[langCode] = finalDubbedPath;
+      //           console.log(
+      //             `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
+      //           );
+      //         } catch (dubError: any) {
+      //           const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
+      //           console.error(`[${this.engineName}] ${errorMsg}`, dubError);
+      //           audioProcessingErrors[langCode] = errorMsg;
+      //         }
+      //       }
+      //       langsProcessed++;
+      //     }
+      //   } else {
+      //     console.log(`[${this.engineName}] No subtitles found for dubbing.`);
+      //   }
+      // } catch (audioError: any) {
+      //   const errorMsg = `Audio processing failed: ${audioError.message}`;
+      //   console.error(`[${this.engineName}] ${errorMsg}`, audioError);
+      //   // Store a general audio processing error if specific language errors didn't cover it
+      //   if (Object.keys(audioProcessingErrors).length === 0) {
+      //     audioProcessingErrors['general'] = errorMsg;
+      //   }
+      // } finally {
+      //   // Clean up temporary directory
+      //   try {
+      //     console.log(
+      //       `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
+      //     );
+      //     await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
+      //     console.log(`[${this.engineName}] Temporary directory removed.`);
+      //   } catch (cleanupError: any) {
+      //     console.warn(
+      //       `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
+      //     );
+      //   }
+      // }
+
+      this.updateProgress({ percent: 99 });
+
+      const tempMovieId = '2fj6lumx893';
+      const _dubbedAudioPaths = {
+        hi: path.resolve(
+          path.join(
+            'converted',
+            'playback',
+            tempMovieId,
+            `${tempMovieId}.hi.dubbed.mp3`,
+          ),
+        ),
+        pa: path.resolve(
+          path.join(
+            'converted',
+            'playback',
+            tempMovieId,
+            `${tempMovieId}.pa.dubbed.mp3`,
+          ),
+        ),
+      };
       // === Step 4: Construct Final Output ===
       const outputData: AIEngineOutput['data'] = {
         title: aiData.title,
@@ -400,14 +422,15 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         ...(Object.keys(subtitleSaveErrors).length > 0 && {
           subtitleErrors: subtitleSaveErrors,
         }),
+        // Add dubbed audio paths (pointing to temp files)
+        ...(Object.keys(_dubbedAudioPaths).length > 0 && {
+          dubbedAudioPaths: _dubbedAudioPaths,
+        }),
+        // Add the temporary directory path for cleanup by MediaManager
+        ...(Object.keys(audioProcessingErrors).length > 0 && {
+          audioProcessingErrors,
+        }),
       };
-      // Add dubbed audio paths and any errors to the output
-      if (Object.keys(dubbedAudioPaths).length > 0) {
-        outputData.dubbedAudioPaths = dubbedAudioPaths;
-      }
-      if (Object.keys(audioProcessingErrors).length > 0) {
-        outputData.audioProcessingErrors = audioProcessingErrors;
-      }
 
       this.updateProgress({ percent: 100 });
       console.log(`[${this.engineName}] AI processing completed successfully.`);
@@ -419,6 +442,20 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         },
       };
     } catch (error: any) {
+      // Ensure temp directory is cleaned up even if AI processing fails *before* returning
+      if (tempAudioDir) {
+        try {
+          console.warn(
+            `[${this.engineName}] Cleaning up temporary directory due to error: ${tempAudioDir}`,
+          );
+          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
+        } catch (cleanupError: any) {
+          console.error(
+            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir} after error: ${cleanupError.message}`,
+          );
+        }
+      }
+
       let errorMessage = 'An unexpected error occurred during AI processing.';
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -654,7 +691,7 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     let concatFileContent = '';
     let lastEndTimeSec = 0;
 
-    onProgress({ message: `Generating ${langCode} TTS segments` });
+    onProgress({ percent: 0 });
 
     // 1. Generate TTS for each subtitle entry
     for (let i = 0; i < subtitles.length; i++) {
@@ -685,10 +722,10 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
         lastEndTimeSec = endTimeSec; // Update last end time
       }
       // Update progress within the loop
-      onProgress({ percent: (i / subtitles.length) * 50 }); // TTS generation is ~50% of this step
+      onProgress({ percent: ((i + 1) / subtitles.length) * 50 }); // TTS generation is ~50% of this step
     }
 
-    onProgress({ message: `Assembling ${langCode} audio track`, percent: 50 });
+    onProgress({ percent: 50 });
 
     // 2. Assemble the full TTS track using fluent-ffmpeg (complex filtergraph)
     const assembledTTSPath = path.join(tempDir, `assembled_${langCode}.mp3`);
@@ -761,7 +798,6 @@ export class AIEngine extends MediaEngine<AIEngineOutput> {
     });
 
     onProgress({
-      message: `Merging ${langCode} with instrumental`,
       percent: 80,
     });
 

@@ -24,27 +24,66 @@ export class MediaManager {
     }
     this.mediaId = mediaId;
     this.engines = engines;
-    // Ensure AIEngine runs after SubtitleEngine if both are present
-    // This is a basic check; a more robust dependency system could be added later.
+
+    // Ensure proper engine ordering for dependencies
+    this._reorderEnginesForDependencies();
+  }
+
+  /**
+   * Ensure engines run in the correct order based on dependencies
+   * - SubtitleEngine should run before AIEngine (existing logic)
+   * - AIEngine should run before TranscodingEngine (new logic)
+   */
+  private _reorderEnginesForDependencies(): void {
+    // First check: AIEngine must run after SubtitleEngine
     const subtitleIndex = this.engines.findIndex(
       (e) => e.engineName === 'SubtitleEngine',
     );
     const aiIndex = this.engines.findIndex((e) => e.engineName === 'AIEngine');
+
     if (subtitleIndex !== -1 && aiIndex !== -1 && aiIndex < subtitleIndex) {
       console.warn(
         '[MediaManager] Warning: AIEngine found before SubtitleEngine. Reordering for dependency.',
       );
-      // Simple reorder: move AIEngine after SubtitleEngine
+      // Move AIEngine after SubtitleEngine
       const aiEngineInstance = this.engines.splice(aiIndex, 1)[0];
-      const newAiIndex = this.engines.findIndex(
+      const newSubtitleIndex = this.engines.findIndex(
         (e) => e.engineName === 'SubtitleEngine',
-      ); // Find index again after splice
-      this.engines.splice(newAiIndex + 1, 0, aiEngineInstance);
-      console.log(
-        '[MediaManager] Engines reordered:',
-        this.engines.map((e) => e.engineName),
       );
+      this.engines.splice(newSubtitleIndex + 1, 0, aiEngineInstance);
     }
+
+    // Second check: TranscodingEngine must run after AIEngine
+    const transcodingIndex = this.engines.findIndex(
+      (e) => e.engineName === 'TranscodingEngine',
+    );
+    const updatedAiIndex = this.engines.findIndex(
+      (e) => e.engineName === 'AIEngine',
+    );
+
+    if (
+      transcodingIndex !== -1 &&
+      updatedAiIndex !== -1 &&
+      transcodingIndex < updatedAiIndex
+    ) {
+      console.warn(
+        '[MediaManager] Warning: TranscodingEngine found before AIEngine. Reordering for dependency.',
+      );
+      // Move TranscodingEngine after AIEngine
+      const transcodingEngineInstance = this.engines.splice(
+        transcodingIndex,
+        1,
+      )[0];
+      const finalAiIndex = this.engines.findIndex(
+        (e) => e.engineName === 'AIEngine',
+      );
+      this.engines.splice(finalAiIndex + 1, 0, transcodingEngineInstance);
+    }
+
+    console.log(
+      '[MediaManager] Engines ordered:',
+      this.engines.map((e) => e.engineName),
+    );
   }
 
   /**
@@ -120,6 +159,8 @@ export class MediaManager {
         if (!task) continue; // Should not happen
 
         let dependentInput: SubtitleOutput | undefined = undefined;
+        // Prepare options for engine.process (might be populated based on dependencies)
+        let processOptions: any = {};
 
         // --- Dependency Check: Specific logic for AIEngine ---
         if (engine.engineName === 'AIEngine') {
@@ -155,8 +196,48 @@ export class MediaManager {
             });
             continue; // Skip processing this engine
           }
+
+          // Set processOptions for AIEngine
+          processOptions = { subtitleOutput: dependentInput };
         }
-        // --- End Dependency Check ---
+        // --- End Dependency Check for AIEngine ---
+
+        // --- Dependency Check: Specific logic for TranscodingEngine ---
+        if (engine.engineName === 'TranscodingEngine') {
+          // Check if we have AIEngine output to pass to TranscodingEngine
+          const aiOutput = completedEngineOutputs['AIEngine'];
+
+          if (
+            !aiOutput &&
+            this.engines.some((e) => e.engineName === 'AIEngine')
+          ) {
+            // AIEngine is configured but output is not in memory, check DB
+            const aiTask = this.findCompletedTaskInJob('AIEngine');
+            if (aiTask?.output) {
+              console.log(
+                `[MediaManager] Found AIEngine output in DB for TranscodingEngine.`,
+              );
+              // Include it in processOptions
+              processOptions = {
+                aiOutput: aiTask.output,
+              };
+            } else {
+              console.log(
+                `[MediaManager] No AIEngine output found for TranscodingEngine, but will proceed anyway.`,
+              );
+              // TranscodingEngine can still proceed without AI output
+            }
+          } else if (aiOutput) {
+            // AI output is in memory, use it
+            processOptions = {
+              aiOutput,
+            };
+            console.log(
+              `[MediaManager] Passing AIEngine output to TranscodingEngine.`,
+            );
+          }
+        }
+        // --- End Dependency Check for TranscodingEngine ---
 
         // Skip only if task already completed successfully in a previous run
         if (task.status === 'completed') {
@@ -183,26 +264,6 @@ export class MediaManager {
           ...(task.status === 'pending' &&
             task.errorMessage && { errorMessage: undefined }),
         });
-
-        // --- Prepare options for engine.process (e.g., pass Subtitle output to AI) ---
-        let processOptions: any = {};
-        if (engine.engineName === 'AIEngine') {
-          if (dependentInput) {
-            // Use the input fetched earlier (memory or DB)
-            processOptions = { subtitleOutput: dependentInput };
-          } else {
-            // This case should technically not be reached due to the dependency check above
-            console.error(
-              `[MediaManager] Internal error: Subtitle output missing for AIEngine despite passing dependency check.`,
-            );
-            await this.updateTask(task.taskId, {
-              status: 'failed',
-              errorMessage: 'Internal error: Missing dependency output.',
-            });
-            continue; // Skip processing
-          }
-        }
-        // --- End Prepare options ---
 
         // Run the engine's process method and get the result
         const result: EngineOutput<EngineTaskOutput> = await engine.process(

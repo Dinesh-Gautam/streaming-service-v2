@@ -28,19 +28,7 @@ export default async function PlayPage({
 
   console.log(movie);
 
-  // const playbackId = movie.media?.video?.id;
-  // const playbackUrl = '/api/static/playback/' + playbackId + '/video.mpd';
 
-  // const thumbnailsUrl =
-  //   '/api/static/playback/' + playbackId + '/thumbnails.vtt';
-
-  // const subtitleUrl = {
-  //   en: '/api/static/playback/' + playbackId + '/' + playbackId + '.en.vtt',
-  //   hi: '/api/static/playback/' + playbackId + '/' + playbackId + '.hi.vtt',
-  //   pa: '/api/static/playback/' + playbackId + '/' + playbackId + '.pa.vtt',
-  // };
-
-  // const chaptersUrl = '/api/static/playback/' + playbackId + '/chapters.vtt';
 
   return (
     <div className="flex items-center justify-center max-h-screen overflow-hidden">
@@ -52,7 +40,16 @@ export default async function PlayPage({
         poster={'/api/static/' + movie.backdrop_path}
         style={{ height: '100vh' }}
         title={movie.title}
-        src={movie.playbackUrl}
+        src={[
+          ...(movie.playbackUrl ? [{
+            src: movie.playbackUrl,
+            type: 'application/dash+xml' as const,
+          }] : []),
+          ...(movie.aiGeneratedAudio?.map((audio) => ({
+            src: audio.url,
+            type: 'audio/mpeg' as const,
+          })) || []),
+        ]}
       >
         <MediaProvider />
         {movie.subtitles?.map((subtitle) => (
@@ -63,6 +60,18 @@ export default async function PlayPage({
             label={new Intl.DisplayNames('en', {
               type: 'language',
             }).of(subtitle.language)}
+            src={subtitle.url}
+          />
+        ))}
+
+        {movie.aiGeneratedSubtitles?.map((subtitle) => (
+          <Track
+            key={subtitle.language}
+            kind="subtitles"
+            lang={subtitle.language}
+            label={new Intl.DisplayNames('en', {
+              type: 'language',
+            }).of(subtitle.language) + ' (AI)'}
             src={subtitle.url}
           />
         ))}
