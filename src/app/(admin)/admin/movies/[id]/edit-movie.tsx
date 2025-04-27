@@ -1052,7 +1052,7 @@ export default function EditMoviePage({
                       </div>
                     )}
 
-                    {initialAiGeneratedBackdropPath && <span className='block *: text-sm text-muted-foreground self-center'>or</span>}
+                    {initialAiGeneratedPosterPath && <span className='block mx-auto w-fit text-sm text-muted-foreground self-center'>OR</span>}
 
                     {/* Corrected prop name */}
                     <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 w-fit">
@@ -1207,56 +1207,55 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
                   file={mediaFiles.backdrop}
                 >
-                  {/* --- Initial AI Generated Backdrop --- */}
-                  {initialAiGeneratedBackdropPath && (
-                    <div className="mt-4 p-4 border rounded-md space-y-3 bg-muted/20 relative">
-                      <ShineBorder
-                        borderWidth={1}
-                        shineColor={['#D130B9', '#DC3639']}
-                      />
-                      {/* Corrected prop name */}
-                      <h4 className="font-medium flex items-center gap-2">
-                        <SparkelIcon />
-                        <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
-                          Initially
-                          Generated Backdrop
-                        </span>
-                      </h4>
-                      <div className="flex flex-col gap-4  items-start">
-                        <Image
-                          src={'/api/static/' + initialAiGeneratedBackdropPath}
-                          alt="Initially Generated Backdrop"
-                          width={200}
-                          height={112}
-                          className="rounded-md object-cover border"
-                          unoptimized
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleUseAIImage('backdrop', 'initial')
-                          }
-                          disabled={
-                            form.getValues('media.backdrop.originalPath') ===
-                            initialAiGeneratedBackdropPath
-                          }
-                        >
-                          {(
-                            form.getValues('media.backdrop.originalPath') ===
-                            initialAiGeneratedBackdropPath
-                          ) ?
-                            'Using Initial AI Backdrop'
-                            : 'Use Initial AI Backdrop'}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* --- Prompt-Based Backdrop Generation --- */}
                   <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
                     <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
+                    {/* --- Initial AI Generated Backdrop --- */}
+                    {initialAiGeneratedBackdropPath && (
+                      <div className="space-y-3 relative">
+                        {/* Corrected prop name */}
+                        <h4 className="font-medium flex items-center gap-2">
+                          <SparkelIcon />
+                          <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
+                            Initially
+                            Generated Backdrop
+                          </span>
+                        </h4>
+                        <div className="flex flex-col gap-4  items-start">
+                          <Image
+                            src={'/api/static/' + initialAiGeneratedBackdropPath}
+                            alt="Initially Generated Backdrop"
+                            width={200}
+                            height={112}
+                            className="rounded-md object-cover border"
+                            unoptimized
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleUseAIImage('backdrop', 'initial')
+                            }
+                            disabled={
+                              form.getValues('media.backdrop.originalPath') ===
+                              initialAiGeneratedBackdropPath
+                            }
+                          >
+                            {(
+                              form.getValues('media.backdrop.originalPath') ===
+                              initialAiGeneratedBackdropPath
+                            ) ?
+                              'Using Initial AI Backdrop'
+                              : 'Use Initial AI Backdrop'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {initialAiGeneratedBackdropPath && <span className='block mx-auto w-fit text-sm text-muted-foreground self-center'>OR</span>}
                     {/* Corrected prop name */}
                     <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 w-fit">
                       <SparkelIcon /> Generate Backdrop with AI Prompt
