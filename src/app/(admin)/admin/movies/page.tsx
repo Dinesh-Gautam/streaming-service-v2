@@ -8,8 +8,12 @@ import { PATHS } from '@/constants/paths';
 import { Movie } from '@/server/db/schemas/movie';
 
 import { MoviesTable, type TranscodingProgresses } from './movies-table';
+import dbConnect from '@/server/db/connect';
+
+export const dynamic = 'force-dynamic';
 
 export default async function MoviesPage() {
+  await dbConnect();
   let movies = await Movie.find({}).sort({ createdAt: -1 });
 
   movies = movies.map((movie) => {
@@ -55,7 +59,7 @@ export default async function MoviesPage() {
       </div>
       {movies.length > 0 ?
         <MoviesTable movies={movies} />
-      : <p className="text-muted-foreground">No movies found.</p>}
+        : <p className="text-muted-foreground">No movies found.</p>}
     </div>
   );
 }

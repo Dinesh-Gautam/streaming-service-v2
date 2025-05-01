@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",

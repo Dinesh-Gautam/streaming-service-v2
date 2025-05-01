@@ -187,8 +187,8 @@ export default function EditMoviePage({
       media: {
         video: undefined,
         poster: undefined,
-        backdrop: undefined
-      }
+        backdrop: undefined,
+      },
     },
   });
 
@@ -273,7 +273,8 @@ export default function EditMoviePage({
 
     if (!hasContent) {
       toast.error('Cannot save movie', {
-        description: 'Please fill in at least one field or upload media before saving.'
+        description:
+          'Please fill in at least one field or upload media before saving.',
       });
       return;
     }
@@ -285,14 +286,23 @@ export default function EditMoviePage({
       if (!values.title) missingFields.push('Title');
       if (!values.description) missingFields.push('Description');
       if (!values.year) missingFields.push('Year');
-      if (!values.genres || values.genres.length === 0) missingFields.push('Genres');
+      if (!values.genres || values.genres.length === 0)
+        missingFields.push('Genres');
       if (!values.media?.video?.originalPath) missingFields.push('Video');
-      if (!values.media?.poster?.originalPath && !values.media?.poster?.aiGeneratedPath) missingFields.push('Poster');
-      if (!values.media?.backdrop?.originalPath && !values.media?.backdrop?.aiGeneratedPath) missingFields.push('Backdrop');
+      if (
+        !values.media?.poster?.originalPath &&
+        !values.media?.poster?.aiGeneratedPath
+      )
+        missingFields.push('Poster');
+      if (
+        !values.media?.backdrop?.originalPath &&
+        !values.media?.backdrop?.aiGeneratedPath
+      )
+        missingFields.push('Backdrop');
 
       if (missingFields.length > 0) {
         toast.error('Cannot publish movie', {
-          description: `Please fill in all required fields: ${missingFields.join(', ')}`
+          description: `Please fill in all required fields: ${missingFields.join(', ')}`,
         });
         return;
       }
@@ -356,7 +366,7 @@ export default function EditMoviePage({
             const message =
               typeof res === 'object' && res !== null && 'message' in res ?
                 res.message
-                : 'Unknown error';
+              : 'Unknown error';
             showToast(
               'Upload Failed',
               `${type} upload failed: ${message}`,
@@ -469,12 +479,12 @@ export default function EditMoviePage({
       path =
         type === 'poster' ?
           initialAiGeneratedPosterPath
-          : initialAiGeneratedBackdropPath;
+        : initialAiGeneratedBackdropPath;
     } else {
       path =
         type === 'poster' ?
           promptGeneratedPosterPath
-          : promptGeneratedBackdropPath;
+        : promptGeneratedBackdropPath;
     }
 
     if (path) {
@@ -515,13 +525,18 @@ export default function EditMoviePage({
         showToast(
           'Cannot Enhance',
           'Please enter a prompt to enhance first.',
-          true
+          true,
         );
         return;
       }
 
       // If no data to build on, show error
-      if (!isEnhance && !title && !description && (!genres || genres.length === 0)) {
+      if (
+        !isEnhance &&
+        !title &&
+        !description &&
+        (!genres || genres.length === 0)
+      ) {
         showToast(
           'Cannot Suggest',
           'Please fill in title, description, or genres first.',
@@ -585,7 +600,7 @@ export default function EditMoviePage({
         showToast(
           'Error',
           `Failed to generate prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          true
+          true,
         );
       } finally {
         // Clear loading state
@@ -596,7 +611,7 @@ export default function EditMoviePage({
         }
       }
     },
-    [form, posterPrompt, backdropPrompt, showToast]
+    [form, posterPrompt, backdropPrompt, showToast],
   );
 
   const handleGenerateImage = (type: 'poster' | 'backdrop') => {
@@ -620,7 +635,7 @@ export default function EditMoviePage({
     const transition =
       type === 'poster' ?
         startPosterGenerationTransition
-        : startBackdropGenerationTransition;
+      : startBackdropGenerationTransition;
 
     transition(async () => {
       showToast(
@@ -661,7 +676,7 @@ export default function EditMoviePage({
           const errorMsg =
             result.error ?
               String(result.error)
-              : `Failed to generate ${type} due to an unknown error`;
+            : `Failed to generate ${type} due to an unknown error`;
           console.error(`Failed to generate ${type}:`, errorMsg);
           if (type === 'poster') {
             setPosterGenerationError(errorMsg);
@@ -694,7 +709,13 @@ export default function EditMoviePage({
       !!posterPrompt.trim() ||
       !!backdropPrompt.trim()
     );
-  }, [form.watch('title'), form.watch('description'), form.watch('genres'), posterPrompt, backdropPrompt]);
+  }, [
+    form.watch('title'),
+    form.watch('description'),
+    form.watch('genres'),
+    posterPrompt,
+    backdropPrompt,
+  ]);
 
   return (
     <form
@@ -725,7 +746,7 @@ export default function EditMoviePage({
                   Fill in the information below to{' '}
                   {isNewMovie ?
                     'create a new movie entry'
-                    : "update the movie's information"}
+                  : "update the movie's information"}
                   .
                 </CardDescription>
               </CardHeader>
@@ -960,9 +981,9 @@ export default function EditMoviePage({
                         >
                           {processingStatus.jobStatus === 'failed' ?
                             'Retry Processing'
-                            : 'Start Processing'}
+                          : 'Start Processing'}
                         </Button>
-                        : null}
+                      : null}
 
                       {processingStatus.jobExists && (
                         <SegmentedProgressBar
@@ -986,7 +1007,7 @@ export default function EditMoviePage({
                           >
                             {isCopied ?
                               <Check className="h-4 w-4 mr-1" />
-                              : <Copy className="h-4 w-4 mr-1" />}
+                            : <Copy className="h-4 w-4 mr-1" />}
                             {isCopied ? 'Copied' : 'Copy URL'}
                           </Button>
                         </div>
@@ -1005,11 +1026,8 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'poster')}
                   file={mediaFiles.poster}
                 >
-
-
                   {/* --- Prompt-Based Poster Generation --- */}
                   <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
-
                     <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
                     {/* --- Initial AI Generated Poster --- */}
                     {initialAiGeneratedPosterPath && (
@@ -1018,8 +1036,7 @@ export default function EditMoviePage({
                         <h4 className="font-medium flex items-center gap-2">
                           <SparkelIcon />
                           <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
-                            Initially
-                            Generated Poster
+                            Initially Generated Poster
                           </span>
                         </h4>
                         <div className="flex flex-col gap-2 items-start">
@@ -1035,7 +1052,9 @@ export default function EditMoviePage({
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleUseAIImage('poster', 'initial')}
+                            onClick={() =>
+                              handleUseAIImage('poster', 'initial')
+                            }
                             disabled={
                               form.getValues('media.poster.originalPath') ===
                               initialAiGeneratedPosterPath
@@ -1046,14 +1065,16 @@ export default function EditMoviePage({
                               initialAiGeneratedPosterPath
                             ) ?
                               'Using Initial AI Poster'
-                              : 'Use Initial AI Poster'}
+                            : 'Use Initial AI Poster'}
                           </Button>
                         </div>
                       </div>
                     )}
-
-                    {initialAiGeneratedPosterPath && <span className='block mx-auto w-fit text-sm text-muted-foreground self-center'>OR</span>}
-
+                    {initialAiGeneratedPosterPath && (
+                      <span className="block mx-auto w-fit text-sm text-muted-foreground self-center">
+                        OR
+                      </span>
+                    )}
                     {/* Corrected prop name */}
                     <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 w-fit">
                       <SparkelIcon /> Generate Poster with AI Prompt
@@ -1071,8 +1092,8 @@ export default function EditMoviePage({
                           value={posterPrompt}
                           onChange={(e) => setPosterPrompt(e.target.value)}
                           className={cn(
-                            "min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10",
-                            isPosterPromptLoading && "opacity-70"
+                            'min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10',
+                            isPosterPromptLoading && 'opacity-70',
                           )}
                           disabled={isGeneratingPoster || isPosterPromptLoading}
                         />
@@ -1080,7 +1101,9 @@ export default function EditMoviePage({
                       {isPosterPromptLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          {posterPrompt.trim() ? 'Enhancing prompt...' : 'Generating prompt...'}
+                          {posterPrompt.trim() ?
+                            'Enhancing prompt...'
+                          : 'Generating prompt...'}
                         </div>
                       )}
                     </div>
@@ -1090,7 +1113,11 @@ export default function EditMoviePage({
                         variant="outline"
                         size="sm"
                         onClick={() => handleSuggestPrompt('poster')}
-                        disabled={!canSuggestPrompt || isGeneratingPoster || isPosterPromptLoading}
+                        disabled={
+                          !canSuggestPrompt ||
+                          isGeneratingPoster ||
+                          isPosterPromptLoading
+                        }
                         className="relative overflow-hidden group transition-opacity duration-300"
                       >
                         <span
@@ -1102,16 +1129,18 @@ export default function EditMoviePage({
                           aria-hidden="true"
                         ></span>
                         <span className="relative z-10 flex items-center gap-1">
-                          {isPosterPromptLoading ? (
+                          {isPosterPromptLoading ?
                             <>
                               <Loader2 className="w-3 h-3 animate-spin" />
-                              {posterPrompt.trim() ? 'Enhancing...' : 'Suggesting...'}
+                              {posterPrompt.trim() ?
+                                'Enhancing...'
+                              : 'Suggesting...'}
                             </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3 h-3" /> {posterPrompt.trim() ? 'Enhance' : 'Suggest'}
+                          : <>
+                              <Sparkles className="w-3 h-3" />{' '}
+                              {posterPrompt.trim() ? 'Enhance' : 'Suggest'}
                             </>
-                          )}
+                          }
                         </span>
                       </Button>
                       <Button
@@ -1129,7 +1158,7 @@ export default function EditMoviePage({
                         )}
                         {isGeneratingPoster ?
                           'Generating...'
-                          : 'Generate Poster'}
+                        : 'Generate Poster'}
                       </Button>
                     </div>
                     {/* Display Prompt-Generated Poster */}
@@ -1162,7 +1191,7 @@ export default function EditMoviePage({
                             onClick={() => handleUseAIImage('poster', 'prompt')}
                             disabled={
                               form.getValues('media.poster.originalPath') ===
-                              promptGeneratedPosterPath || isGeneratingPoster
+                                promptGeneratedPosterPath || isGeneratingPoster
                             }
                           >
                             {(
@@ -1170,7 +1199,7 @@ export default function EditMoviePage({
                               promptGeneratedPosterPath
                             ) ?
                               'Using This Poster'
-                              : 'Use This Poster'}
+                            : 'Use This Poster'}
                           </Button>
                         </div>
                       </div>
@@ -1187,8 +1216,7 @@ export default function EditMoviePage({
                       <div className="mt-4 pt-4 border-t border-dashed">
                         <div className="p-2 px-3 bg-secondary text-red-400 shadow-md">
                           <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
-                            Generation
-                            Error
+                            Generation Error
                           </h5>
                           <p className="text-sm">{posterGenerationError}</p>
                         </div>
@@ -1207,8 +1235,6 @@ export default function EditMoviePage({
                   onFileChange={(e) => handelMediaUpload(e, 'backdrop')}
                   file={mediaFiles.backdrop}
                 >
-
-
                   {/* --- Prompt-Based Backdrop Generation --- */}
                   <div className="mt-6 p-4 border rounded-md space-y-4 bg-gradient-to-br from-purple-50/5 via-pink-50/5 to-orange-50/5 relative overflow-hidden">
                     <ShineBorder shineColor={['#D130B9', '#DC3639']} />{' '}
@@ -1219,13 +1245,14 @@ export default function EditMoviePage({
                         <h4 className="font-medium flex items-center gap-2">
                           <SparkelIcon />
                           <span className="bg-clip-text text-transparent font-semibold bg-gradient-to-r from-pink-500 to-orange-500">
-                            Initially
-                            Generated Backdrop
+                            Initially Generated Backdrop
                           </span>
                         </h4>
                         <div className="flex flex-col gap-4  items-start">
                           <Image
-                            src={'/api/static/' + initialAiGeneratedBackdropPath}
+                            src={
+                              '/api/static/' + initialAiGeneratedBackdropPath
+                            }
                             alt="Initially Generated Backdrop"
                             width={200}
                             height={112}
@@ -1249,13 +1276,16 @@ export default function EditMoviePage({
                               initialAiGeneratedBackdropPath
                             ) ?
                               'Using Initial AI Backdrop'
-                              : 'Use Initial AI Backdrop'}
+                            : 'Use Initial AI Backdrop'}
                           </Button>
                         </div>
                       </div>
                     )}
-
-                    {initialAiGeneratedBackdropPath && <span className='block mx-auto w-fit text-sm text-muted-foreground self-center'>OR</span>}
+                    {initialAiGeneratedBackdropPath && (
+                      <span className="block mx-auto w-fit text-sm text-muted-foreground self-center">
+                        OR
+                      </span>
+                    )}
                     {/* Corrected prop name */}
                     <h4 className="font-semibold flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 w-fit">
                       <SparkelIcon /> Generate Backdrop with AI Prompt
@@ -1273,16 +1303,20 @@ export default function EditMoviePage({
                           value={backdropPrompt}
                           onChange={(e) => setBackdropPrompt(e.target.value)}
                           className={cn(
-                            "min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10",
-                            isBackdropPromptLoading && "opacity-70"
+                            'min-h-[80px] bg-background/80 backdrop-blur-sm relative z-10',
+                            isBackdropPromptLoading && 'opacity-70',
                           )}
-                          disabled={isGeneratingBackdrop || isBackdropPromptLoading}
+                          disabled={
+                            isGeneratingBackdrop || isBackdropPromptLoading
+                          }
                         />
                       </div>
                       {isBackdropPromptLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          {backdropPrompt.trim() ? 'Enhancing prompt...' : 'Generating prompt...'}
+                          {backdropPrompt.trim() ?
+                            'Enhancing prompt...'
+                          : 'Generating prompt...'}
                         </div>
                       )}
                     </div>
@@ -1292,7 +1326,11 @@ export default function EditMoviePage({
                         variant="outline"
                         size="sm"
                         onClick={() => handleSuggestPrompt('backdrop')}
-                        disabled={!canSuggestPrompt || isGeneratingBackdrop || isBackdropPromptLoading}
+                        disabled={
+                          !canSuggestPrompt ||
+                          isGeneratingBackdrop ||
+                          isBackdropPromptLoading
+                        }
                         className="relative overflow-hidden group transition-opacity duration-300"
                       >
                         <span
@@ -1304,16 +1342,18 @@ export default function EditMoviePage({
                           aria-hidden="true"
                         ></span>
                         <span className="relative z-10 flex items-center gap-1">
-                          {isBackdropPromptLoading ? (
+                          {isBackdropPromptLoading ?
                             <>
                               <Loader2 className="w-3 h-3 animate-spin" />
-                              {backdropPrompt.trim() ? 'Enhancing...' : 'Suggesting...'}
+                              {backdropPrompt.trim() ?
+                                'Enhancing...'
+                              : 'Suggesting...'}
                             </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3 h-3" /> {backdropPrompt.trim() ? 'Enhance' : 'Suggest'}
+                          : <>
+                              <Sparkles className="w-3 h-3" />{' '}
+                              {backdropPrompt.trim() ? 'Enhance' : 'Suggest'}
                             </>
-                          )}
+                          }
                         </span>
                       </Button>
                       <Button
@@ -1331,7 +1371,7 @@ export default function EditMoviePage({
                         )}
                         {isGeneratingBackdrop ?
                           'Generating...'
-                          : 'Generate Backdrop'}
+                        : 'Generate Backdrop'}
                       </Button>
                     </div>
                     {/* Display Prompt-Generated Backdrop */}
@@ -1368,7 +1408,7 @@ export default function EditMoviePage({
                             }
                             disabled={
                               form.getValues('media.backdrop.originalPath') ===
-                              promptGeneratedBackdropPath ||
+                                promptGeneratedBackdropPath ||
                               isGeneratingBackdrop
                             }
                           >
@@ -1377,7 +1417,7 @@ export default function EditMoviePage({
                               promptGeneratedBackdropPath
                             ) ?
                               'Using This Backdrop'
-                              : 'Use This Backdrop'}
+                            : 'Use This Backdrop'}
                           </Button>
                         </div>
                       </div>
@@ -1394,8 +1434,7 @@ export default function EditMoviePage({
                       <div className="mt-4 pt-4 border-t border-dashed">
                         <div className="p-2 px-3 bg-secondary text-red-400 shadow-md">
                           <h5 className="font-medium text-sm mb-1 flex items-center gap-2">
-                            Generation
-                            Error
+                            Generation Error
                           </h5>
                           <p className="text-sm">{backdropGenerationError}</p>
                         </div>
@@ -1470,7 +1509,7 @@ function AiSuggestions({
   const aiOutput =
     aiTask?.output && 'data' in aiTask.output ?
       (aiTask.output as AIEngineOutput)
-      : null;
+    : null;
 
   if (!aiOutput?.data) return null; // Return early if no AI task or data
 
@@ -1503,8 +1542,8 @@ function AiSuggestions({
         form.setValue('isAIGenerated', true);
 
         if (isNewMovie) {
-          setApplied(true)
-          return
+          setApplied(true);
+          return;
         }
 
         const result = await applyAISuggestions(movieId, {
@@ -1596,15 +1635,15 @@ function AiSuggestions({
               <span className="relative z-10 flex items-center gap-2">
                 {isApplying ?
                   'Applying...'
-                  : isApplied ?
-                    <>
-                      {' '}
-                      <Check className="h-4 w-4" /> Applied{' '}
-                    </>
-                    : <>
-                      {' '}
-                      <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
-                    </>
+                : isApplied ?
+                  <>
+                    {' '}
+                    <Check className="h-4 w-4" /> Applied{' '}
+                  </>
+                : <>
+                    {' '}
+                    <Sparkles className="h-4 w-4" /> Apply Suggestions{' '}
+                  </>
                 }
               </span>
             </Button>

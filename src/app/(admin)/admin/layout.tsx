@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   description: 'Admin panel for managing users and movies',
 };
 
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({
   children,
 }: Readonly<{

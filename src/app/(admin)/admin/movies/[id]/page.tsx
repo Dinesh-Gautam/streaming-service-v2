@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import EditMoviePage from '@/app/(admin)/admin/movies/[id]/edit-movie';
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 import { Movie } from '@/server/db/schemas/movie';
+import dbConnect from '@/server/db/connect';
 
 type EditMoviePageProps = {
   params: Promise<{
@@ -12,6 +13,8 @@ type EditMoviePageProps = {
 
 export default async function Page({ params }: EditMoviePageProps) {
   const { id } = await params;
+
+  await dbConnect();
 
   let data
 

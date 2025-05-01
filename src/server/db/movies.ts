@@ -27,6 +27,7 @@ export type OriginalMovieResult = Omit<
 };
 
 export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
+  await dbConnect();
   const movies = await Movie.find({}).sort({ createdAt: -1 }).limit(20);
 
   return movies.map((movie: any) => {
@@ -49,29 +50,30 @@ export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
 
 export type OriginalMovieDetail = Promise<
   | (OriginalMovieResult &
-      Partial<{
-        subtitles: {
-          language: string;
-          url: string;
-        }[];
-        aiGeneratedSubtitles: {
-          language: string;
-          url: string;
-        }[];
-        aiGeneratedAudio: {
-          language: string;
-          url: string;
-        }[];
-        thumbnailUrl: string;
-        playbackUrl: string;
-        chaptersUrl: string;
-      }>)
+    Partial<{
+      subtitles: {
+        language: string;
+        url: string;
+      }[];
+      aiGeneratedSubtitles: {
+        language: string;
+        url: string;
+      }[];
+      aiGeneratedAudio: {
+        language: string;
+        url: string;
+      }[];
+      thumbnailUrl: string;
+      playbackUrl: string;
+      chaptersUrl: string;
+    }>)
   | null
 >;
 
 export async function getOriginalMovieDetail(
   id: string,
 ): Promise<OriginalMovieDetail> {
+  await dbConnect();
   const movie = await Movie.findOne<MovieType>({
     _id: id,
     status: 'Published',
@@ -154,7 +156,7 @@ export async function getOriginalMovieDetail(
                   url: `/api/static/playback/${mediaId}/${mediaId}.${language}.dubbed.mp3`,
                 })),
               }
-            : {}),
+              : {}),
             ...(paths ?
               {
                 aiGeneratedSubtitles: Object.entries(paths).map(
@@ -164,7 +166,7 @@ export async function getOriginalMovieDetail(
                   }),
                 ),
               }
-            : {}),
+              : {}),
           };
         }
 
