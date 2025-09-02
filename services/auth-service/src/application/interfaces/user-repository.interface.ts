@@ -1,5 +1,4 @@
-import { User } from "../../domain/user.entity";
-import { UserCredential } from "../../domain/user-credential.entity";
+import type { User, UserCredential } from '@prisma/client';
 
 export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>;

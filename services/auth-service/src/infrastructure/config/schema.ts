@@ -1,7 +1,7 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const configSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]),
+  NODE_ENV: z.enum(['development', 'production', 'test']),
   PORT: z.coerce.number().int().positive(),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(1),

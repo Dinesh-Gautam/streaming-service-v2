@@ -1,20 +1,22 @@
-import { Role } from "@prisma/client";
-import { randomUUID } from "crypto";
-import type { SignOptions } from "jsonwebtoken";
-import * as jwt from "jsonwebtoken";
-import { ITokenGenerator } from "../../application/interfaces/token-generator.interface";
-import { config } from "../config";
+import { randomUUID } from 'crypto';
+import * as jwt from 'jsonwebtoken';
+
+import type { ITokenGenerator } from '@auth-service/application/interfaces/token-generator.interface';
+import type { SignOptions } from 'jsonwebtoken';
+
+import { config } from '@auth-service/infrastructure/config';
+import { Role } from '@prisma/client';
 
 export class JwtTokenGenerator implements ITokenGenerator {
   constructor(
     private readonly accessTokenSecret: string,
     private readonly refreshTokenSecret: string,
-    private readonly expiresIn: SignOptions["expiresIn"]
+    private readonly expiresIn: SignOptions['expiresIn'],
   ) {}
 
   generate(
     userId: string,
-    role: Role
+    role: Role,
   ): { accessToken: string; refreshToken: string } {
     const accessTokenPayload = { userId, role, jti: randomUUID() };
     const refreshTokenPayload = { userId, jti: randomUUID() };
@@ -27,8 +29,8 @@ export class JwtTokenGenerator implements ITokenGenerator {
       refreshTokenPayload,
       this.refreshTokenSecret,
       {
-        expiresIn: config.REFRESH_TOKEN_EXPIRATION as SignOptions["expiresIn"],
-      }
+        expiresIn: config.REFRESH_TOKEN_EXPIRATION as SignOptions['expiresIn'],
+      },
     );
     return { accessToken, refreshToken };
   }

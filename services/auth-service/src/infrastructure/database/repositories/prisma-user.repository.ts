@@ -1,7 +1,8 @@
-import { PrismaClient, User as PrismaUser } from "@prisma/client";
-import { IUserRepository } from "../../../application/interfaces/user-repository.interface";
-import { User } from "../../../domain/user.entity";
-import { UserCredential } from "../../../domain/user-credential.entity";
+import type { IUserRepository } from '@auth-service/application/interfaces/user-repository.interface';
+
+import { UserCredential } from '@auth-service/domain/user-credential.entity';
+import { User } from '@auth-service/domain/user.entity';
+import { PrismaClient } from '@prisma/client';
 
 export class PrismaUserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -20,9 +21,8 @@ export class PrismaUserRepository implements IUserRepository {
       user.name,
       user.email,
       user.role,
-      user.emailVerifiedAt ?? undefined,
       user.createdAt,
-      user.updatedAt
+      user.updatedAt,
     );
   }
 
@@ -32,7 +32,6 @@ export class PrismaUserRepository implements IUserRepository {
         id: user.id,
         name: user.name,
         email: user.email,
-        emailVerifiedAt: user.emailVerifiedAt,
         role: user.role,
         credential: {
           create: {
@@ -48,9 +47,8 @@ export class PrismaUserRepository implements IUserRepository {
       createdUser.name,
       createdUser.email,
       createdUser.role,
-      createdUser.emailVerifiedAt ?? undefined,
       createdUser.createdAt,
-      createdUser.updatedAt
+      createdUser.updatedAt,
     );
   }
 
@@ -64,10 +62,11 @@ export class PrismaUserRepository implements IUserRepository {
     }
 
     return new UserCredential(
+      credential.id,
       credential.userId,
       credential.passwordHash,
       credential.createdAt,
-      credential.updatedAt
+      credential.updatedAt,
     );
   }
 
@@ -85,9 +84,8 @@ export class PrismaUserRepository implements IUserRepository {
       user.name,
       user.email,
       user.role,
-      user.emailVerifiedAt ?? undefined,
       user.createdAt,
-      user.updatedAt
+      user.updatedAt,
     );
   }
 }

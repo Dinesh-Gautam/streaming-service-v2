@@ -1,5 +1,6 @@
-import { ICacheRepository } from "../../application/interfaces/cache-repository.interface";
-import { getRedisClient } from "./redis-client";
+import type { ICacheRepository } from '@auth-service/application/interfaces/cache-repository.interface';
+
+import { getRedisClient } from '@auth-service/infrastructure/cache/redis-client';
 
 export class RedisCacheRepository implements ICacheRepository {
   public async set(key: string, value: string, ttl?: number): Promise<void> {

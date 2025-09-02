@@ -1,20 +1,21 @@
-import { Router } from "express";
-import { AuthController } from "../controllers/auth.controller";
-import { processRequest } from "zod-express-middleware";
+import { Router } from 'express';
+import { processRequest } from 'zod-express-middleware';
+
 import {
   loginUserSchema,
   registerUserSchema,
-} from "../../application/dtos/zod-schemas";
-import { PrismaUserRepository } from "../../infrastructure/database/repositories/prisma-user.repository";
-import { prisma } from "../../infrastructure/database/prisma/client";
-import { BcryptPasswordHasher } from "../../infrastructure/security/bcrypt-password-hasher";
-import { JwtTokenGenerator } from "../../infrastructure/security/jwt-token-generator";
-import { config } from "../../infrastructure/config";
-import { JwtTokenValidator } from "../../infrastructure/security/jwt-token-validator";
-import { RedisCacheRepository } from "../../infrastructure/cache/redis-cache.repository";
-import { auth } from "../middleware/auth.middleware";
-import { authorize } from "../middleware/authorization.middleware";
-import { Role } from "@prisma/client";
+} from '@auth-service/application/dtos/zod-schemas';
+import { RedisCacheRepository } from '@auth-service/infrastructure/cache/redis-cache.repository';
+import { config } from '@auth-service/infrastructure/config';
+import { prisma } from '@auth-service/infrastructure/database/prisma/client';
+import { PrismaUserRepository } from '@auth-service/infrastructure/database/repositories/prisma-user.repository';
+import { BcryptPasswordHasher } from '@auth-service/infrastructure/security/bcrypt-password-hasher';
+import { JwtTokenGenerator } from '@auth-service/infrastructure/security/jwt-token-generator';
+import { JwtTokenValidator } from '@auth-service/infrastructure/security/jwt-token-validator';
+import { AuthController } from '@auth-service/presentation/controllers/auth.controller';
+import { auth } from '@auth-service/presentation/middleware/auth.middleware';
+import { authorize } from '@auth-service/presentation/middleware/authorization.middleware';
+import { Role } from '@prisma/client';
 
 const authRouter = Router();
 
@@ -23,11 +24,11 @@ const passwordHasher = new BcryptPasswordHasher();
 const tokenGenerator = new JwtTokenGenerator(
   config.JWT_SECRET,
   config.JWT_REFRESH_SECRET,
-  config.ACCESS_TOKEN_EXPIRATION as any
+  config.ACCESS_TOKEN_EXPIRATION as any,
 );
 const tokenValidator = new JwtTokenValidator(
   config.JWT_SECRET,
-  config.JWT_REFRESH_SECRET
+  config.JWT_REFRESH_SECRET,
 );
 const cacheRepository = new RedisCacheRepository();
 
@@ -36,27 +37,27 @@ const authController = new AuthController(
   passwordHasher,
   tokenGenerator,
   tokenValidator,
-  cacheRepository
+  cacheRepository,
 );
 
 authRouter.post(
-  "/register",
+  '/register',
   processRequest({ body: registerUserSchema }),
-  authController.register.bind(authController)
+  authController.register.bind(authController),
 );
 authRouter.post(
-  "/login",
+  '/login',
   processRequest({ body: loginUserSchema }),
-  authController.login.bind(authController)
+  authController.login.bind(authController),
 );
 authRouter.post(
-  "/refresh-token",
-  authController.refreshToken.bind(authController)
+  '/refresh-token',
+  authController.refreshToken.bind(authController),
 );
-authRouter.post("/logout", auth(), authController.logout.bind(authController));
+authRouter.post('/logout', auth(), authController.logout.bind(authController));
 
-authRouter.get("/admin", auth(), authorize(Role.ADMIN), (req, res) => {
-  res.status(200).json({ message: "Welcome, admin!" });
+authRouter.get('/admin', auth(), authorize(Role.ADMIN), (req, res) => {
+  res.status(200).json({ message: 'Welcome, admin!' });
 });
 
 export { authRouter };

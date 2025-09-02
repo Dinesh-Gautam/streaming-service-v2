@@ -1,9 +1,11 @@
-import { Request, Response, NextFunction } from "express";
-import { ITokenValidator } from "../../application/interfaces/token-validator.interface";
-import { AppError } from "../../application/errors/app-error";
-import { JwtTokenValidator } from "../../infrastructure/security/jwt-token-validator";
-import { config } from "../../infrastructure/config";
-import { Role } from "@prisma/client";
+import { NextFunction, Request, Response } from 'express';
+
+import type { ITokenValidator } from '@auth-service/application/interfaces/token-validator.interface';
+
+import { AppError } from '@auth-service/application/errors/app-error';
+import { config } from '@auth-service/infrastructure/config';
+import { JwtTokenValidator } from '@auth-service/infrastructure/security/jwt-token-validator';
+import { Role } from '@prisma/client';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -16,18 +18,18 @@ export interface AuthenticatedRequest extends Request {
 export function auth(
   tokenValidator: ITokenValidator = new JwtTokenValidator(
     config.JWT_SECRET,
-    config.JWT_REFRESH_SECRET
-  )
+    config.JWT_REFRESH_SECRET,
+  ),
 ) {
   return async (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return next(new AppError("Unauthorized", 401));
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next(new AppError('Unauthorized', 401));
     }
 
     const token = authHeader.substring(7);
@@ -40,7 +42,7 @@ export function auth(
       };
       next();
     } catch (error) {
-      return next(new AppError("Unauthorized", 401));
+      return next(new AppError('Unauthorized', 401));
     }
   };
 }

@@ -1,6 +1,7 @@
-import { createClient, RedisClientType } from "redis";
-import { config } from "../config";
-import { logger } from "../logger";
+import { createClient, RedisClientType } from 'redis';
+
+import { config } from '@auth-service/infrastructure/config';
+import { logger } from '@auth-service/infrastructure/logger';
 
 let redisClient: RedisClientType | null = null;
 
@@ -13,7 +14,7 @@ const initializeRedis = async (): Promise<RedisClientType> => {
     url: config.REDIS_URL,
   });
 
-  client.on("error", (err) => {
+  client.on('error', (err) => {
     logger.error(`Redis Client Error: ${err}`);
   });
 

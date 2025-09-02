@@ -1,14 +1,15 @@
-import { JwtTokenGenerator } from "./jwt-token-generator";
-import * as jwt from "jsonwebtoken";
-import { Role } from "@prisma/client";
-import { config } from "../config";
+import * as jwt from 'jsonwebtoken';
 
-jest.mock("jsonwebtoken");
+import { config } from '@auth-service/infrastructure/config';
+import { JwtTokenGenerator } from '@auth-service/infrastructure/security/jwt-token-generator';
+import { Role } from '@prisma/client';
+
+jest.mock('jsonwebtoken');
 const mockedJwt = jwt as jest.Mocked<typeof jwt>;
 
-describe("JwtTokenGenerator", () => {
-  const accessTokenSecret = "access-secret";
-  const refreshTokenSecret = "refresh-secret";
+describe('JwtTokenGenerator', () => {
+  const accessTokenSecret = 'access-secret';
+  const refreshTokenSecret = 'refresh-secret';
   const expiresIn = config.ACCESS_TOKEN_EXPIRATION as any;
   const refreshTokenExpiresIn = config.REFRESH_TOKEN_EXPIRATION as any;
 
@@ -18,17 +19,17 @@ describe("JwtTokenGenerator", () => {
     tokenGenerator = new JwtTokenGenerator(
       accessTokenSecret,
       refreshTokenSecret,
-      expiresIn
+      expiresIn,
     );
     mockedJwt.sign.mockClear();
   });
 
-  describe("generate", () => {
-    it("should generate an access token and a refresh token", () => {
-      const userId = "user-123";
+  describe('generate', () => {
+    it('should generate an access token and a refresh token', () => {
+      const userId = 'user-123';
       const role = Role.USER;
-      const expectedAccessToken = "access-token";
-      const expectedRefreshToken = "refresh-token";
+      const expectedAccessToken = 'access-token';
+      const expectedRefreshToken = 'refresh-token';
 
       mockedJwt.sign
         .mockImplementationOnce((payload, secret, options) => {
@@ -44,7 +45,7 @@ describe("JwtTokenGenerator", () => {
 
       const { accessToken, refreshToken } = tokenGenerator.generate(
         userId,
-        role
+        role,
       );
 
       expect(accessToken).toBe(expectedAccessToken);
@@ -53,12 +54,12 @@ describe("JwtTokenGenerator", () => {
       expect(mockedJwt.sign).toHaveBeenCalledWith(
         { userId, role, jti: expect.any(String) },
         accessTokenSecret,
-        { expiresIn }
+        { expiresIn },
       );
       expect(mockedJwt.sign).toHaveBeenCalledWith(
         { userId, jti: expect.any(String) },
         refreshTokenSecret,
-        { expiresIn: refreshTokenExpiresIn }
+        { expiresIn: refreshTokenExpiresIn },
       );
     });
   });

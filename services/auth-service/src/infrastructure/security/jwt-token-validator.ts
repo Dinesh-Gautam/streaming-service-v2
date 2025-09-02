@@ -1,15 +1,17 @@
-import {
+import * as jwt from 'jsonwebtoken';
+
+import type {
   ITokenValidator,
   ValidatedTokenPayload,
   ValidRefreshTokenPayload,
-} from "../../application/interfaces/token-validator.interface";
-import * as jwt from "jsonwebtoken";
-import { AppError } from "../../application/errors/app-error";
+} from '@auth-service/application/interfaces/token-validator.interface';
+
+import { AppError } from '@auth-service/application/errors/app-error';
 
 export class JwtTokenValidator implements ITokenValidator {
   constructor(
     private readonly secret: string,
-    private readonly refreshSecret: string
+    private readonly refreshSecret: string,
   ) {}
 
   async validate(token: string): Promise<ValidatedTokenPayload> {
@@ -17,7 +19,7 @@ export class JwtTokenValidator implements ITokenValidator {
       const decoded = jwt.verify(token, this.secret) as ValidatedTokenPayload;
 
       if (!decoded || !decoded.role || !decoded.jti || !decoded.exp) {
-        throw new AppError("Invalid token", 401);
+        throw new AppError('Invalid token', 401);
       }
 
       return {
@@ -27,7 +29,7 @@ export class JwtTokenValidator implements ITokenValidator {
         exp: decoded.exp,
       };
     } catch (error) {
-      throw new AppError("Invalid token", 401);
+      throw new AppError('Invalid token', 401);
     }
   }
 
@@ -35,11 +37,11 @@ export class JwtTokenValidator implements ITokenValidator {
     try {
       const decoded = jwt.verify(
         token,
-        this.refreshSecret
+        this.refreshSecret,
       ) as ValidatedTokenPayload;
 
       if (!decoded || !decoded.userId || !decoded.exp || !decoded.jti) {
-        throw new AppError("Invalid token", 401);
+        throw new AppError('Invalid token', 401);
       }
 
       return {
@@ -48,8 +50,8 @@ export class JwtTokenValidator implements ITokenValidator {
         exp: decoded.exp,
       };
     } catch (error) {
-      console.log("Token validation error:", error);
-      throw new AppError("Invalid token", 401);
+      console.log('Token validation error:', error);
+      throw new AppError('Invalid token', 401);
     }
   }
 }

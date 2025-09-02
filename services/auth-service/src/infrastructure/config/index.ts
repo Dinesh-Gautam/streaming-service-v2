@@ -1,6 +1,7 @@
-import * as dotenv from "dotenv";
-import { logger } from "../logger";
-import { configSchema } from "./schema";
+import * as dotenv from 'dotenv';
+
+import { configSchema } from '@auth-service/infrastructure/config/schema';
+import { logger } from '@auth-service/infrastructure/logger';
 
 dotenv.config();
 
@@ -11,10 +12,10 @@ if (!result.success) {
     `Invalid environment variables: ${JSON.stringify(
       result.error.flatten(),
       null,
-      2
-    )}`
+      2,
+    )}`,
   );
-  throw new Error("Invalid environment variables");
+  throw new Error('Invalid environment variables');
 }
 
 export const config = Object.freeze(result.data);
