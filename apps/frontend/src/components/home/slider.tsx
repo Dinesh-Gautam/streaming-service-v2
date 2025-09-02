@@ -129,21 +129,21 @@ function Slider({ title, data, id }: SliderProps) {
                     (index + 1) % MAX_ITEMS === 0 || index % MAX_ITEMS === 0 ?
                       50 +
                       100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
-                    : 100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
-                  : 0;
+                      : 100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
+                    : 0;
 
                 const increment = baseIncrement + additionalIncrement;
 
                 const roundedTransformPercent = Math.round(
                   Math.abs(transformPercent + increment) /
-                    100 /
-                    (data.length / MAX_ITEMS),
+                  100 /
+                  (data.length / MAX_ITEMS),
                 );
 
                 const styleValue =
                   data.length < MAX_ITEMS ?
                     index
-                  : data.length * roundedTransformPercent + index;
+                    : data.length * roundedTransformPercent + index;
 
                 return (
                   <div
@@ -169,7 +169,7 @@ function Slider({ title, data, id }: SliderProps) {
                           width: 400,
                         }}
                       />
-                    : <FadeImageOnLoad
+                      : <FadeImageOnLoad
                         loadingBackground
                         imageSrc={e.backdrop_path}
                         imageContainer={{

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     dir = 'converted';
   }
 
-  const filePath = join(dir, pathName);
+  const filePath = join(dir, pathName.replace('tmp/', '').replace('tmp', ''));
 
   try {
     const stats = await stat(filePath);

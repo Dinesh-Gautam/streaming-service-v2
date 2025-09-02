@@ -1,5 +1,5 @@
-import PopularMoviesBanner from '@/components/home/banner';
-import Slider from '@/components/home/slider';
+import PopularMoviesBanner from '@/components/home/Banner';
+import Slider from '@/components/home/Slider';
 import { HoverCardProvider } from '@/components/hover-card/provider';
 import { Nav } from '@/components/nav';
 import { SLIDER_TITLES, SLIDERS } from '@/constants/sliders';
@@ -12,7 +12,7 @@ import {
 } from '@/server/tmdb';
 import { omitResutlsWithNoBannerImage } from '@/utils/tmdb';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 export const revalidate = 86400;
 
 export default async function Home() {
