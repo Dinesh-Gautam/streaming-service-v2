@@ -1,0 +1,25 @@
+{
+  "name": "@monorepo/logger",
+  "version": "1.0.0",
+  "description": "A reusable logging package.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": [
+    "logging",
+    "logger",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "winston": "^3.8.2",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/winston": "^2.4.4"
+  }
+}
