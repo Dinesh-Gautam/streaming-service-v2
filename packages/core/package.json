@@ -1,0 +1,22 @@
+{
+  "name": "@monorepo/core",
+  "version": "1.0.0",
+  "description": "Shared core entities and interfaces.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "core",
+    "entities",
+    "interfaces"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "typescript": "^5.3.3",
+    "tsyringe": "^4.8.0"
+  },
+  "devDependencies": {}
+}

@@ -1,5 +1,7 @@
 {
-  "dependencies": {
+  "name": "streaming-service",
+  "version": "1.0.0",
+  "devDependencies": {
     "prettier": "^3.3.2",
     "@ianvs/prettier-plugin-sort-imports": "^4.3.0"
   }

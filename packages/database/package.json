@@ -1,0 +1,25 @@
+{
+  "name": "@monorepo/database",
+  "version": "1.0.0",
+  "description": "A reusable database package.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "database",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^24.3.0",
+    "mongodb": "^6.5.0",
+    "tsyringe": "^4.8.0",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/mongodb": "^4.0.7"
+  }
+}
