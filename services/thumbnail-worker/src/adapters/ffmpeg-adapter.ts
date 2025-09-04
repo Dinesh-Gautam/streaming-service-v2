@@ -38,46 +38,41 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
     const thumbnailsDir = path.join(outputDir, 'thumbnails');
     const vttFilePath = path.join(outputDir, 'thumbnails.vtt');
 
-    try {
-      this._ensureDirectoryExists(outputDir);
-      this._ensureDirectoryExists(thumbnailsDir);
+    this._ensureDirectoryExists(outputDir);
+    this._ensureDirectoryExists(thumbnailsDir);
 
-      const duration = await this._getVideoDuration(inputFile);
-      if (!duration) {
-        throw new Error('Could not determine video duration.');
-      }
+    const duration = await this._getVideoDuration(inputFile);
 
-      const thumbnailCount = Math.ceil(duration / this.options.interval);
-
-      await this._generateThumbnailsFFmpeg(
-        inputFile,
-        thumbnailsDir,
-        thumbnailCount,
-      );
-
-      this._generateVttFile(
-        thumbnailCount,
-        this.options.interval,
-        duration,
-        outputDir,
-        thumbnailsDir,
-        vttFilePath,
-      );
-
-      return {
-        success: true,
-        output: {
-          paths: {
-            vtt: vttFilePath,
-            thumbnailsDir: thumbnailsDir,
-          },
-        },
-      };
-    } catch (error: any) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      return { success: false, error: errorMessage };
+    if (!duration) {
+      throw new MediaProcessorError('Could not determine video duration.');
     }
+
+    const thumbnailCount = Math.ceil(duration / this.options.interval);
+
+    await this._generateThumbnailsFFmpeg(
+      inputFile,
+      thumbnailsDir,
+      thumbnailCount,
+    );
+
+    this._generateVttFile(
+      thumbnailCount,
+      this.options.interval,
+      duration,
+      outputDir,
+      thumbnailsDir,
+      vttFilePath,
+    );
+
+    return {
+      success: true,
+      output: {
+        paths: {
+          vtt: vttFilePath,
+          thumbnailsDir: thumbnailsDir,
+        },
+      },
+    };
   }
 
   private _ensureDirectoryExists(dirPath: string): void {
@@ -116,7 +111,11 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
           resolve();
         })
         .on('error', (err) => {
-          reject(new Error(`Thumbnail generation failed: ${err.message}`));
+          reject(
+            new MediaProcessorError(
+              `Thumbnail generation failed: ${err.message}`,
+            ),
+          );
         })
         .on('progress', (progress) => {
           if (progress.percent) {

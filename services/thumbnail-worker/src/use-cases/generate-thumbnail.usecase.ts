@@ -2,8 +2,8 @@ import { inject, injectable } from 'tsyringe';
 
 import type { IMediaProcessor, ITaskRepository } from '@monorepo/core';
 
-import { DI_TOKENS } from '@monorepo/core';
-import { ILogger } from '@monorepo/logger';
+import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
+import { logger } from '@thumbnail-worker/config/logger';
 
 interface GenerateThumbnailInput {
   jobId: string;
@@ -16,19 +16,19 @@ export class GenerateThumbnailUseCase {
   constructor(
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
     @inject(DI_TOKENS.MediaProcessor) private mediaProcessor: IMediaProcessor,
-    @inject(DI_TOKENS.Logger) private logger: ILogger,
   ) {}
 
   async execute(input: GenerateThumbnailInput): Promise<void> {
     const { jobId, taskId, sourceUrl } = input;
-    this.logger.info(
+
+    logger.info(
       `Starting thumbnail generation for job: ${jobId}, task: ${taskId}`,
     );
 
     try {
       await this.taskRepository.updateTaskStatus(jobId, taskId, 'running', 0);
 
-      this.mediaProcessor.on('progress', (progress) => {
+      this.mediaProcessor.on(MediaPrcessorEvent.Progress, (progress) => {
         this.taskRepository.updateTaskStatus(
           jobId,
           taskId,
@@ -42,29 +42,35 @@ export class GenerateThumbnailUseCase {
         `/tmp/output/${jobId}`, // Configurable path
       );
 
-      if (result.success && result.output) {
-        await this.taskRepository.updateTaskOutput(
-          jobId,
-          taskId,
-          result.output,
-        );
-        await this.taskRepository.updateTaskStatus(
-          jobId,
-          taskId,
-          'completed',
-          100,
-        );
-        this.logger.info(`Task ${taskId} completed successfully.`);
-      } else {
-        throw new Error(result.error || 'Unknown processing error');
-      }
+      await this.taskRepository.updateTaskOutput(jobId, taskId, result.output);
+      await this.taskRepository.updateTaskStatus(
+        jobId,
+        taskId,
+        'completed',
+        100,
+      );
+
+      logger.info(`Task ${taskId} completed successfully.`);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      await this.taskRepository.failTask(jobId, taskId, errorMessage);
-      this.logger.error(`Task ${taskId} failed: ${errorMessage}`, {
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      if (error instanceof MediaProcessorError) {
+        logger.error(`Media processing error: ${error.message}`, {
+          stack: error.stack,
+        });
+      }
+
+      if (error instanceof Error) {
+        logger.error(`Error during thumbnail generation: ${error.message}`, {
+          stack: error.stack,
+        });
+      }
+
+      await this.taskRepository.failTask(
+        jobId,
+        taskId,
+        (error as any)?.message || 'Unknown error',
+      );
+
+      throw error;
     }
   }
 }

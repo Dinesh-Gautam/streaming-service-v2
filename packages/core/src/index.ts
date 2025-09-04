@@ -85,17 +85,25 @@ export interface ThumbnailOutput {
 
 export interface WorkerOutput<T> {
   success: boolean;
-  output?: T;
-  error?: string;
+  output: T;
 }
 
-export interface IMediaProcessor {
+export const MediaPrcessorEvent = {
+  Progress: 'progress',
+  Completed: 'completed',
+  Error: 'error',
+} as const;
+
+export interface IMediaProcessor extends NodeJS.EventEmitter {
   process(
     inputFile: string,
     outputDir: string,
   ): Promise<WorkerOutput<ThumbnailOutput>>;
 
-  on(event: 'progress', listener: (progress: number) => void): this;
+  on(
+    event: (typeof MediaPrcessorEvent)[keyof typeof MediaPrcessorEvent],
+    listener: (progress: number) => void,
+  ): this;
 }
 
 export const DI_TOKENS = {
