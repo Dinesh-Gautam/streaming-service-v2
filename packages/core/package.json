@@ -15,6 +15,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@monorepo/database": "workspace:*",
+    "@monorepo/logger": "workspace:*",
+    "@monorepo/message-queue": "workspace:*",
     "typescript": "^5.3.3",
     "tsyringe": "^4.8.0"
   },

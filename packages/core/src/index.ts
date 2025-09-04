@@ -1,3 +1,10 @@
+import type { IDatabaseConnection } from '@monorepo/database';
+import type {
+  IMessageConsumer,
+  IMessagePublisher,
+} from '@monorepo/message-queue';
+import type { InjectionToken } from 'tsyringe';
+
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export type WorkerTypes = 'thumbnail-worker' | 'transcode-worker';
@@ -67,3 +74,16 @@ export interface IJobRepository {
   getJobById(id: string): Promise<MediaJob | null>;
   getJobByMediaId(mediaId: string): Promise<MediaJob | null>;
 }
+
+export const DI_TOKENS = {
+  DatabaseConnection: Symbol(
+    'DatabaseConnection',
+  ) as InjectionToken<IDatabaseConnection>,
+  JobRepository: Symbol('JobRepository') as InjectionToken<IJobRepository>,
+  MessageConsumer: Symbol(
+    'MessageConsumer',
+  ) as InjectionToken<IMessageConsumer>,
+  MessagePublisher: Symbol(
+    'MessagePublisher',
+  ) as InjectionToken<IMessagePublisher>,
+};

@@ -8,16 +8,16 @@ import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
 import { logger } from '@job-service/adapters/logger.adapter';
-import { config, DI_TOKENS } from '@job-service/config';
-import { setupDI } from '@job-service/di-container';
+import { config } from '@job-service/config';
+import { setupDI } from '@job-service/config/di.config';
+import { getNextTask } from '@job-service/config/workers.config';
 import {
   InvalidArgumentError,
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
 import { jobRouter } from '@job-service/presentation/routes/job.routes';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
-import { getNextTask } from '@job-service/workers.config';
-import { MessageQueueChannels } from '@monorepo/core';
+import { DI_TOKENS, MessageQueueChannels } from '@monorepo/core';
 
 setupDI();
 

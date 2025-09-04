@@ -1,0 +1,56 @@
+import { container } from 'tsyringe';
+
+import { MongoJobRepository } from '@job-service/adapters/mongo-job.adapter';
+import { MockMongoJobAdapter } from '@job-service/adapters/mongo-job.adapter.mock';
+import { config } from '@job-service/config';
+import { DI_TOKENS, IJobRepository } from '@monorepo/core';
+import {
+  IDatabaseConnection,
+  MockDatabaseConnection,
+  MongoDbConnection,
+} from '@monorepo/database';
+import {
+  IMessageConsumer,
+  IMessagePublisher,
+  MockMessageQueue,
+  RabbitMQAdapter,
+} from '@monorepo/message-queue';
+
+export const setupDI = () => {
+  if (config.NODE_ENV === 'test') {
+    container.registerSingleton<IJobRepository>(
+      DI_TOKENS.JobRepository,
+      MockMongoJobAdapter,
+    );
+    container.registerSingleton<IMessagePublisher>(
+      DI_TOKENS.MessagePublisher,
+      MockMessageQueue,
+    );
+    container.registerSingleton<IMessageConsumer>(
+      DI_TOKENS.MessageConsumer,
+      MockMessageQueue,
+    );
+    container.registerSingleton<IDatabaseConnection>(
+      DI_TOKENS.DatabaseConnection,
+      MockDatabaseConnection,
+    );
+
+    return;
+  }
+  container.registerSingleton<IDatabaseConnection>(
+    DI_TOKENS.DatabaseConnection,
+    MongoDbConnection,
+  );
+  container.registerSingleton<IJobRepository>(
+    DI_TOKENS.JobRepository,
+    MongoJobRepository,
+  );
+  container.registerSingleton<IMessagePublisher>(
+    DI_TOKENS.MessagePublisher,
+    RabbitMQAdapter,
+  );
+  container.registerSingleton<IMessageConsumer>(
+    DI_TOKENS.MessageConsumer,
+    RabbitMQAdapter,
+  );
+};

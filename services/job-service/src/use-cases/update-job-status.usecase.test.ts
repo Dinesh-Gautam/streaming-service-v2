@@ -3,10 +3,9 @@ import 'reflect-metadata';
 import { ObjectId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import { DI_TOKENS } from '@job-service/config';
-import { setupDI } from '@job-service/di-container';
+import { setupDI } from '@job-service/config/di.config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
-import { IJobRepository, JobStatus, MediaJob } from '@monorepo/core';
+import { DI_TOKENS, IJobRepository, JobStatus, MediaJob } from '@monorepo/core';
 
 import { MockMongoJobAdapter } from '../adapters/mongo-job.adapter.mock';
 import { UpdateJobStatusUseCase } from './update-job-status.usecase';

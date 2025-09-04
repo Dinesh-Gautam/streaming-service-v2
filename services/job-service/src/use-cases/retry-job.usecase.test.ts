@@ -5,10 +5,10 @@ import { container } from 'tsyringe';
 
 import type { MockMessageQueue } from '@monorepo/message-queue';
 
-import { DI_TOKENS } from '@job-service/config';
-import { setupDI } from '@job-service/di-container';
+import { setupDI } from '@job-service/config/di.config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
 import {
+  DI_TOKENS,
   IJobRepository,
   MediaJob,
   MediaTask,

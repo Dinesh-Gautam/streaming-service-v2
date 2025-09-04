@@ -2,13 +2,13 @@ import { Request, Response } from 'express';
 import { container } from 'tsyringe';
 
 import { logger } from '@job-service/adapters/logger.adapter';
+import { WORKERS } from '@job-service/config/workers.config';
 import {
   InvalidArgumentError,
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
 import { CreateJobUseCase } from '@job-service/use-cases/create-job.usecase';
 import { RetryJobUseCase } from '@job-service/use-cases/retry-job.usecase';
-import { WORKERS } from '@job-service/workers.config';
 
 export class JobController {
   async createJob(req: Request, res: Response): Promise<Response> {

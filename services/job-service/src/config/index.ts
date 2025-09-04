@@ -1,30 +1,9 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
-import type { IJobRepository } from '@monorepo/core';
-import type { IDatabaseConnection } from '@monorepo/database';
-import type {
-  IMessageConsumer,
-  IMessagePublisher,
-} from '@monorepo/message-queue';
-import type { InjectionToken } from 'tsyringe';
-
 import { logger } from '@job-service/adapters/logger.adapter';
 
 dotenv.config();
-
-export const DI_TOKENS = {
-  DatabaseConnection: Symbol(
-    'DatabaseConnection',
-  ) as InjectionToken<IDatabaseConnection>,
-  JobRepository: Symbol('JobRepository') as InjectionToken<IJobRepository>,
-  MessageConsumer: Symbol(
-    'MessageConsumer',
-  ) as InjectionToken<IMessageConsumer>,
-  MessagePublisher: Symbol(
-    'MessagePublisher',
-  ) as InjectionToken<IMessagePublisher>,
-};
 
 export const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']),
