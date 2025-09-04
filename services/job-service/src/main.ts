@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { container } from 'tsyringe';
 
 import type { IJobRepository, JobStatus, WorkerTypes } from '@monorepo/core';
@@ -10,9 +10,13 @@ import type { IMessageConsumer } from '@monorepo/message-queue';
 import { logger } from '@job-service/adapters/logger.adapter';
 import { MongoJobRepository } from '@job-service/adapters/mongo-job.adapter';
 import { config, DI_TOKENS } from '@job-service/config';
-import { InvalidArgumentError } from '@job-service/entities/errors.entity';
-import { CreateJobUseCase } from '@job-service/use-cases/create-job.usecase';
+import {
+  InvalidArgumentError,
+  JobNotFoundError,
+} from '@job-service/entities/errors.entity';
+import { jobRouter } from '@job-service/presentation/routes/job.routes';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
+import { getNextTask } from '@job-service/workers.config';
 import { MessageQueueChannels } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
@@ -48,49 +52,32 @@ container.registerSingleton<IMessageConsumer>(
 const app = express();
 app.use(express.json());
 
-// --- API Endpoints ---
+// Health check endpoint
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).send('OK');
+});
 
-const createJobUseCase = container.resolve(CreateJobUseCase);
-const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
+app.use('/api', jobRouter);
+
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  logger.error(err.message, err);
+
+  if (err instanceof InvalidArgumentError) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  if (err instanceof JobNotFoundError) {
+    return res.status(404).json({ error: err.message });
+  }
+
+  return res.status(500).json({ error: 'Internal Server Error' });
+});
 
 const messageQueue = container.resolve<IMessageConsumer>(
   DI_TOKENS.MessageConsumer,
 );
-
-const workers = [
-  {
-    name: 'ThumbnailWorker',
-    type: 'thumbnail-worker',
-  } as const,
-];
-
-app.post('/jobs', async (req: Request, res: Response) => {
-  try {
-    const { mediaId, sourceUrl } = req.body;
-
-    if (!mediaId || !sourceUrl) {
-      throw new InvalidArgumentError('mediaId and sourceUrl are required');
-    }
-
-    const job = await createJobUseCase.execute({
-      mediaId,
-      sourceUrl,
-      workers,
-    });
-
-    res.status(201).json({ jobId: job._id });
-  } catch (error) {
-    logger.error('Error creating job:', error);
-
-    if (error instanceof InvalidArgumentError) {
-      res.status(400).json({ error: error.message });
-    }
-
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-// consume for task completion events
+const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
 
 messageQueue.consume(MessageQueueChannels.TaskCompleted, async (msg) => {
   if (msg === null) {
@@ -101,22 +88,16 @@ messageQueue.consume(MessageQueueChannels.TaskCompleted, async (msg) => {
     const content: TaskCompletedMessage = JSON.parse(msg.content.toString());
     logger.info('Received task completion message:', content);
 
-    const lastTask = workers[workers.length - 1];
+    const nextTask = getNextTask(content.taskType);
 
-    if (content.taskType === lastTask.type) {
-      // If the completed task is the last one, mark the job as completed
+    if (nextTask) {
+      // Start the next task
+    } else {
+      // This was the last task, mark the job as completed
       await updateJobStatusUseCase.execute({
         jobId: content.jobId,
         status: 'completed' as JobStatus,
       });
-    }
-
-    if (content.taskType === 'thumbnail-worker') {
-      // start next task,
-    }
-
-    if (content.taskType === 'transcode-worker') {
-      // start next task,
     }
 
     messageQueue.ack(msg);
@@ -142,12 +123,37 @@ messageQueue.consume(MessageQueueChannels.TaskFailed, async (msg) => {
     messageQueue.ack(msg);
   } catch (error) {
     logger.error('Error processing task failure message:', error);
-
     messageQueue.nack(msg);
   }
 });
 
 const port = config.PORT || 3002;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info(`Job service listening on port ${port}`);
 });
+
+const gracefulShutdown = () => {
+  logger.info('Shutting down gracefully...');
+  server.close(() => {
+    logger.info('Server closed.');
+    // Disconnect from database and message queue
+    const dbConnection = container.resolve<IDatabaseConnection>(
+      DI_TOKENS.DatabaseConnection,
+    );
+    const mqConnection = container.resolve<IMessageConsumer>(
+      DI_TOKENS.MessageConsumer,
+    );
+    Promise.all([dbConnection.close(), mqConnection.close()])
+      .then(() => {
+        logger.info('Disconnected from dependencies.');
+        process.exit(0);
+      })
+      .catch((err) => {
+        logger.error('Error during disconnection:', err);
+        process.exit(1);
+      });
+  });
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);

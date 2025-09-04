@@ -1,50 +1,49 @@
 import { inject, injectable } from 'tsyringe';
 
-import type {
-  IJobRepository,
-  WorkerMessages,
-  WorkerTypes,
-} from '@monorepo/core';
+import type { IJobRepository, WorkerMessages } from '@monorepo/core';
 
 import { logger } from '@job-service/adapters/logger.adapter';
 import { DI_TOKENS } from '@job-service/config';
-import { MediaJob, MediaTask, MessageQueueChannels } from '@monorepo/core';
+import { JobNotFoundError } from '@job-service/entities/errors.entity';
+import { MediaTask, MessageQueueChannels } from '@monorepo/core';
 import { IMessagePublisher } from '@monorepo/message-queue';
 
-export interface CreateJobInput {
+export interface RetryJobInput {
   mediaId: string;
-  sourceUrl: string;
-  workers: { name: string; type: WorkerTypes }[];
 }
 
 @injectable()
-export class CreateJobUseCase {
+export class RetryJobUseCase {
   constructor(
     @inject(DI_TOKENS.JobRepository) private jobRepository: IJobRepository,
     @inject(DI_TOKENS.MessagePublisher)
     private messagePublisher: IMessagePublisher,
   ) {}
 
-  async execute(input: CreateJobInput): Promise<MediaJob> {
-    const existingJob = await this.jobRepository.getJobByMediaId(input.mediaId);
+  async execute(input: RetryJobInput): Promise<void> {
+    const job = await this.jobRepository.getJobByMediaId(input.mediaId);
 
-    if (existingJob) {
-      logger.info(
-        `Job for media ${input.mediaId} already exists with status ${existingJob.status}.`,
-      );
-      return existingJob;
+    if (!job) {
+      throw new JobNotFoundError(`Job for media ${input.mediaId} not found.`);
     }
 
-    const initialTasks = input.workers.map(
-      (task, index) =>
-        new MediaTask(`${task.type.toLowerCase()}-${index}`, task.type),
-    );
-    const job = new MediaJob(
-      input.mediaId,
-      input.sourceUrl,
-      'pending',
-      initialTasks,
-    );
+    if (job.status !== 'failed') {
+      logger.info(
+        `Job for media ${input.mediaId} is not in a failed state. Current status: ${job.status}`,
+      );
+      return;
+    }
+
+    logger.info(`Retrying failed job for ${input.mediaId}.`);
+
+    job.status = 'pending';
+    job.tasks.forEach((task: MediaTask) => {
+      if (task.status === 'failed') {
+        task.status = 'pending';
+        task.errorMessage = undefined;
+        task.progress = 0;
+      }
+    });
 
     const savedJob = await this.jobRepository.save(job);
 
@@ -58,13 +57,11 @@ export class CreateJobUseCase {
         {
           jobId: savedJob._id,
           taskId: firstPendingTask.taskId,
-          sourceUrl: input.sourceUrl,
+          sourceUrl: savedJob.sourceUrl,
         } as WorkerMessages[typeof firstPendingTask.worker],
       );
     } else {
       logger.warn(`No pending tasks found for job ${savedJob._id}`);
     }
-
-    return savedJob;
   }
 }

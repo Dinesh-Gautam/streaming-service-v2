@@ -29,9 +29,9 @@ export const DI_TOKENS = {
 export const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']),
   PORT: z.coerce.number().int().positive(),
-  MONGO_DB_URI: z.string().url(),
+  MONGO_URI: z.string().url(),
   CORS_ORIGIN: z.string().min(1),
-  RABITMQ_URL: z.string().url(),
+  RABBITMQ_URL: z.string().url(),
 });
 
 const result = configSchema.safeParse(process.env);

@@ -1,5 +1,6 @@
-import * as winston from "winston";
-import { ILogger } from "./logger.interface";
+import * as winston from 'winston';
+
+import { ILogger } from './logger.interface';
 
 const customLevels = {
   fatal: 0,
@@ -10,11 +11,11 @@ const customLevels = {
 };
 
 const customColors = {
-  fatal: "red",
-  error: "red",
-  warn: "yellow",
-  info: "green",
-  debug: "blue",
+  fatal: 'red',
+  error: 'red',
+  warn: 'yellow',
+  info: 'green',
+  debug: 'blue',
 };
 
 winston.addColors(customColors);
@@ -27,17 +28,15 @@ export class WinstonLogger implements ILogger {
       levels: customLevels,
       format: winston.format.combine(
         winston.format.colorize(),
-        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.splat(),
         winston.format.printf(({ timestamp, level, message, ...meta }) => {
           return `${timestamp} [${level}]: ${message} ${
-            meta.stack
-              ? `\nStack: ${meta.stack}`
-              : Object.keys(meta).length
-              ? JSON.stringify(meta, null, 2)
-              : ""
+            meta.stack ? `\nStack: ${meta.stack}`
+            : Object.keys(meta).length ? JSON.stringify(meta, null, 2)
+            : ''
           }`;
-        })
+        }),
       ),
       transports: [new winston.transports.Console()],
     });
@@ -60,7 +59,7 @@ export class WinstonLogger implements ILogger {
   }
 
   fatal(message: string, ...args: unknown[]): void {
-    this.logger.log("fatal", message, ...args);
+    this.logger.log('fatal', message, ...args);
   }
 
   close(): void {

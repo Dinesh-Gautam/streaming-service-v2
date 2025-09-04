@@ -74,7 +74,7 @@ export class MongoJobRepository implements IJobRepository {
     progress?: number,
     errorMessage?: string,
   ): Promise<void> {
-    const updateFields: any = {
+    const updateFields: Record<string, any> = {
       'tasks.$.status': status,
     };
     if (progress !== undefined) {
