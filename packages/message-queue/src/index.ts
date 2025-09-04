@@ -8,7 +8,7 @@ export { MockMessageQueue } from './mock';
 export interface IMessageQueue {
   connect(rabbitmqUrl?: string): Promise<void>;
   ack(msg: ConsumeMessage): Promise<void>;
-  nack(msg: ConsumeMessage, requeue: boolean): Promise<void>;
+  nack(msg: ConsumeMessage, requeue?: boolean): Promise<void>;
   close(): Promise<void>;
   getChannel(): Channel;
 }

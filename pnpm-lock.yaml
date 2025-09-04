@@ -240,9 +240,6 @@ importers:
 
   packages/core:
     dependencies:
-      '@monorepo/core':
-        specifier: workspace:*
-        version: 'link:'
       '@monorepo/database':
         specifier: workspace:*
         version: link:../database

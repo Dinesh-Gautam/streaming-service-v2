@@ -2,8 +2,8 @@ import { inject, injectable } from 'tsyringe';
 
 import type { IJobRepository, JobStatus } from '@monorepo/core';
 
-import { DI_TOKENS } from '@job-service/config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
+import { DI_TOKENS } from '@monorepo/core';
 
 type UpdateStatusInput = {
   jobId: string;

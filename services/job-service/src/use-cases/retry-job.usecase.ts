@@ -3,9 +3,8 @@ import { inject, injectable } from 'tsyringe';
 import type { IJobRepository, WorkerMessages } from '@monorepo/core';
 
 import { logger } from '@job-service/adapters/logger.adapter';
-import { DI_TOKENS } from '@job-service/config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
-import { MediaTask, MessageQueueChannels } from '@monorepo/core';
+import { DI_TOKENS, MediaTask, MessageQueueChannels } from '@monorepo/core';
 import { IMessagePublisher } from '@monorepo/message-queue';
 
 export interface RetryJobInput {

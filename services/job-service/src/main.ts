@@ -15,7 +15,7 @@ import {
   InvalidArgumentError,
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
-import { jobRouter } from '@job-service/presentation/routes/job.routes';
+import { jobRouter } from '@job-service/routes/job.routes';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
 import { DI_TOKENS, MessageQueueChannels } from '@monorepo/core';
 

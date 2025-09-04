@@ -7,8 +7,12 @@ import type {
 } from '@monorepo/core';
 
 import { logger } from '@job-service/adapters/logger.adapter';
-import { DI_TOKENS } from '@job-service/config';
-import { MediaJob, MediaTask, MessageQueueChannels } from '@monorepo/core';
+import {
+  DI_TOKENS,
+  MediaJob,
+  MediaTask,
+  MessageQueueChannels,
+} from '@monorepo/core';
 import { IMessagePublisher } from '@monorepo/message-queue';
 
 export interface CreateJobInput {

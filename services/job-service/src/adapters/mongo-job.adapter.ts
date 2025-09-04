@@ -3,8 +3,7 @@ import { inject, injectable } from 'tsyringe';
 
 import type { IJobRepository } from '@monorepo/core';
 
-import { DI_TOKENS } from '@job-service/config';
-import { MediaJob, TaskStatus } from '@monorepo/core';
+import { DI_TOKENS, MediaJob, TaskStatus } from '@monorepo/core';
 import { IDatabaseConnection } from '@monorepo/database';
 
 @injectable()
