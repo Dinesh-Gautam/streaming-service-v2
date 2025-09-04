@@ -4,6 +4,8 @@ import * as dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import { container } from 'tsyringe';
 
+import { InvalidArgumentError } from '@job-service/domain/entities/errors';
+import { logger } from '@job-service/infrastructure/logger';
 import { DatabaseConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
 
@@ -36,22 +38,30 @@ const port = process.env.PORT || 3002;
 app.post('/jobs', async (req: Request, res: Response) => {
   try {
     const { mediaId, sourceUrl } = req.body;
+
     if (!mediaId || !sourceUrl) {
-      return res
-        .status(400)
-        .json({ error: 'mediaId and sourceUrl are required' });
+      throw new InvalidArgumentError('mediaId and sourceUrl are required');
     }
 
     const createJobUseCase = container.resolve(CreateJobUseCase);
-    const job = await createJobUseCase.execute({ mediaId, sourceUrl });
+    const job = await createJobUseCase.execute({
+      mediaId,
+      sourceUrl,
+      engines: [{ name: 'ThumbnailEngine', type: 'thumbnail' }],
+    });
 
     res.status(201).json({ jobId: job._id });
   } catch (error) {
-    console.error('Error creating job:', error);
+    logger.error('Error creating job:', error);
+
+    if (error instanceof InvalidArgumentError) {
+      res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Job service listening on port ${port}`);
+  logger.info(`Job service listening on port ${port}`);
 });

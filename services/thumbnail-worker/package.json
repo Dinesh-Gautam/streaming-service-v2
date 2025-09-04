@@ -32,7 +32,10 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@monorepo/core": "workspace:*",
+    "@monorepo/database": "workspace:*",
     "@monorepo/logger": "workspace:*",
+    "@monorepo/message-queue": "workspace:*",
     "amqplib": "^0.10.3",
     "dotenv": "^16.6.1",
     "fluent-ffmpeg": "^2.1.2",

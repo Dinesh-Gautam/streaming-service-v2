@@ -1,49 +1,68 @@
-import { Collection, Db, MongoClient } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { Collection, Db } from 'mongodb';
+import { inject, injectable } from 'tsyringe';
 
-import { Job } from '@thumbnail-worker/domain/entities/Job';
+import { BaseJob as Job } from '@monorepo/core';
+import { DatabaseConnection } from '@monorepo/database';
 import { IJobRepository } from '@thumbnail-worker/domain/repositories/IJobRepository';
-import { logger } from '@thumbnail-worker/infrastructure/logger';
 
 @injectable()
 export class MongoJobRepository implements IJobRepository {
-  private client: MongoClient | null = null;
-  private db: Db | null = null;
-  private collection: Collection<Job> | null = null;
+  private readonly collection: Collection<Job>;
 
-  async connect(url: string, dbName: string): Promise<void> {
-    try {
-      this.client = new MongoClient(url);
-      await this.client.connect();
-      this.db = this.client.db(dbName);
-      this.collection = this.db.collection<Job>('jobs');
-      logger.info('Connected to MongoDB');
-    } catch (error) {
-      logger.error('Failed to connect to MongoDB', error);
-      throw error;
-    }
+  constructor(
+    @inject(DatabaseConnection)
+    private readonly dbConnection: DatabaseConnection,
+  ) {
+    const db = this.dbConnection.getDb();
+    this.collection = db.collection<Job>('jobs');
   }
 
   async findById(id: string): Promise<Job | null> {
-    if (!this.collection) {
-      throw new Error('MongoDB collection is not available');
-    }
-    return this.collection.findOne({ id });
+    return this.collection.findOne({ _id: id as any });
   }
 
-  async update(job: Job): Promise<void> {
-    if (!this.collection) {
-      throw new Error('MongoDB collection is not available');
+  async updateTaskStatus(
+    jobId: string,
+    taskId: string,
+    status: import('@monorepo/core').TaskStatus,
+    progress?: number,
+  ): Promise<void> {
+    const updateFields: any = {
+      'tasks.$.status': status,
+    };
+    if (progress !== undefined) {
+      updateFields['tasks.$.progress'] = progress;
     }
     await this.collection.updateOne(
-      { id: job.id },
-      { $set: job },
-      { upsert: true },
+      { _id: jobId as any, 'tasks.taskId': taskId },
+      { $set: updateFields },
     );
   }
 
-  async close(): Promise<void> {
-    await this.client?.close();
-    logger.info('MongoDB connection closed');
+  async updateTaskOutput(
+    jobId: string,
+    taskId: string,
+    output: import('../../application/ports/IMediaProcessor').ThumbnailOutput,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: jobId as any, 'tasks.taskId': taskId },
+      { $set: { 'tasks.$.output': output } },
+    );
+  }
+
+  async failTask(
+    jobId: string,
+    taskId: string,
+    errorMessage: string,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: jobId as any, 'tasks.taskId': taskId },
+      {
+        $set: {
+          'tasks.$.status': 'failed',
+          'tasks.$.errorMessage': errorMessage,
+        },
+      },
+    );
   }
 }

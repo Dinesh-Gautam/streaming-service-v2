@@ -1,8 +1,9 @@
-import { MediaJob, TaskStatus } from '@monorepo/core';
+import { BaseJob, TaskStatus } from '@monorepo/core';
 
 export interface IJobRepository {
-  createJob(job: MediaJob): Promise<MediaJob>;
-  getJobById(id: string): Promise<MediaJob | null>;
+  save(job: BaseJob): Promise<BaseJob>;
+  getJobById(id: string): Promise<BaseJob | null>;
+  getJobByMediaId(mediaId: string): Promise<BaseJob | null>;
   updateTaskStatus(
     jobId: string,
     taskId: string,

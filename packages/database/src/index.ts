@@ -2,7 +2,7 @@ import { Db, MongoClient } from 'mongodb';
 import { singleton } from 'tsyringe';
 
 @singleton()
-export class DatabaseConnection {
+export class MongoDbConnection {
   private db: Db | null = null;
   private client: MongoClient | null = null;
 

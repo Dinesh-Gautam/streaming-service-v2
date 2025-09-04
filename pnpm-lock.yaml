@@ -7,7 +7,7 @@ settings:
 importers:
 
   .:
-    dependencies:
+    devDependencies:
       '@ianvs/prettier-plugin-sort-imports':
         specifier: ^4.3.0
         version: 4.7.0(prettier@3.6.2)
@@ -506,9 +506,18 @@ importers:
 
   services/thumbnail-worker:
     dependencies:
+      '@monorepo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@monorepo/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@monorepo/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@monorepo/message-queue':
+        specifier: workspace:*
+        version: link:../../packages/message-queue
       amqplib:
         specifier: ^0.10.3
         version: 0.10.9

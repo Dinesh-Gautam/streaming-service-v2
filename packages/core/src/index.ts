@@ -13,17 +13,20 @@ export class Task {
   ) {}
 }
 
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export class BaseJob {
   public _id?: any;
 
   constructor(
     public mediaId: string,
-    public jobStatus: JobStatus = 'pending',
+    public sourceUrl: string,
+    public status: JobStatus = 'pending',
     public tasks: Task[] = [],
+    public outputUrl?: string,
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
+    public error?: string,
   ) {}
 }
 

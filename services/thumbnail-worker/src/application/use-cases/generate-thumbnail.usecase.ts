@@ -4,6 +4,12 @@ import { ILogger } from '@monorepo/logger';
 import { IMediaProcessor } from '@thumbnail-worker/application/ports/IMediaProcessor';
 import { IJobRepository } from '@thumbnail-worker/domain/repositories/IJobRepository';
 
+interface GenerateThumbnailInput {
+  jobId: string;
+  taskId: string;
+  sourceUrl: string;
+}
+
 @injectable()
 export class GenerateThumbnailUseCase {
   constructor(
@@ -12,37 +18,41 @@ export class GenerateThumbnailUseCase {
     @inject('Logger') private logger: ILogger,
   ) {}
 
-  async execute(jobId: string): Promise<void> {
-    this.logger.info(`Starting thumbnail generation for job: ${jobId}`);
-    const job = await this.jobRepository.findById(jobId);
-    if (!job) {
-      this.logger.error(`Job with id ${jobId} not found.`);
-      return;
-    }
+  async execute(input: GenerateThumbnailInput): Promise<void> {
+    const { jobId, taskId, sourceUrl } = input;
+    this.logger.info(
+      `Starting thumbnail generation for job: ${jobId}, task: ${taskId}`,
+    );
 
     try {
-      job.status = 'processing';
-      await this.jobRepository.update(job);
-      this.logger.info(`Job ${jobId} status updated to processing.`);
+      await this.jobRepository.updateTaskStatus(jobId, taskId, 'running', 0);
 
-      const { thumbnailUrl } = await this.mediaProcessor.generateThumbnail(
-        job.sourceUrl,
-        '/tmp/output', // This should be a configurable path
+      this.mediaProcessor.on('progress', (progress) => {
+        this.jobRepository.updateTaskStatus(jobId, taskId, 'running', progress);
+      });
+
+      const result = await this.mediaProcessor.process(
+        sourceUrl,
+        `/tmp/output/${jobId}`, // Configurable path
       );
 
-      job.status = 'completed';
-      job.outputUrl = thumbnailUrl;
-      await this.jobRepository.update(job);
-      this.logger.info(
-        `Job ${jobId} completed successfully. Thumbnail URL: ${thumbnailUrl}`,
-      );
+      if (result.success && result.output) {
+        await this.jobRepository.updateTaskOutput(jobId, taskId, result.output);
+        await this.jobRepository.updateTaskStatus(
+          jobId,
+          taskId,
+          'completed',
+          100,
+        );
+        this.logger.info(`Task ${taskId} completed successfully.`);
+      } else {
+        throw new Error(result.error || 'Unknown processing error');
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      job.status = 'failed';
-      job.error = errorMessage;
-      await this.jobRepository.update(job);
-      this.logger.error(`Job ${jobId} failed: ${errorMessage}`, {
+      await this.jobRepository.failTask(jobId, taskId, errorMessage);
+      this.logger.error(`Task ${taskId} failed: ${errorMessage}`, {
         stack: error instanceof Error ? error.stack : undefined,
       });
     }

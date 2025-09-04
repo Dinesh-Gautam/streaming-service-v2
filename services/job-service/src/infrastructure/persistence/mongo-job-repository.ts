@@ -1,7 +1,7 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import { MediaJob, TaskStatus } from '@monorepo/core';
+import { BaseJob as MediaJob, TaskStatus } from '@monorepo/core';
 import { DatabaseConnection } from '@monorepo/database';
 
 import { IJobRepository } from '../../domain/repositories/job-repository';
@@ -17,10 +17,20 @@ export class MongoJobRepository implements IJobRepository {
     this.collection = db.collection<MediaJob>('jobs');
   }
 
-  async createJob(job: MediaJob): Promise<MediaJob> {
-    const result = await this.collection.insertOne(job);
-    job._id = result.insertedId;
-    return job;
+  async save(job: MediaJob): Promise<MediaJob> {
+    const { _id, ...jobData } = job;
+    if (_id) {
+      await this.collection.updateOne(
+        { _id: new ObjectId(_id) },
+        { $set: jobData },
+        { upsert: true },
+      );
+      return job;
+    } else {
+      const result = await this.collection.insertOne(job);
+      job._id = result.insertedId;
+      return job;
+    }
   }
 
   async getJobById(id: string): Promise<MediaJob | null> {
@@ -28,10 +38,29 @@ export class MongoJobRepository implements IJobRepository {
     return job ?
         new MediaJob(
           job.mediaId,
-          job.jobStatus,
+          job.sourceUrl,
+          job.status,
           job.tasks,
+          job.outputUrl,
           job.createdAt,
           job.updatedAt,
+          job.error,
+        )
+      : null;
+  }
+
+  async getJobByMediaId(mediaId: string): Promise<MediaJob | null> {
+    const job = await this.collection.findOne({ mediaId });
+    return job ?
+        new MediaJob(
+          job.mediaId,
+          job.sourceUrl,
+          job.status,
+          job.tasks,
+          job.outputUrl,
+          job.createdAt,
+          job.updatedAt,
+          job.error,
         )
       : null;
   }
