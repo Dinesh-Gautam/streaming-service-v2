@@ -2,12 +2,14 @@
   "name": "thumbnail-worker",
   "version": "1.0.0",
   "description": "Thumbnail generation microservice",
-  "main": "dist/presentation/consumers.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "node dist/presentation/consumers.js",
-    "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/presentation/consumers.ts",
+    "start": "node dist/main.js",
+    "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/main.ts",
     "build": "tsc",
-    "test": "jest --passWithNoTests --runInBand"
+    "test": "jest --passWithNoTests --runInBand",
+    "test:watch": "jest --watch --runInBand",
+    "test:coverage": "jest --coverage --runInBand"
   },
   "keywords": [],
   "author": "",

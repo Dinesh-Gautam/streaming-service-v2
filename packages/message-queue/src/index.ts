@@ -8,7 +8,7 @@ export { MockMessageQueue } from './mock';
 export interface IMessageQueue {
   connect(rabbitmqUrl?: string): Promise<void>;
   ack(msg: ConsumeMessage): Promise<void>;
-  nack(msg: ConsumeMessage): Promise<void>;
+  nack(msg: ConsumeMessage, requeue: boolean): Promise<void>;
   close(): Promise<void>;
   getChannel(): Channel;
 }
@@ -52,11 +52,11 @@ export class RabbitMQAdapter implements IMessagePublisher, IMessageConsumer {
     this.channel.ack(msg);
   }
 
-  async nack(msg: ConsumeMessage): Promise<void> {
+  async nack(msg: ConsumeMessage, requeue = false): Promise<void> {
     if (!this.channel) {
       throw new Error('RabbitMQ channel is not available.');
     }
-    this.channel.nack(msg);
+    this.channel.nack(msg, false, requeue);
   }
 
   async publish(queue: string, message: any): Promise<void> {

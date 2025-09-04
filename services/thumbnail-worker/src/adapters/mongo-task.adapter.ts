@@ -1,15 +1,14 @@
-import { Collection, Db } from 'mongodb';
+import { Collection } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
+import type { ITaskRepository, ThumbnailOutput } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
-import type { ThumbnailOutput } from '@thumbnail-worker/application/ports/IMediaProcessor';
 
-import { BaseJob as Job } from '@monorepo/core';
+import { MediaJob as Job } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
-import { IJobRepository } from '@thumbnail-worker/domain/repositories/IJobRepository';
 
 @injectable()
-export class MongoJobRepository implements IJobRepository {
+export class MongoTaskRepository implements ITaskRepository {
   private readonly collection: Collection<Job>;
 
   constructor(

@@ -4,11 +4,11 @@ import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { injectable } from 'tsyringe';
 
-import {
-  EngineOutput,
+import type {
   IMediaProcessor,
   ThumbnailOutput,
-} from '@thumbnail-worker/application/ports/IMediaProcessor';
+  WorkerOutput,
+} from '@monorepo/core';
 
 interface ThumbnailEngineOptions {
   interval: number;
@@ -34,7 +34,7 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
   async process(
     inputFile: string,
     outputDir: string,
-  ): Promise<EngineOutput<ThumbnailOutput>> {
+  ): Promise<WorkerOutput<ThumbnailOutput>> {
     const thumbnailsDir = path.join(outputDir, 'thumbnails');
     const vttFilePath = path.join(outputDir, 'thumbnails.vtt');
 

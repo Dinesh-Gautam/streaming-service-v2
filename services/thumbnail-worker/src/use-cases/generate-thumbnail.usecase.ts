@@ -1,8 +1,9 @@
 import { inject, injectable } from 'tsyringe';
 
+import type { IMediaProcessor, ITaskRepository } from '@monorepo/core';
+
+import { DI_TOKENS } from '@monorepo/core';
 import { ILogger } from '@monorepo/logger';
-import { IMediaProcessor } from '@thumbnail-worker/application/ports/IMediaProcessor';
-import { IJobRepository } from '@thumbnail-worker/domain/repositories/IJobRepository';
 
 interface GenerateThumbnailInput {
   jobId: string;
@@ -13,9 +14,9 @@ interface GenerateThumbnailInput {
 @injectable()
 export class GenerateThumbnailUseCase {
   constructor(
-    @inject('JobRepository') private jobRepository: IJobRepository,
-    @inject('MediaProcessor') private mediaProcessor: IMediaProcessor,
-    @inject('Logger') private logger: ILogger,
+    @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
+    @inject(DI_TOKENS.MediaProcessor) private mediaProcessor: IMediaProcessor,
+    @inject(DI_TOKENS.Logger) private logger: ILogger,
   ) {}
 
   async execute(input: GenerateThumbnailInput): Promise<void> {
@@ -25,10 +26,15 @@ export class GenerateThumbnailUseCase {
     );
 
     try {
-      await this.jobRepository.updateTaskStatus(jobId, taskId, 'running', 0);
+      await this.taskRepository.updateTaskStatus(jobId, taskId, 'running', 0);
 
       this.mediaProcessor.on('progress', (progress) => {
-        this.jobRepository.updateTaskStatus(jobId, taskId, 'running', progress);
+        this.taskRepository.updateTaskStatus(
+          jobId,
+          taskId,
+          'running',
+          progress,
+        );
       });
 
       const result = await this.mediaProcessor.process(
@@ -37,8 +43,12 @@ export class GenerateThumbnailUseCase {
       );
 
       if (result.success && result.output) {
-        await this.jobRepository.updateTaskOutput(jobId, taskId, result.output);
-        await this.jobRepository.updateTaskStatus(
+        await this.taskRepository.updateTaskOutput(
+          jobId,
+          taskId,
+          result.output,
+        );
+        await this.taskRepository.updateTaskStatus(
           jobId,
           taskId,
           'completed',
@@ -51,7 +61,7 @@ export class GenerateThumbnailUseCase {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      await this.jobRepository.failTask(jobId, taskId, errorMessage);
+      await this.taskRepository.failTask(jobId, taskId, errorMessage);
       this.logger.error(`Task ${taskId} failed: ${errorMessage}`, {
         stack: error instanceof Error ? error.stack : undefined,
       });
