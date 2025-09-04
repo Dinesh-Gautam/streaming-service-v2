@@ -9,10 +9,7 @@
     "build": "tsc",
     "test": "jest --passWithNoTests --runInBand",
     "test:watch": "jest --watch --runInBand",
-    "test:coverage": "jest --coverage --runInBand",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\""
+    "test:coverage": "jest --coverage --runInBand"
   },
   "keywords": [],
   "author": "",

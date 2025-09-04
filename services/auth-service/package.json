@@ -6,13 +6,10 @@
   "scripts": {
     "start": "node dist/main.js",
     "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/presentation/main.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "test": "jest --passWithNoTests --runInBand",
     "test:watch": "jest --watch --runInBand",
     "test:coverage": "jest --coverage --runInBand",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

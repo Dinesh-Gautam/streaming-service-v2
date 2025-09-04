@@ -7,10 +7,7 @@
     "start": "node dist/presentation/consumers.js",
     "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/presentation/consumers.ts",
     "build": "tsc",
-    "test": "jest --passWithNoTests --runInBand",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\""
+    "test": "jest --passWithNoTests --runInBand"
   },
   "keywords": [],
   "author": "",

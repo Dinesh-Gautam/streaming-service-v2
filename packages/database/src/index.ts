@@ -1,8 +1,14 @@
 import { Db, MongoClient } from 'mongodb';
 import { singleton } from 'tsyringe';
 
+export interface IDatabaseConnection {
+  connect(mongoUri?: string): Promise<void>;
+  getDb(): Db;
+  close(): Promise<void>;
+}
+
 @singleton()
-export class MongoDbConnection {
+export class MongoDbConnection implements IDatabaseConnection {
   private db: Db | null = null;
   private client: MongoClient | null = null;
 

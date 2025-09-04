@@ -1,8 +1,9 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
+import { DI_TOKENS } from '@job-service/infrastructure/config';
 import { BaseJob as MediaJob, TaskStatus } from '@monorepo/core';
-import { DatabaseConnection } from '@monorepo/database';
+import { IDatabaseConnection } from '@monorepo/database';
 
 import { IJobRepository } from '../../domain/repositories/job-repository';
 
@@ -11,7 +12,8 @@ export class MongoJobRepository implements IJobRepository {
   private collection: Collection<MediaJob>;
 
   constructor(
-    @inject('DatabaseConnection') private dbConnection: DatabaseConnection,
+    @inject(DI_TOKENS.DatabaseConnection)
+    private dbConnection: IDatabaseConnection,
   ) {
     const db = this.dbConnection.getDb();
     this.collection = db.collection<MediaJob>('jobs');

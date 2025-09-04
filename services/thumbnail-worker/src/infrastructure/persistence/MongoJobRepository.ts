@@ -1,8 +1,11 @@
 import { Collection, Db } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
+import type { IDatabaseConnection } from '@monorepo/database';
+import type { ThumbnailOutput } from '@thumbnail-worker/application/ports/IMediaProcessor';
+
 import { BaseJob as Job } from '@monorepo/core';
-import { DatabaseConnection } from '@monorepo/database';
+import { MongoDbConnection } from '@monorepo/database';
 import { IJobRepository } from '@thumbnail-worker/domain/repositories/IJobRepository';
 
 @injectable()
@@ -10,8 +13,8 @@ export class MongoJobRepository implements IJobRepository {
   private readonly collection: Collection<Job>;
 
   constructor(
-    @inject(DatabaseConnection)
-    private readonly dbConnection: DatabaseConnection,
+    @inject(MongoDbConnection)
+    private readonly dbConnection: IDatabaseConnection,
   ) {
     const db = this.dbConnection.getDb();
     this.collection = db.collection<Job>('jobs');
@@ -42,7 +45,7 @@ export class MongoJobRepository implements IJobRepository {
   async updateTaskOutput(
     jobId: string,
     taskId: string,
-    output: import('../../application/ports/IMediaProcessor').ThumbnailOutput,
+    output: ThumbnailOutput,
   ): Promise<void> {
     await this.collection.updateOne(
       { _id: jobId as any, 'tasks.taskId': taskId },

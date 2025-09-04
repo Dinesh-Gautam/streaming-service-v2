@@ -8,8 +8,6 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "format": "prettier --write ./src",
     "clear": "rm -rf converted & rm -rf tmp"
   },
   "dependencies": {

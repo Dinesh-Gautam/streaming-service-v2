@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { container } from 'tsyringe';
 
-import { DatabaseConnection } from '@monorepo/database';
+import { MongoDbConnection } from '@monorepo/database';
 import { WinstonLogger } from '@monorepo/logger';
 import { RabbitMQAdapter } from '@monorepo/message-queue';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/application/use-cases/generate-thumbnail.usecase';
@@ -12,14 +12,14 @@ import { FfmpegProcessor } from '@thumbnail-worker/infrastructure/media/FfmpegPr
 import { MongoJobRepository } from '@thumbnail-worker/infrastructure/persistence/MongoJobRepository';
 
 // Register dependencies
-container.registerSingleton(DatabaseConnection);
+container.registerSingleton(MongoDbConnection);
 container.register('MessageConsumer', { useClass: RabbitMQAdapter });
 container.register('JobRepository', { useClass: MongoJobRepository });
 container.register('MediaProcessor', { useClass: FfmpegProcessor });
 container.register('Logger', { useClass: WinstonLogger });
 
 async function main() {
-  const dbConnection = container.resolve(DatabaseConnection);
+  const dbConnection = container.resolve(MongoDbConnection);
   await dbConnection.connect(config.MONGO_URL);
 
   const messageConsumer = container.resolve<RabbitMQAdapter>('MessageConsumer');
