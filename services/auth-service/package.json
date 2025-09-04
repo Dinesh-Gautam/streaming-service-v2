@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node dist/main.js",
     "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/presentation/main.ts",
+    "dev:turbo": "turbo run dev",
     "build": "prisma generate && tsc",
     "test": "jest --passWithNoTests --runInBand",
     "test:watch": "jest --watch --runInBand",
