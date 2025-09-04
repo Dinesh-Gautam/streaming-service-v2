@@ -3,13 +3,13 @@ import 'reflect-metadata';
 import express, { NextFunction, Request, Response } from 'express';
 import { container } from 'tsyringe';
 
-import type { IJobRepository, JobStatus, WorkerTypes } from '@monorepo/core';
+import type { JobStatus, WorkerTypes } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
 import { logger } from '@job-service/adapters/logger.adapter';
-import { MongoJobRepository } from '@job-service/adapters/mongo-job.adapter';
 import { config, DI_TOKENS } from '@job-service/config';
+import { setupDI } from '@job-service/di-container';
 import {
   InvalidArgumentError,
   JobNotFoundError,
@@ -18,8 +18,8 @@ import { jobRouter } from '@job-service/presentation/routes/job.routes';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
 import { getNextTask } from '@job-service/workers.config';
 import { MessageQueueChannels } from '@monorepo/core';
-import { MongoDbConnection } from '@monorepo/database';
-import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
+
+setupDI();
 
 export type TaskCompletedMessage = {
   jobId: string;
@@ -31,23 +31,6 @@ export type TaskFailedMessage = {
   jobId: string;
   taskId: string;
 };
-
-container.registerSingleton<IDatabaseConnection>(
-  DI_TOKENS.DatabaseConnection,
-  MongoDbConnection,
-);
-container.registerSingleton<IJobRepository>(
-  DI_TOKENS.JobRepository,
-  MongoJobRepository,
-);
-container.registerSingleton<IMessagePublisher>(
-  DI_TOKENS.MessagePublisher,
-  RabbitMQAdapter,
-);
-container.registerSingleton<IMessageConsumer>(
-  DI_TOKENS.MessageConsumer,
-  RabbitMQAdapter,
-);
 
 const app = express();
 app.use(express.json());

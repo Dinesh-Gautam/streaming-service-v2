@@ -1,6 +1,8 @@
 import { Db, MongoClient } from 'mongodb';
 import { singleton } from 'tsyringe';
 
+export { MockDatabaseConnection } from './mock';
+
 export interface IDatabaseConnection {
   connect(mongoUri?: string): Promise<void>;
   getDb(): Db;

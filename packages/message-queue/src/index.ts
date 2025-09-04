@@ -3,6 +3,8 @@ import { singleton } from 'tsyringe';
 
 import type { ChannelModel } from 'amqplib';
 
+export { MockMessageQueue } from './mock';
+
 export interface IMessageQueue {
   connect(rabbitmqUrl?: string): Promise<void>;
   ack(msg: ConsumeMessage): Promise<void>;
