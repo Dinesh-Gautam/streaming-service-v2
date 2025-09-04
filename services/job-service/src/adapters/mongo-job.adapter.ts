@@ -1,11 +1,11 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import { DI_TOKENS } from '@job-service/infrastructure/config';
-import { BaseJob as MediaJob, TaskStatus } from '@monorepo/core';
-import { IDatabaseConnection } from '@monorepo/database';
+import type { IJobRepository } from '@monorepo/core';
 
-import { IJobRepository } from '../../domain/repositories/job-repository';
+import { DI_TOKENS } from '@job-service/config';
+import { MediaJob, TaskStatus } from '@monorepo/core';
+import { IDatabaseConnection } from '@monorepo/database';
 
 @injectable()
 export class MongoJobRepository implements IJobRepository {
@@ -23,7 +23,7 @@ export class MongoJobRepository implements IJobRepository {
     const { _id, ...jobData } = job;
     if (_id) {
       await this.collection.updateOne(
-        { _id: new ObjectId(_id) },
+        { _id: _id },
         { $set: jobData },
         { upsert: true },
       );

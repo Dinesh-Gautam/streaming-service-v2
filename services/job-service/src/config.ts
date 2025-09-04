@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
-import type { IJobRepository } from '@job-service/domain/repositories/job-repository';
+import type { IJobRepository } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type {
   IMessageConsumer,
@@ -9,7 +9,7 @@ import type {
 } from '@monorepo/message-queue';
 import type { InjectionToken } from 'tsyringe';
 
-import { logger } from '@job-service/infrastructure/logger';
+import { logger } from '@job-service/adapters/logger.adapter';
 
 dotenv.config();
 

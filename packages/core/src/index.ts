@@ -1,9 +1,31 @@
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 
-export class Task {
+export type WorkerTypes = 'thumbnail-worker' | 'transcode-worker';
+
+export const MessageQueueChannels = {
+  'thumbnail-worker': 'thumbnail_tasks',
+  'transcode-worker': 'transcode_tasks',
+  TaskCompleted: 'task_completed',
+  TaskFailed: 'task_failed',
+};
+
+export type WorkerMessages = {
+  'thumbnail-worker': {
+    jobId: string;
+    taskId: string;
+    sourceUrl: string;
+  };
+  'transcode-worker': {
+    jobId: string;
+    taskId: string;
+    sourceUrl: string;
+  };
+};
+
+export class MediaTask {
   constructor(
     public taskId: string,
-    public engine: string,
+    public worker: WorkerTypes,
     public status: TaskStatus = 'pending',
     public progress: number = 0,
     public errorMessage?: string,
@@ -15,14 +37,14 @@ export class Task {
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
-export class BaseJob {
+export class MediaJob {
   public _id?: any;
 
   constructor(
     public mediaId: string,
     public sourceUrl: string,
     public status: JobStatus = 'pending',
-    public tasks: Task[] = [],
+    public tasks: MediaTask[] = [],
     public outputUrl?: string,
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
@@ -30,10 +52,18 @@ export class BaseJob {
   ) {}
 }
 
-export interface IRepository<T> {
-  findById(id: string): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  create(entity: T): Promise<T>;
-  update(id: string, entity: T): Promise<T | null>;
-  delete(id: string): Promise<boolean>;
+export interface ITaskRepository {
+  updateTaskStatus(
+    jobId: string,
+    taskId: string,
+    status: TaskStatus,
+    progress?: number,
+    errorMessage?: string,
+  ): Promise<void>;
+}
+
+export interface IJobRepository {
+  save(job: MediaJob): Promise<MediaJob>;
+  getJobById(id: string): Promise<MediaJob | null>;
+  getJobByMediaId(mediaId: string): Promise<MediaJob | null>;
 }

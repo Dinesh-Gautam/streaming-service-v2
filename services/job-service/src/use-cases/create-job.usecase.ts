@@ -1,13 +1,15 @@
 import { inject, injectable } from 'tsyringe';
 
-import type { IJobRepository } from '@job-service/domain/repositories/job-repository';
+import type {
+  IJobRepository,
+  WorkerMessages,
+  WorkerTypes,
+} from '@monorepo/core';
 
-import { DI_TOKENS } from '@job-service/infrastructure/config';
-import { logger } from '@job-service/infrastructure/logger';
-import { BaseJob as MediaJob, Task as MediaTask } from '@monorepo/core';
+import { logger } from '@job-service/adapters/logger.adapter';
+import { DI_TOKENS } from '@job-service/config';
+import { MediaJob, MediaTask, MessageQueueChannels } from '@monorepo/core';
 import { IMessagePublisher } from '@monorepo/message-queue';
-
-type WorkerTypes = 'thumbnail-worker' | 'transcode-worker';
 
 export interface CreateJobInput {
   mediaId: string;
@@ -47,11 +49,8 @@ export class CreateJobUseCase {
 
     if (!job) {
       const initialTasks = input.workers.map(
-        (engine, index) =>
-          new MediaTask(
-            `${engine.name.toLowerCase().replace('engine', '')}-${index}`,
-            engine.name,
-          ),
+        (task, index) =>
+          new MediaTask(`${task.type.toLowerCase()}-${index}`, task.type),
       );
       job = new MediaJob(
         input.mediaId,
@@ -63,15 +62,23 @@ export class CreateJobUseCase {
 
     const savedJob = await this.jobRepository.save(job);
 
-    for (const task of savedJob.tasks) {
-      if (task.status === 'pending') {
-        await this.messagePublisher.publish('thumbnail-jobs', {
+    const firstPendingTask = savedJob.tasks.find(
+      (task) => task.status === 'pending',
+    );
+
+    if (firstPendingTask) {
+      await this.messagePublisher.publish(
+        MessageQueueChannels[firstPendingTask.worker],
+        {
           jobId: savedJob._id,
-          taskId: task.taskId,
+          taskId: firstPendingTask.taskId,
           sourceUrl: input.sourceUrl,
-        });
-      }
+        } as WorkerMessages[typeof firstPendingTask.worker],
+      );
+    } else {
+      logger.warn(`No pending tasks found for job ${savedJob._id}`);
     }
+
     return savedJob;
   }
 }

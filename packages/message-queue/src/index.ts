@@ -3,11 +3,19 @@ import { singleton } from 'tsyringe';
 
 import type { ChannelModel } from 'amqplib';
 
-export interface IMessagePublisher {
+export interface IMessageQueue {
+  connect(rabbitmqUrl?: string): Promise<void>;
+  ack(msg: ConsumeMessage): Promise<void>;
+  nack(msg: ConsumeMessage): Promise<void>;
+  close(): Promise<void>;
+  getChannel(): Channel;
+}
+
+export interface IMessagePublisher extends IMessageQueue {
   publish(queue: string, message: any): Promise<void>;
 }
 
-export interface IMessageConsumer {
+export interface IMessageConsumer extends IMessageQueue {
   consume(
     queue: string,
     onMessage: (msg: ConsumeMessage | null) => void,
@@ -33,6 +41,20 @@ export class RabbitMQAdapter implements IMessagePublisher, IMessageConsumer {
       console.error('Failed to connect to RabbitMQ', error);
       throw error;
     }
+  }
+
+  async ack(msg: ConsumeMessage): Promise<void> {
+    if (!this.channel) {
+      throw new Error('RabbitMQ channel is not available.');
+    }
+    this.channel.ack(msg);
+  }
+
+  async nack(msg: ConsumeMessage): Promise<void> {
+    if (!this.channel) {
+      throw new Error('RabbitMQ channel is not available.');
+    }
+    this.channel.nack(msg);
   }
 
   async publish(queue: string, message: any): Promise<void> {
