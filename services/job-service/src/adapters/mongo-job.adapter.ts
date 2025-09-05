@@ -36,34 +36,42 @@ export class MongoJobRepository implements IJobRepository {
 
   async getJobById(id: string): Promise<MediaJob | null> {
     const job = await this.collection.findOne({ _id: new ObjectId(id) });
-    return job ?
-        new MediaJob(
-          job.mediaId,
-          job.sourceUrl,
-          job.status,
-          job.tasks,
-          job.outputUrl,
-          job.createdAt,
-          job.updatedAt,
-          job.error,
-        )
-      : null;
+
+    if (!job) return null;
+
+    const mediaPresenter = new MediaJob(
+      job.mediaId,
+      job.sourceUrl,
+      job.status,
+      job.tasks,
+      job.outputUrl,
+      job.createdAt,
+      job.updatedAt,
+      job.error,
+    );
+
+    mediaPresenter._id = job._id;
+    return mediaPresenter;
   }
 
   async getJobByMediaId(mediaId: string): Promise<MediaJob | null> {
     const job = await this.collection.findOne({ mediaId });
-    return job ?
-        new MediaJob(
-          job.mediaId,
-          job.sourceUrl,
-          job.status,
-          job.tasks,
-          job.outputUrl,
-          job.createdAt,
-          job.updatedAt,
-          job.error,
-        )
-      : null;
+
+    if (!job) return null;
+
+    const mediaPresenter = new MediaJob(
+      job.mediaId,
+      job.sourceUrl,
+      job.status,
+      job.tasks,
+      job.outputUrl,
+      job.createdAt,
+      job.updatedAt,
+      job.error,
+    );
+
+    mediaPresenter._id = job._id;
+    return mediaPresenter;
   }
 
   async updateTaskStatus(

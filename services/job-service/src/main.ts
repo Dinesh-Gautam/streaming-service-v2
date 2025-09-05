@@ -32,111 +32,130 @@ export type TaskFailedMessage = {
   taskId: string;
 };
 
+const messageQueue = container.resolve<IMessageConsumer>(
+  DI_TOKENS.MessageConsumer,
+);
+const dbConnection = container.resolve<IDatabaseConnection>(
+  DI_TOKENS.DatabaseConnection,
+);
+
 const app = express();
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).send('OK');
-});
 
-app.use('/api', jobRouter);
+async function main() {
+  await messageQueue.connect(config.RABBITMQ_URL);
 
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(err.message, err);
+  await dbConnection.connect(config.MONGO_URI);
 
-  if (err instanceof InvalidArgumentError) {
-    return res.status(400).json({ error: err.message });
-  }
+  app.get('/health', (req: Request, res: Response) => {
+    res.status(200).send('OK');
+  });
 
-  if (err instanceof JobNotFoundError) {
-    return res.status(404).json({ error: err.message });
-  }
+  app.use('/api', jobRouter);
 
-  return res.status(500).json({ error: 'Internal Server Error' });
-});
+  // Error handling middleware
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error(err.message, err);
 
-const messageQueue = container.resolve<IMessageConsumer>(
-  DI_TOKENS.MessageConsumer,
-);
-const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
-
-messageQueue.consume(MessageQueueChannels.TaskCompleted, async (msg) => {
-  if (msg === null) {
-    return;
-  }
-
-  try {
-    const content: TaskCompletedMessage = JSON.parse(msg.content.toString());
-    logger.info('Received task completion message:', content);
-
-    const nextTask = getNextTask(content.taskType);
-
-    if (nextTask) {
-      // Start the next task
-    } else {
-      // This was the last task, mark the job as completed
-      await updateJobStatusUseCase.execute({
-        jobId: content.jobId,
-        status: 'completed' as JobStatus,
-      });
+    if (err instanceof InvalidArgumentError) {
+      return res.status(400).json({ error: err.message });
     }
 
-    messageQueue.ack(msg);
-  } catch (error) {
-    logger.error('Error processing task completion message:', error);
-  }
-});
+    if (err instanceof JobNotFoundError) {
+      return res.status(404).json({ error: err.message });
+    }
 
-messageQueue.consume(MessageQueueChannels.TaskFailed, async (msg) => {
-  if (msg === null) {
-    return;
-  }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  });
 
-  try {
-    const content: TaskFailedMessage = JSON.parse(msg.content.toString());
-    logger.info('Received task failure message:', content);
+  const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
 
-    await updateJobStatusUseCase.execute({
-      jobId: content.jobId,
-      status: 'failed',
-    });
+  messageQueue.consume(MessageQueueChannels.TaskCompleted, async (msg) => {
+    if (msg === null) {
+      return;
+    }
 
-    messageQueue.ack(msg);
-  } catch (error) {
-    logger.error('Error processing task failure message:', error);
-    messageQueue.nack(msg);
-  }
-});
+    try {
+      const content: TaskCompletedMessage = JSON.parse(msg.content.toString());
+      logger.info('Received task completion message:', content);
+
+      const nextTask = getNextTask(content.taskType);
+
+      if (nextTask) {
+        // Start the next task
+      } else {
+        // This was the last task, mark the job as completed
+        await updateJobStatusUseCase.execute({
+          jobId: content.jobId,
+          status: 'completed' as JobStatus,
+        });
+      }
+
+      messageQueue.ack(msg);
+    } catch (error) {
+      logger.error('Error processing task completion message:', error);
+    }
+  });
+
+  messageQueue.consume(MessageQueueChannels.TaskFailed, async (msg) => {
+    if (msg === null) {
+      return;
+    }
+
+    try {
+      const content: TaskFailedMessage = JSON.parse(msg.content.toString());
+      logger.info('Received task failure message:', content);
+
+      await updateJobStatusUseCase.execute({
+        jobId: content.jobId,
+        status: 'failed',
+      });
+
+      messageQueue.ack(msg);
+    } catch (error) {
+      logger.error('Error processing task failure message:', error);
+      messageQueue.nack(msg);
+    }
+  });
+}
 
 const port = config.PORT || 3002;
-const server = app.listen(port, () => {
-  logger.info(`Job service listening on port ${port}`);
-});
 
-const gracefulShutdown = () => {
-  logger.info('Shutting down gracefully...');
-  server.close(() => {
-    logger.info('Server closed.');
-    // Disconnect from database and message queue
-    const dbConnection = container.resolve<IDatabaseConnection>(
-      DI_TOKENS.DatabaseConnection,
-    );
-    const mqConnection = container.resolve<IMessageConsumer>(
-      DI_TOKENS.MessageConsumer,
-    );
-    Promise.all([dbConnection.close(), mqConnection.close()])
-      .then(() => {
-        logger.info('Disconnected from dependencies.');
-        process.exit(0);
-      })
-      .catch((err) => {
-        logger.error('Error during disconnection:', err);
-        process.exit(1);
+main()
+  .then(() => {
+    const server = app.listen(port, () => {
+      logger.info(`Job service listening on port ${port}`);
+    });
+
+    const gracefulShutdown = () => {
+      logger.info('Shutting down gracefully...');
+      server.close(() => {
+        logger.info('Server closed.');
+        // Disconnect from database and message queue
+        const dbConnection = container.resolve<IDatabaseConnection>(
+          DI_TOKENS.DatabaseConnection,
+        );
+        const mqConnection = container.resolve<IMessageConsumer>(
+          DI_TOKENS.MessageConsumer,
+        );
+        Promise.all([dbConnection.close(), mqConnection.close()])
+          .then(() => {
+            logger.info('Disconnected from dependencies.');
+            process.exit(0);
+          })
+          .catch((err) => {
+            logger.error('Error during disconnection:', err);
+            process.exit(1);
+          });
       });
-  });
-};
+    };
 
-process.on('SIGINT', gracefulShutdown);
-process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+  })
+  .catch((err) => {
+    logger.fatal('Failed to start the service:', err);
+    process.exit(1);
+  });

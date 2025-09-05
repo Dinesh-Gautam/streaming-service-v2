@@ -45,12 +45,11 @@ export const setupDI = () => {
     DI_TOKENS.JobRepository,
     MongoJobRepository,
   );
-  container.registerSingleton<IMessagePublisher>(
-    DI_TOKENS.MessagePublisher,
-    RabbitMQAdapter,
-  );
-  container.registerSingleton<IMessageConsumer>(
-    DI_TOKENS.MessageConsumer,
-    RabbitMQAdapter,
-  );
+  container.registerSingleton(RabbitMQAdapter);
+  container.register(DI_TOKENS.MessagePublisher, {
+    useToken: RabbitMQAdapter,
+  });
+  container.register(DI_TOKENS.MessageConsumer, {
+    useToken: RabbitMQAdapter,
+  });
 };

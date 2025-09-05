@@ -478,6 +478,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
+      tsc-alias:
+        specifier: ^1.8.16
+        version: 1.8.16
       tsyringe:
         specifier: ^4.8.0
         version: 4.10.0

@@ -31,7 +31,7 @@ export class CreateJobUseCase {
 
   async execute(input: CreateJobInput): Promise<MediaJob> {
     const existingJob = await this.jobRepository.getJobByMediaId(input.mediaId);
-
+    existingJob?._id;
     if (existingJob) {
       logger.info(
         `Job for media ${input.mediaId} already exists with status ${existingJob.status}.`,
