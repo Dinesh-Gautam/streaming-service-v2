@@ -21,7 +21,7 @@ RUN pnpm install
 
 # Build all dependencies and the target service
 # The '...' prefix tells pnpm to also build all dependencies of the target
-RUN pnpm --filter auth-service... build
+RUN pnpm --filter job-service... build
 
 # Prune dev dependencies for a smaller node_modules
 RUN pnpm prune --prod
@@ -34,7 +34,7 @@ WORKDIR /usr/src/app
 # Copy the pruned node_modules and the built source code from the builder stage
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/packages ./packages
-COPY --from=builder /usr/src/app/services/auth-service ./services/auth-service
+COPY --from=builder /usr/src/app/services/job-service ./services/job-service
 
 # Command to run the application
-CMD [ "node", "services/auth-service/dist/presentation/main.js" ]
+CMD [ "node", "services/job-service/dist/main.js" ]

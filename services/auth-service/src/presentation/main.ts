@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import express from 'express';
+import express, { Application } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 
@@ -11,7 +11,7 @@ import { logger } from '@auth-service/infrastructure/logger';
 import { errorHandler } from '@auth-service/presentation/middleware/error-handler.middleware';
 import { authRouter } from '@auth-service/presentation/routes/auth.routes';
 
-const app = express();
+const app: Application = express();
 
 app.use(helmet());
 app.use(express.json());

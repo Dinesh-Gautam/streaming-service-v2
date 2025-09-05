@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  auth-service-migration:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+      target: builder
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command: pnpm --filter auth-service run prisma:migrate
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    ports:
+      - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
+    environment:
+      - PORT=${AUTH_SERVICE_PORT}
+    env_file:
+      - ./.env
+    depends_on:
+      - auth-service-migration
+      - redis
+    networks:
+      - app-network
+
+  job-service:
+    build:
+      context: .
+      dockerfile: services/job-service/Dockerfile
+    ports:
+      - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
+    environment:
+      - PORT=${JOB_SERVICE_PORT}
+    env_file:
+      - ./.env
+    depends_on:
+      - mongo
+      - rabbitmq
+    networks:
+      - app-network
+
+  thumbnail-worker:
+    build:
+      context: .
+      dockerfile: services/thumbnail-worker/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      - mongo
+      - rabbitmq
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:13
+    restart: always
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=test-db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  postgres_data:
+  redis_data:

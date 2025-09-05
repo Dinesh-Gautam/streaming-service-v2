@@ -8,6 +8,8 @@
     "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/main.ts",
     "dev:turbo": "turbo run dev",
     "build": "tsc",
+    "docker:dev": "docker-compose up -d --build",
+    "docker:down": "docker-compose down",
     "test": "jest --passWithNoTests --runInBand",
     "test:watch": "jest --watch --runInBand",
     "test:coverage": "jest --coverage --runInBand"

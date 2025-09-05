@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { IRouter, Router } from 'express';
 import { processRequest } from 'zod-express-middleware';
 
 import {
@@ -17,7 +17,7 @@ import { auth } from '@auth-service/presentation/middleware/auth.middleware';
 import { authorize } from '@auth-service/presentation/middleware/authorization.middleware';
 import { Role } from '@prisma/client';
 
-const authRouter = Router();
+const authRouter: IRouter = Router();
 
 const userRepository = new PrismaUserRepository(prisma);
 const passwordHasher = new BcryptPasswordHasher();

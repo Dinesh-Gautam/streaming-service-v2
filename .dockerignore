@@ -8,13 +8,14 @@ Dockerfile
 docker-compose.yml
 
 # Node
-node_modules
-pnpm-lock.yaml
-dist
-.env
-.env.*
+**/node_modules
+**/dist
+**/.env
+**/.env.*
 !/.env.example
+**/.next
+**/.genkit
+**/converted
 
 # IDE
 .vscode
-
