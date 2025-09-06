@@ -47,10 +47,10 @@ COPY packages ./packages
 COPY services/job-service ./services/job-service
 
 # Install all deps (locked)
-RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Build only job-service + deps
-RUN pnpm run build --filter ./services/job-service...
+RUN pnpm run build --filter=job-service...
 
 # Remove dev deps
 RUN pnpm prune --prod
@@ -62,13 +62,7 @@ FROM node:20-alpine AS prod
 
 WORKDIR /usr/src/app
 
-# Copy runtime essentials
-COPY --from=builder /usr/src/app/package.json ./package.json
-COPY --from=builder /usr/src/app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-
-# Copy only dist output, not full source
-COPY --from=builder /usr/src/app/services/job-service/dist ./services/job-service/dist
-COPY --from=builder /usr/src/app/packages ./packages
+# Copy the entire pruned application from the builder stage
+COPY --from=builder /usr/src/app .
 
 CMD ["node", "services/job-service/dist/main.js"]
