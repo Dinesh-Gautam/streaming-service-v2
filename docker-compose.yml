@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   auth-service-migration:
     build:
@@ -31,10 +29,14 @@ services:
       - app-network
 
   job-service:
+    tty: true  # Allocates a pseudo-TTY
+    stdin_open: true
     build:
       context: .
       dockerfile: services/job-service/Dockerfile
       target: dev
+    volumes:
+       - pnpm-store:/pnpm/store
     ports:
       - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
     develop:
@@ -64,6 +66,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
+
   thumbnail-worker:
     build:
       context: .
@@ -138,3 +141,6 @@ volumes:
   mongo-data:
   postgres_data:
   redis_data:
+  pnpm-store:
+
+

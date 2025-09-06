@@ -2,14 +2,15 @@
   "name": "monorepo",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "docker:dev": "docker compose up --build --watch",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "build": "turbo run build",
+    "dev:packages": "pnpm --filter=\"./packages/**\" run dev",
     "build:packages": "turbo build --filter=\"./packages/**\"",
     "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
-    "docker:dev": "docker compose up --build --watch",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "workspaces": [
     "apps/*",

@@ -25,9 +25,6 @@ export class JobController {
         sourceUrl,
         workers: WORKERS,
       });
-
-      console.log();
-
       return res.status(201).json({ jobId: job._id });
     } catch (error) {
       logger.error('Error creating job:', error);
