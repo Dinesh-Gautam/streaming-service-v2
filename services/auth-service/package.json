@@ -7,7 +7,7 @@
     "start": "node dist/presentation/main.js",
     "dev": "nodemon --watch src --exec ts-node -r tsconfig-paths/register src/presentation/main.ts",
     "dev:turbo": "turbo run dev",
-    "build": "prisma generate && tsc && tsc-alias",
+    "build": "tsc && tsc-alias",
     "docker:dev": "docker-compose up -d --build",
     "docker:down": "docker-compose down",
     "test": "jest --passWithNoTests --runInBand",

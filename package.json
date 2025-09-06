@@ -5,7 +5,7 @@
     "docker:dev": "docker compose up --build --watch",
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "dev:packages": "pnpm --filter=\"./packages/**\" run dev",
+    "dev:packages": "pnpm run dev --filter=\"./packages/**\"",
     "build:packages": "turbo build --filter=\"./packages/**\"",
     "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
     "docker:down": "docker compose down",

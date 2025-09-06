@@ -1,85 +1,39 @@
+version: "3.9"
+
+x-service-base: &service-base
+  tty: true
+  stdin_open: true
+  restart: unless-stopped
+  volumes:
+    - pnpm-store:/pnpm/store
+  develop:
+    watch:
+      - action: sync
+        path: ./packages
+        target: /usr/src/app/packages
+        ignore: [node_modules/]
+
 services:
-  auth-service-migration:
-    build:
-      context: .
-      dockerfile: services/auth-service/Dockerfile
-      target: builder
+  # ---------- DATABASES & BROKERS ----------
+  postgres:
+    image: postgres:13
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-    command: pnpm --filter auth-service run prisma:migrate
-    depends_on:
-      - postgres
-    networks:
-      - app-network
-
-  auth-service:
-    build:
-      context: .
-      dockerfile: services/auth-service/Dockerfile
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test-db
     ports:
-      - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
-    environment:
-      - PORT=${AUTH_SERVICE_PORT}
-    env_file:
-      - ./.env
-    depends_on:
-      - auth-service-migration
-      - redis
-    networks:
-      - app-network
-
-  job-service:
-    tty: true  # Allocates a pseudo-TTY
-    stdin_open: true
-    build:
-      context: .
-      dockerfile: services/job-service/Dockerfile
-      target: dev
+      - "5432:5432"
     volumes:
-       - pnpm-store:/pnpm/store
-    ports:
-      - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
-    develop:
-      watch:
-        - action: sync
-          path: ./services/job-service/src
-          target: /usr/src/app/services/job-service/src
-          ignore:
-            - node_modules/
-        - action: sync
-          path: ./packages
-          target: /usr/src/app/packages
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: ./services/job-service/package.json
-        - action: sync
-          path: ./tsconfig.json
-          target: /usr/src/app/tsconfig.json
-    env_file:
-      - ./services/job-service/.env
-      - ./.env
-    depends_on:
-      mongo:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test-db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
-      - app-network
-
-  thumbnail-worker:
-    build:
-      context: .
-      dockerfile: services/thumbnail-worker/Dockerfile
-    env_file:
-      - ./.env
-    depends_on:
-      mongo:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - app-network
+      - backend
 
   mongo:
     image: mongo:latest
@@ -94,7 +48,22 @@ services:
       retries: 5
       start_period: 40s
     networks:
-      - app-network
+      - backend
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -107,40 +76,101 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - app-network
+      - messaging
 
-  postgres:
-    image: postgres:13
-    restart: always
+  # ---------- SERVICES ----------
+  auth-service-migration:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+      target: builder
     environment:
-      - POSTGRES_USER=test
-      - POSTGRES_PASSWORD=test
-      - POSTGRES_DB=test-db
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      DATABASE_URL: ${DATABASE_URL}
+    command: pnpm --filter auth-service run prisma:migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
-      - app-network
+      - backend
 
-  redis:
-    image: redis:alpine
-    restart: always
+  auth-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+      target: dev
     ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
+    env_file:
+      - ./.env
+      - ./services/auth-service/.env
+    develop:
+      watch:
+        - action: sync
+          path: ./services/auth-service/src
+          target: /usr/src/app/services/auth-service/src
+          ignore: [node_modules/]
+        - action: rebuild
+          path: ./services/auth-service/package.json
+    depends_on:
+      - auth-service-migration
+      - redis
     networks:
-      - app-network
+      - backend
+      - messaging
 
+  job-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/job-service/Dockerfile
+      target: dev
+    ports:
+      - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
+    env_file:
+      - ./.env
+      - ./services/job-service/.env
+    develop:
+      watch:
+        - action: sync
+          path: ./services/job-service/src
+          target: /usr/src/app/services/job-service/src
+          ignore: [node_modules/]
+        - action: rebuild
+          path: ./services/job-service/package.json
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+      - messaging
+
+  thumbnail-worker:
+    profiles: ["workers"] # Only run when needed
+    build:
+      context: .
+      dockerfile: services/thumbnail-worker/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+      - messaging
+
+# ---------- NETWORKS ----------
 networks:
-  app-network:
-    driver: bridge
+  backend:
+  messaging:
 
+# ---------- VOLUMES ----------
 volumes:
   mongo-data:
   postgres_data:
   redis_data:
   pnpm-store:
-
-

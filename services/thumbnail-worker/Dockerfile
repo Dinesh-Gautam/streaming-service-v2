@@ -1,40 +1,68 @@
-# Stage 1: Build the application
-FROM node:20-alpine AS builder
+# ==============================
+# Base image
+# ==============================
+FROM node:20-alpine AS base
 
 WORKDIR /usr/src/app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install global tools
+RUN npm install -g pnpm turbo
 
-# Copy dependency definitions
-COPY package.json pnpm-lock.yaml ./
-# pnpm-workspace.yaml is crucial for monorepo setup
-COPY pnpm-workspace.yaml ./
-COPY tsconfig.json ./
+# Setup pnpm global store (for caching)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+ENV PNPM_STORE_PATH="/pnpm/store"
 
-# Copy source code for all packages and services
-COPY packages/ ./packages/
-COPY services/ ./services/
+# Copy lockfiles first (better cache)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 
-# Install all dependencies to create symlinks and have devDeps available
-RUN pnpm install
+# Pre-fetch dependencies (cached by lockfile)
+RUN --mount=type=cache,target=/pnpm/store \
+  pnpm fetch
 
-# Build all dependencies and the target service
-# The '...' prefix tells pnpm to also build all dependencies of the target
-RUN pnpm --filter thumbnail-worker... build
+# ==============================
+# Dev stage
+# ==============================
+FROM base AS dev
 
-# Prune dev dependencies for a smaller node_modules
+# Copy source
+COPY packages ./packages
+COPY services/auth-service ./services/job-service
+
+# Install all deps using cached store (skip internet)
+RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
+
+RUN pnpm run build --filter=auth-service...
+
+# Run turbo dev: auth-service and its deps
+CMD ["pnpm", "run", "dev", "--filter=auth-service..." , "--env-mode=loose"]
+
+# ==============================
+# Builder stage (prod build)
+# ==============================
+FROM base AS builder
+
+# Copy source
+COPY packages ./packages
+COPY services/auth-service ./services/job-service
+
+# Install all deps (locked)
+RUN pnpm install --frozen-lockfile
+
+# Build only auth-service + deps
+RUN pnpm run build --filter=auth-service...
+
+# Remove dev deps
 RUN pnpm prune --prod
 
-# Stage 2: Create the production image
-FROM node:20-alpine
+# ==============================
+# Production image
+# ==============================
+FROM node:20-alpine AS prod
 
 WORKDIR /usr/src/app
 
-# Copy the pruned node_modules and the built source code from the builder stage
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/packages ./packages
-COPY --from=builder /usr/src/app/services/thumbnail-worker ./services/thumbnail-worker
+# Copy the entire pruned application from the builder stage
+COPY --from=builder /usr/src/app .
 
-# Command to run the application
-CMD [ "node", "services/thumbnail-worker/dist/main.js" ]
+CMD ["node", "services/auth-service/dist/main.js"]
