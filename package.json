@@ -6,7 +6,10 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "build:packages": "turbo build --filter=\"./packages/**\""
+    "build:packages": "turbo build --filter=\"./packages/**\"",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
+    "docker:dev": "docker compose up --build --watch",
+    "docker:down": "docker compose down"
   },
   "workspaces": [
     "apps/*",

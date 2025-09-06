@@ -34,26 +34,9 @@ services:
     build:
       context: .
       dockerfile: services/job-service/Dockerfile
-      target: dev
+      target: prod
     ports:
       - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
-    develop:
-      watch:
-        - action: sync
-          path: ./services/job-service/src
-          target: /usr/src/app/services/job-service/src
-          ignore:
-            - node_modules/
-        - action: sync
-          path: ./packages
-          target: /usr/src/app/packages
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: ./services/job-service/package.json
-        - action: sync
-          path: ./tsconfig.json
-          target: /usr/src/app/tsconfig.json
     env_file:
       - ./services/job-service/.env
       - ./.env
@@ -64,6 +47,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
+
   thumbnail-worker:
     build:
       context: .
