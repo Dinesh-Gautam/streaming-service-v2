@@ -134,7 +134,7 @@ export const DI_TOKENS = {
 };
 
 export interface ITaskRepository {
-  findById(id: string): Promise<MediaJob | null>;
+  findJobById(id: string): Promise<MediaJob | null>;
   updateTaskStatus(
     jobId: string,
     taskId: string,

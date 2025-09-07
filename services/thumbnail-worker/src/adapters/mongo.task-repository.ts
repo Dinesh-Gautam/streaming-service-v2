@@ -22,7 +22,7 @@ export class MongoTaskRepository implements ITaskRepository {
     this.collection = db.collection<Job>('jobs');
   }
 
-  async findById(id: string): Promise<Job | null> {
+  async findJobById(id: string): Promise<Job | null> {
     return this.collection.findOne({ _id: id as any });
   }
 
