@@ -27,15 +27,13 @@ FROM base AS dev
 
 # Copy source
 COPY packages ./packages
-COPY services/auth-service ./services/job-service
+COPY services/thumbnail-worker ./services/thumbnail-worker
 
 # Install all deps using cached store (skip internet)
 RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
 
-RUN pnpm run build --filter=auth-service...
-
-# Run turbo dev: auth-service and its deps
-CMD ["pnpm", "run", "dev", "--filter=auth-service..." , "--env-mode=loose"]
+# Run turbo dev: thumbnail-worker and its deps
+CMD ["pnpm", "run", "dev", "--filter=thumbnail-worker..." , "--env-mode=loose"]
 
 # ==============================
 # Builder stage (prod build)
@@ -44,13 +42,13 @@ FROM base AS builder
 
 # Copy source
 COPY packages ./packages
-COPY services/auth-service ./services/job-service
+COPY services/thumbnail-worker ./services/thumbnail-worker
 
 # Install all deps (locked)
 RUN pnpm install --frozen-lockfile
 
-# Build only auth-service + deps
-RUN pnpm run build --filter=auth-service...
+# Build only thumbnail-worker + deps
+RUN pnpm run build --filter=thumbnail-worker...
 
 # Remove dev deps
 RUN pnpm prune --prod
@@ -65,4 +63,4 @@ WORKDIR /usr/src/app
 # Copy the entire pruned application from the builder stage
 COPY --from=builder /usr/src/app .
 
-CMD ["node", "services/auth-service/dist/main.js"]
+CMD ["node", "services/thumbnail-worker/dist/main.js"]

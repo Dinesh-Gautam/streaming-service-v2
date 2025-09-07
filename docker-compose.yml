@@ -148,12 +148,23 @@ services:
       - messaging
 
   thumbnail-worker:
+    <<: *service-base
     profiles: ["workers"] # Only run when needed
     build:
       context: .
       dockerfile: services/thumbnail-worker/Dockerfile
+      target : dev
+    develop:
+      watch:
+        - action: sync
+          path: ./services/thumbnail-worker/src
+          target: /usr/src/app/services/thumbnail-worker/src
+          ignore: [node_modules/]
+        - action: rebuild
+          path: ./services/thumbnail-worker/package.json
     env_file:
       - ./.env
+      - ./services/thumbnail-worker/.env
     depends_on:
       mongo:
         condition: service_healthy

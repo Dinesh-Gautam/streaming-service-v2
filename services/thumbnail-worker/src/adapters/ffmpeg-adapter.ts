@@ -10,6 +10,8 @@ import type {
   WorkerOutput,
 } from '@monorepo/core';
 
+import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
+
 interface ThumbnailEngineOptions {
   interval: number;
   thumbnailWidth: number;

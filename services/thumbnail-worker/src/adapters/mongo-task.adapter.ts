@@ -1,7 +1,11 @@
 import { Collection } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import type { ITaskRepository, ThumbnailOutput } from '@monorepo/core';
+import type {
+  ITaskRepository,
+  TaskStatus,
+  ThumbnailOutput,
+} from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
 
 import { MediaJob as Job } from '@monorepo/core';
@@ -26,7 +30,7 @@ export class MongoTaskRepository implements ITaskRepository {
   async updateTaskStatus(
     jobId: string,
     taskId: string,
-    status: import('@monorepo/core').TaskStatus,
+    status: TaskStatus,
     progress?: number,
   ): Promise<void> {
     const updateFields: any = {

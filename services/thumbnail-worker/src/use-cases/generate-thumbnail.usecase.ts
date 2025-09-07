@@ -4,6 +4,7 @@ import type { IMediaProcessor, ITaskRepository } from '@monorepo/core';
 
 import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
 import { logger } from '@thumbnail-worker/config/logger';
+import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
 
 interface GenerateThumbnailInput {
   jobId: string;
