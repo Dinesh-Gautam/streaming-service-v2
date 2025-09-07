@@ -1,6 +1,10 @@
 import { inject, injectable } from 'tsyringe';
 
-import type { IMediaProcessor, ITaskRepository } from '@monorepo/core';
+import type {
+  IMediaProcessor,
+  ISourceResolver,
+  ITaskRepository,
+} from '@monorepo/core';
 
 import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
 import { logger } from '@thumbnail-worker/config/logger';
@@ -17,6 +21,7 @@ export class GenerateThumbnailUseCase {
   constructor(
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
     @inject(DI_TOKENS.MediaProcessor) private mediaProcessor: IMediaProcessor,
+    @inject(DI_TOKENS.SourceResolver) private sourceResolver: ISourceResolver,
   ) {}
 
   async execute(input: GenerateThumbnailInput): Promise<void> {
@@ -38,8 +43,10 @@ export class GenerateThumbnailUseCase {
         );
       });
 
+      const resolvedSource = await this.sourceResolver.resolveSource(sourceUrl);
+
       const result = await this.mediaProcessor.process(
-        sourceUrl,
+        resolvedSource,
         `/tmp/output/${jobId}`, // Configurable path
       );
 

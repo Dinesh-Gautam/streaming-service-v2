@@ -32,6 +32,9 @@ COPY services/thumbnail-worker ./services/thumbnail-worker
 # Install all deps using cached store (skip internet)
 RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
 
+# Build packages
+RUN pnpm run build:packages
+
 # Run turbo dev: thumbnail-worker and its deps
 CMD ["pnpm", "run", "dev", "--filter=thumbnail-worker..." , "--env-mode=loose"]
 

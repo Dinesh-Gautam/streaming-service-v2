@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-service-base: &service-base
   tty: true
   stdin_open: true

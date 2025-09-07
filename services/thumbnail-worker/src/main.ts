@@ -12,8 +12,6 @@ import { setupDI } from '@thumbnail-worker/config/di.config';
 import { logger } from '@thumbnail-worker/config/logger';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/use-cases/generate-thumbnail.usecase';
 
-setupDI();
-
 const dbConnection = container.resolve<IDatabaseConnection>(
   DI_TOKENS.DatabaseConnection,
 );
@@ -22,6 +20,8 @@ const messageConsumer = container.resolve<IMessageConsumer>(
 );
 
 async function main() {
+  setupDI();
+
   await dbConnection.connect(config.MONGO_URL).catch((error) => {
     logger.fatal('Failed to connect to MongoDB', error);
     process.exit(1);
@@ -56,12 +56,14 @@ async function main() {
         const generateThumbnailUseCase = container.resolve(
           GenerateThumbnailUseCase,
         );
-        logger.info('message', message);
-        // await generateThumbnailUseCase.execute({
-        //   jobId: message.jobId,
-        //   taskId: message.taskId,
-        //   sourceUrl: message.sourceUrl,
-        // });
+
+        logger.debug('message', message);
+
+        await generateThumbnailUseCase.execute({
+          jobId: message.jobId,
+          taskId: message.taskId,
+          sourceUrl: message.sourceUrl,
+        });
         messageConsumer.ack(msg);
       } catch (error) {
         logger.error('Error processing message', error);

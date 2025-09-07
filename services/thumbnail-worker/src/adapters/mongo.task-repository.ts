@@ -8,15 +8,14 @@ import type {
 } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
 
-import { MediaJob as Job } from '@monorepo/core';
-import { MongoDbConnection } from '@monorepo/database';
+import { DI_TOKENS, MediaJob as Job } from '@monorepo/core';
 
 @injectable()
 export class MongoTaskRepository implements ITaskRepository {
   private readonly collection: Collection<Job>;
 
   constructor(
-    @inject(MongoDbConnection)
+    @inject(DI_TOKENS.DatabaseConnection)
     private readonly dbConnection: IDatabaseConnection,
   ) {
     const db = this.dbConnection.getDb();

@@ -3,12 +3,11 @@ import { container } from 'tsyringe';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
-import { DI_TOKENS, IMediaProcessor, ITaskRepository } from '@monorepo/core';
+import { DI_TOKENS } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
-import { WinstonLogger } from '@monorepo/logger';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
-import { FfmpegProcessor } from '@thumbnail-worker/adapters/ffmpeg-adapter';
-import { MongoTaskRepository } from '@thumbnail-worker/adapters/mongo-task.adapter';
+import { FfmpegProcessor } from '@thumbnail-worker/adapters/ffmpeg.media-processor';
+import { MongoTaskRepository } from '@thumbnail-worker/adapters/mongo.task-repository';
 
 export function setupDI() {
   container.registerSingleton<IDatabaseConnection>(
@@ -26,13 +25,9 @@ export function setupDI() {
     useToken: RabbitMQAdapter,
   });
 
-  container.register<ITaskRepository>(
-    DI_TOKENS.TaskRepository,
-    MongoTaskRepository,
-  );
+  container.register(DI_TOKENS.TaskRepository, MongoTaskRepository);
 
-  container.register<IMediaProcessor>(
-    DI_TOKENS.MediaProcessor,
-    FfmpegProcessor,
-  );
+  container.register(DI_TOKENS.MediaProcessor, {
+    useFactory: () => new FfmpegProcessor(),
+  });
 }

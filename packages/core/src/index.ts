@@ -106,6 +106,16 @@ export interface IMediaProcessor extends NodeJS.EventEmitter {
   ): this;
 }
 
+export interface ISourceResolver {
+  /**
+   * Gives the file path.
+   * It should download the file if it's a remote URL.
+   * @param url The original source URL.
+   * @returns The local file path where the source can be accessed.
+   */
+  resolveSource(url: string): Promise<string>;
+}
+
 export const DI_TOKENS = {
   DatabaseConnection: Symbol(
     'DatabaseConnection',
@@ -119,7 +129,8 @@ export const DI_TOKENS = {
     'MessagePublisher',
   ) as InjectionToken<IMessagePublisher>,
   Logger: Symbol('Logger') as InjectionToken<ILogger>,
-  MediaProcessor: Symbol('MediaProcessor') as InjectionToken<any>,
+  MediaProcessor: Symbol('MediaProcessor') as InjectionToken<IMediaProcessor>,
+  SourceResolver: Symbol('SourceResolver') as InjectionToken<ISourceResolver>,
 };
 
 export interface ITaskRepository {
