@@ -3,9 +3,11 @@ import 'reflect-metadata';
 import express, { NextFunction, Request, Response } from 'express';
 import { container } from 'tsyringe';
 
-import type { JobStatus, WorkerTypes } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
-import type { IMessageConsumer } from '@monorepo/message-queue';
+import type {
+  IMessageConsumer,
+  TaskFailedMessage,
+} from '@monorepo/message-queue';
 
 import { logger } from '@job-service/adapters/logger.adapter';
 import { config } from '@job-service/config';
@@ -17,20 +19,9 @@ import {
 } from '@job-service/entities/errors.entity';
 import { jobRouter } from '@job-service/routes/job.routes';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
-import { DI_TOKENS, MessageQueueChannels } from '@monorepo/core';
+import { DI_TOKENS } from '@monorepo/core';
 
 setupDI();
-
-export type TaskCompletedMessage = {
-  jobId: string;
-  taskId: string;
-  taskType: WorkerTypes;
-};
-
-export type TaskFailedMessage = {
-  jobId: string;
-  taskId: string;
-};
 
 const messageQueue = container.resolve<IMessageConsumer>(
   DI_TOKENS.MessageConsumer,
@@ -72,13 +63,12 @@ async function main() {
 
   const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
 
-  messageQueue.consume(MessageQueueChannels.TaskCompleted, async (msg) => {
-    if (msg === null) {
+  messageQueue.consume('task_completed', async (content, msg) => {
+    if (!msg || !content) {
       return;
     }
 
     try {
-      const content: TaskCompletedMessage = JSON.parse(msg.content.toString());
       logger.info('Received task completion message:', content);
 
       const nextTask = getNextTask(content.taskType);
@@ -89,7 +79,7 @@ async function main() {
         // This was the last task, mark the job as completed
         await updateJobStatusUseCase.execute({
           jobId: content.jobId,
-          status: 'completed' as JobStatus,
+          status: 'completed',
         });
       }
 
@@ -99,8 +89,8 @@ async function main() {
     }
   });
 
-  messageQueue.consume(MessageQueueChannels.TaskFailed, async (msg) => {
-    if (msg === null) {
+  messageQueue.consume('task_failed', async (content, msg) => {
+    if (!msg || !content) {
       return;
     }
 
@@ -133,14 +123,8 @@ main()
       logger.info('Shutting down gracefully...');
       server.close(() => {
         logger.info('Server closed.');
-        // Disconnect from database and message queue
-        const dbConnection = container.resolve<IDatabaseConnection>(
-          DI_TOKENS.DatabaseConnection,
-        );
-        const mqConnection = container.resolve<IMessageConsumer>(
-          DI_TOKENS.MessageConsumer,
-        );
-        Promise.all([dbConnection.close(), mqConnection.close()])
+
+        Promise.all([dbConnection.close(), messageQueue.close()])
           .then(() => {
             logger.info('Disconnected from dependencies.');
             process.exit(0);

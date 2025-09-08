@@ -4,13 +4,9 @@ import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { injectable } from 'tsyringe';
 
-import type {
-  IMediaProcessor,
-  ThumbnailOutput,
-  WorkerOutput,
-} from '@monorepo/core';
+import type { IMediaProcessor } from '@monorepo/core';
+import type { ThumbnailOutput, WorkerOutput } from '@monorepo/message-queue';
 
-import { config } from '@thumbnail-worker/config';
 import { logger } from '@thumbnail-worker/config/logger';
 import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
 

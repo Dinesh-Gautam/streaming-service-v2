@@ -3,32 +3,13 @@ import type { ILogger } from '@monorepo/logger';
 import type {
   IMessageConsumer,
   IMessagePublisher,
+  ThumbnailOutput,
+  WorkerOutput,
+  WorkerTypes,
 } from '@monorepo/message-queue';
 import type { InjectionToken } from 'tsyringe';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
-
-export type WorkerTypes = 'thumbnail-worker' | 'transcode-worker';
-
-export const MessageQueueChannels = {
-  'thumbnail-worker': 'thumbnail_tasks',
-  'transcode-worker': 'transcode_tasks',
-  TaskCompleted: 'task_completed',
-  TaskFailed: 'task_failed',
-};
-
-export type WorkerMessages = {
-  'thumbnail-worker': {
-    jobId: string;
-    taskId: string;
-    sourceUrl: string;
-  };
-  'transcode-worker': {
-    jobId: string;
-    taskId: string;
-    sourceUrl: string;
-  };
-};
 
 export class MediaTask {
   constructor(
@@ -74,18 +55,6 @@ export interface IJobRepository {
   save(job: MediaJob): Promise<MediaJob>;
   getJobById(id: string): Promise<MediaJob | null>;
   getJobByMediaId(mediaId: string): Promise<MediaJob | null>;
-}
-
-export interface ThumbnailOutput {
-  paths: {
-    vtt: string;
-    thumbnailsDir: string;
-  };
-}
-
-export interface WorkerOutput<T> {
-  success: boolean;
-  output: T;
 }
 
 export const MediaPrcessorEvent = {

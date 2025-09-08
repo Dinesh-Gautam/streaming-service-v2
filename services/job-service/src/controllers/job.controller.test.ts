@@ -3,10 +3,7 @@ import 'reflect-metadata';
 import { Request, Response } from 'express';
 import { container } from 'tsyringe';
 
-import {
-  InvalidArgumentError,
-  JobNotFoundError,
-} from '@job-service/entities/errors.entity';
+import { JobNotFoundError } from '@job-service/entities/errors.entity';
 import { CreateJobUseCase } from '@job-service/use-cases/create-job.usecase';
 import { RetryJobUseCase } from '@job-service/use-cases/retry-job.usecase';
 import { MediaJob } from '@monorepo/core';

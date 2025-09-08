@@ -3,19 +3,15 @@ import 'reflect-metadata';
 import { ObjectId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import type { MockMessageQueue } from '@monorepo/message-queue';
+import type { MockMessageQueue, WorkerTypes } from '@monorepo/message-queue';
 
 import { setupDI } from '@job-service/config/di.config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
+import { DI_TOKENS, IJobRepository, MediaJob, MediaTask } from '@monorepo/core';
 import {
-  DI_TOKENS,
-  IJobRepository,
-  MediaJob,
-  MediaTask,
+  IMessagePublisher,
   MessageQueueChannels,
-  WorkerTypes,
-} from '@monorepo/core';
-import { IMessagePublisher } from '@monorepo/message-queue';
+} from '@monorepo/message-queue';
 
 import { MockMongoJobAdapter } from '../adapters/mongo-job.adapter.mock';
 import { RetryJobUseCase } from './retry-job.usecase';
@@ -44,7 +40,7 @@ describe('RetryJobUseCase', () => {
   it('should retry a failed job, reset its status and tasks, and publish a message', async () => {
     const failedTask = new MediaTask(
       'task-1',
-      'thumbnail-worker' as WorkerTypes,
+      'thumbnail' as WorkerTypes,
       'failed',
     );
     const job = new MediaJob('media-123', 'http://a.b/c.mp4', 'failed', [
@@ -65,7 +61,7 @@ describe('RetryJobUseCase', () => {
 
     expect(messagePublisher.publish).toHaveBeenCalledTimes(1);
     expect(messagePublisher.publish).toHaveBeenCalledWith(
-      MessageQueueChannels['thumbnail-worker'],
+      MessageQueueChannels.thumbnail,
       expect.anything(),
     );
   });

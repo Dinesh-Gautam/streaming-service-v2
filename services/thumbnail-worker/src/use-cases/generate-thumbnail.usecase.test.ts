@@ -6,16 +6,15 @@ import type {
   IMediaProcessor,
   ISourceResolver,
   ITaskRepository,
+} from '@monorepo/core';
+import type {
+  IMessagePublisher,
   ThumbnailOutput,
   WorkerOutput,
-} from '@monorepo/core';
-import type { IMessagePublisher } from '@monorepo/message-queue';
+} from '@monorepo/message-queue';
 
-import {
-  DI_TOKENS,
-  MediaPrcessorEvent,
-  MessageQueueChannels,
-} from '@monorepo/core';
+import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
+import { MessageQueueChannels } from '@monorepo/message-queue';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/use-cases/generate-thumbnail.usecase';
 
 // Mock implementations
@@ -123,7 +122,7 @@ describe('GenerateThumbnailUseCase', () => {
       100,
     );
     expect(mockMessagePublisher.publish).toHaveBeenCalledWith(
-      MessageQueueChannels.TaskCompleted,
+      MessageQueueChannels.completed,
       {
         jobId: input.jobId,
         taskId: input.taskId,

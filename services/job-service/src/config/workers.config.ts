@@ -1,9 +1,9 @@
-import { WorkerTypes } from '@monorepo/core';
+import type { WorkerTypes } from '@monorepo/message-queue';
 
-export const WORKERS = [
+export const WORKERS: { name: string; type: WorkerTypes }[] = [
   {
     name: 'ThumbnailWorker',
-    type: 'thumbnail-worker' as const,
+    type: 'thumbnail' as const,
   },
   // Add other workers here
 ];

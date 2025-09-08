@@ -2,14 +2,13 @@ import 'reflect-metadata';
 
 import { container } from 'tsyringe';
 
-import type { WorkerMessages } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type {
   IMessageConsumer,
   IMessagePublisher,
 } from '@monorepo/message-queue';
 
-import { DI_TOKENS, MessageQueueChannels } from '@monorepo/core';
+import { DI_TOKENS } from '@monorepo/core';
 import { config } from '@thumbnail-worker/config';
 import { setupDI } from '@thumbnail-worker/config/di.config';
 import { logger } from '@thumbnail-worker/config/logger';
@@ -37,21 +36,17 @@ async function main() {
     process.exit(1);
   });
 
-  messageConsumer.consume(
-    MessageQueueChannels['thumbnail-worker'],
-    async (msg) => {
+  messageConsumer.consume<'thumbnail_tasks'>(
+    'thumbnail_tasks',
+    async (content, msg) => {
       if (!msg) {
         logger.warn('Received null message');
         return;
       }
 
-      const message: WorkerMessages['thumbnail-worker'] = JSON.parse(
-        msg.content.toString(),
-      );
+      console.log(content);
 
-      console.log(message);
-
-      if (!message || !message.jobId || !message.taskId || !message.sourceUrl) {
+      if (!content || !content.jobId || !content.taskId || !content.sourceUrl) {
         logger.warn('Received invalid message:');
         messageConsumer.ack(msg); // Acknowledge and discard invalid messages
 
@@ -63,25 +58,28 @@ async function main() {
           GenerateThumbnailUseCase,
         );
 
-        logger.debug('message', message);
+        logger.debug('message', content);
 
         const result = await generateThumbnailUseCase.execute({
-          jobId: message.jobId,
-          taskId: message.taskId,
-          sourceUrl: message.sourceUrl,
+          jobId: content.jobId,
+          taskId: content.taskId,
+          sourceUrl: content.sourceUrl,
         });
 
-        await messagePublisher.publish(MessageQueueChannels.TaskCompleted, {
-          jobId: message.jobId,
-          taskId: message.taskId,
+        await messagePublisher.publish('task_completed', {
+          jobId: content.jobId,
+          taskId: content.taskId,
           output: result.output,
+          taskType: 'thumbnail',
         });
+
         messageConsumer.ack(msg);
       } catch (error) {
-        await messagePublisher.publish(MessageQueueChannels.TaskFailed, {
-          jobId: message.jobId,
-          taskId: message.taskId,
+        await messagePublisher.publish('task_failed', {
+          jobId: content.jobId,
+          taskId: content.taskId,
         });
+
         logger.error('Error processing message', error);
         // Requeue the message for a retry, or send to a dead-letter queue
         messageConsumer.nack(msg, false);

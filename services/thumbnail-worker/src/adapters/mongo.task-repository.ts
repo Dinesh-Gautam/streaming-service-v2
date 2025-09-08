@@ -1,12 +1,9 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import type {
-  ITaskRepository,
-  TaskStatus,
-  ThumbnailOutput,
-} from '@monorepo/core';
+import type { ITaskRepository, TaskStatus } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
+import type { ThumbnailOutput } from '@monorepo/message-queue';
 
 import { DI_TOKENS, MediaJob as Job } from '@monorepo/core';
 

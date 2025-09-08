@@ -2,8 +2,6 @@ import path from 'path';
 
 import type { ISourceResolver } from '@thumbnail-worker/interfaces/source-resolver.interface';
 
-import { config } from '@thumbnail-worker/config';
-
 export class FsSourceResolver implements ISourceResolver {
   async resolveSource(url: string): Promise<string> {
     // The URL from the job is relative to the project root.

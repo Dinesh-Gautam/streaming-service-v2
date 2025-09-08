@@ -3,17 +3,14 @@ import 'reflect-metadata';
 import { ObjectId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import type { MockMessageQueue } from '@monorepo/message-queue';
+import type { MockMessageQueue, WorkerTypes } from '@monorepo/message-queue';
 
 import { setupDI } from '@job-service/config/di.config';
+import { DI_TOKENS, IJobRepository, MediaJob } from '@monorepo/core';
 import {
-  DI_TOKENS,
-  IJobRepository,
-  MediaJob,
+  IMessagePublisher,
   MessageQueueChannels,
-  WorkerTypes,
-} from '@monorepo/core';
-import { IMessagePublisher } from '@monorepo/message-queue';
+} from '@monorepo/message-queue';
 
 import { MockMongoJobAdapter } from '../adapters/mongo-job.adapter.mock';
 import { CreateJobUseCase } from './create-job.usecase';
@@ -58,11 +55,11 @@ describe('CreateJobUseCase', () => {
     expect(result.mediaId).toBe(input.mediaId);
     expect(result.status).toBe('pending');
     expect(result.tasks).toHaveLength(1);
-    expect(result.tasks[0].worker).toBe('thumbnail-worker' as WorkerTypes);
+    expect(result.tasks[0].worker).toBe('thumbnail' as WorkerTypes);
 
     expect(messagePublisher.publish).toHaveBeenCalledTimes(1);
     expect(messagePublisher.publish).toHaveBeenCalledWith(
-      MessageQueueChannels['thumbnail-worker'],
+      MessageQueueChannels['thumbnail'],
       expect.objectContaining({
         jobId: result._id,
         sourceUrl: input.sourceUrl,

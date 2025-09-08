@@ -4,16 +4,14 @@ import type {
   IMediaProcessor,
   ISourceResolver,
   ITaskRepository,
+} from '@monorepo/core';
+import type {
+  IMessagePublisher,
   ThumbnailOutput,
   WorkerOutput,
-} from '@monorepo/core';
-import type { IMessagePublisher } from '@monorepo/message-queue';
+} from '@monorepo/message-queue';
 
-import {
-  DI_TOKENS,
-  MediaPrcessorEvent,
-  MessageQueueChannels,
-} from '@monorepo/core';
+import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
 import { config } from '@thumbnail-worker/config';
 import { logger } from '@thumbnail-worker/config/logger';
 import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
@@ -30,8 +28,6 @@ export class GenerateThumbnailUseCase {
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
     @inject(DI_TOKENS.MediaProcessor) private mediaProcessor: IMediaProcessor,
     @inject(DI_TOKENS.SourceResolver) private sourceResolver: ISourceResolver,
-    @inject(DI_TOKENS.MessagePublisher)
-    private messagePublisher: IMessagePublisher,
   ) {}
 
   async execute(

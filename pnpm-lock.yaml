@@ -306,6 +306,9 @@ importers:
         specifier: ^5.3.3
         version: 5.9.2
     devDependencies:
+      '@monorepo/core':
+        specifier: workspace:*
+        version: link:../core
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.7

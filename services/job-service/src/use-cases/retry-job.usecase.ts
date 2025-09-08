@@ -1,11 +1,14 @@
 import { inject, injectable } from 'tsyringe';
 
-import type { IJobRepository, WorkerMessages } from '@monorepo/core';
+import type { IJobRepository } from '@monorepo/core';
 
 import { logger } from '@job-service/adapters/logger.adapter';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
-import { DI_TOKENS, MediaTask, MessageQueueChannels } from '@monorepo/core';
-import { IMessagePublisher } from '@monorepo/message-queue';
+import { DI_TOKENS, MediaTask } from '@monorepo/core';
+import {
+  IMessagePublisher,
+  MessageQueueChannels,
+} from '@monorepo/message-queue';
 
 export interface RetryJobInput {
   mediaId: string;
@@ -57,7 +60,7 @@ export class RetryJobUseCase {
           jobId: savedJob._id,
           taskId: firstPendingTask.taskId,
           sourceUrl: savedJob.sourceUrl,
-        } as WorkerMessages[typeof firstPendingTask.worker],
+        },
       );
     } else {
       logger.warn(`No pending tasks found for job ${savedJob._id}`);

@@ -1,19 +1,14 @@
 import { inject, injectable } from 'tsyringe';
 
-import type {
-  IJobRepository,
-  WorkerMessages,
-  WorkerTypes,
-} from '@monorepo/core';
+import type { IJobRepository } from '@monorepo/core';
+import type { WorkerMessages, WorkerTypes } from '@monorepo/message-queue';
 
 import { logger } from '@job-service/adapters/logger.adapter';
+import { DI_TOKENS, MediaJob, MediaTask } from '@monorepo/core';
 import {
-  DI_TOKENS,
-  MediaJob,
-  MediaTask,
+  IMessagePublisher,
   MessageQueueChannels,
-} from '@monorepo/core';
-import { IMessagePublisher } from '@monorepo/message-queue';
+} from '@monorepo/message-queue';
 
 export interface CreateJobInput {
   mediaId: string;
@@ -32,6 +27,7 @@ export class CreateJobUseCase {
   async execute(input: CreateJobInput): Promise<MediaJob> {
     const existingJob = await this.jobRepository.getJobByMediaId(input.mediaId);
     existingJob?._id;
+
     if (existingJob) {
       logger.info(
         `Job for media ${input.mediaId} already exists with status ${existingJob.status}.`,
@@ -63,7 +59,7 @@ export class CreateJobUseCase {
           jobId: savedJob._id,
           taskId: firstPendingTask.taskId,
           sourceUrl: input.sourceUrl,
-        } as WorkerMessages[typeof firstPendingTask.worker],
+        },
       );
     } else {
       logger.warn(`No pending tasks found for job ${savedJob._id}`);

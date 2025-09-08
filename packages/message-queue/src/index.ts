@@ -13,14 +13,91 @@ export interface IMessageQueue {
   getChannel(): Channel;
 }
 
+// Define worker types
+export type WorkerTypes = 'thumbnail' | 'transcode';
+
+// Define outputs
+export interface ThumbnailOutput {
+  paths: {
+    vtt: string;
+    thumbnailsDir: string;
+  };
+}
+
+export interface TranscodingOutput {
+  test: boolean;
+}
+
+// Map worker -> output type
+export type WorkerOutputs = {
+  thumbnail: ThumbnailOutput;
+  transcode: TranscodingOutput;
+};
+
+// Message queue channels
+export const MessageQueueChannels = {
+  thumbnail: 'thumbnail_tasks',
+  transcode: 'transcode_tasks',
+  completed: 'task_completed',
+  failed: 'task_failed',
+} as const;
+
+export type QueueChannels =
+  (typeof MessageQueueChannels)[keyof typeof MessageQueueChannels];
+
+// Base messages
+export type TaskCompletedMessage<T extends WorkerTypes> = {
+  jobId: string;
+  taskId: string;
+  taskType: T;
+  output: WorkerOutputs[T];
+};
+
+export type TaskFailedMessage = {
+  jobId: string;
+  taskId: string;
+};
+
+// Worker messages by channel
+export type WorkerMessages = {
+  thumbnail_tasks: {
+    jobId: string;
+    taskId: string;
+    sourceUrl: string;
+  };
+  transcode_tasks: {
+    jobId: string;
+    taskId: string;
+    sourceUrl: string;
+  };
+  task_completed: TaskCompletedMessage<WorkerTypes>;
+  task_failed: TaskFailedMessage;
+};
+
+type Channels =
+  (typeof MessageQueueChannels)[keyof typeof MessageQueueChannels];
+
+// Generic worker output wrapper
+export type WorkerOutput<T> = {
+  success: boolean;
+  output: T;
+};
+
+// Publisher interface
 export interface IMessagePublisher extends IMessageQueue {
-  publish(queue: string, message: any): Promise<void>;
+  publish<C extends Channels>(
+    queue: C,
+    message: WorkerMessages[C],
+  ): Promise<void>;
 }
 
 export interface IMessageConsumer extends IMessageQueue {
-  consume(
-    queue: string,
-    onMessage: (msg: ConsumeMessage | null) => void,
+  consume<C extends Channels>(
+    queue: C,
+    onMessageCb: (
+      content: WorkerMessages[C] | null,
+      msg: ConsumeMessage | null,
+    ) => void,
   ): Promise<void>;
 }
 
@@ -59,7 +136,10 @@ export class RabbitMQAdapter implements IMessagePublisher, IMessageConsumer {
     this.channel.nack(msg, false, requeue);
   }
 
-  async publish(queue: string, message: any): Promise<void> {
+  async publish(
+    queue: Channels,
+    message: WorkerMessages[Channels],
+  ): Promise<void> {
     if (!this.channel) {
       throw new Error('RabbitMQ channel is not available.');
     }
@@ -69,15 +149,22 @@ export class RabbitMQAdapter implements IMessagePublisher, IMessageConsumer {
     });
   }
 
-  async consume(
-    queue: string,
-    onMessage: (msg: ConsumeMessage | null) => void,
+  async consume<C extends Channels>(
+    queue: C,
+    onMessageCb: (
+      content: WorkerMessages[C] | null,
+      msg: ConsumeMessage | null,
+    ) => void,
   ): Promise<void> {
     if (!this.channel) {
       throw new Error('RabbitMQ channel is not available.');
     }
     await this.channel.assertQueue(queue, { durable: true });
-    await this.channel.consume(queue, onMessage, { noAck: false });
+    await this.channel.consume(
+      queue,
+      (msg) => onMessageCb(msg && JSON.parse(msg.content.toString()), msg),
+      { noAck: false },
+    );
   }
 
   public getChannel(): Channel {
