@@ -10,6 +10,8 @@ import type {
   WorkerOutput,
 } from '@monorepo/core';
 
+import { config } from '@thumbnail-worker/config';
+import { logger } from '@thumbnail-worker/config/logger';
 import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
 
 interface ThumbnailEngineOptions {
@@ -42,6 +44,10 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
 
     this._ensureDirectoryExists(outputDir);
     this._ensureDirectoryExists(thumbnailsDir);
+
+    console.log(__dirname);
+    console.log(path.resolve(inputFile));
+    logger.info(`Generating thumbnails for ${inputFile} in ${thumbnailsDir}`);
 
     const duration = await this._getVideoDuration(inputFile);
 
@@ -150,9 +156,7 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
       const startTimeFormatted = this._formatVttTime(startTime);
       const endTimeFormatted = this._formatVttTime(endTime);
 
-      const thumbnailUrl = `/api/static/playback/${mediaId}/${relativeThumbnailsPath}/thumb${(
-        i + 1
-      )
+      const thumbnailUrl = `${relativeThumbnailsPath}/thumb${(i + 1)
         .toString()
         .padStart(4, '0')}.jpg`;
 

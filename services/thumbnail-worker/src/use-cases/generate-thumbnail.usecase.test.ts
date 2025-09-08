@@ -9,8 +9,13 @@ import type {
   ThumbnailOutput,
   WorkerOutput,
 } from '@monorepo/core';
+import type { IMessagePublisher } from '@monorepo/message-queue';
 
-import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
+import {
+  DI_TOKENS,
+  MediaPrcessorEvent,
+  MessageQueueChannels,
+} from '@monorepo/core';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/use-cases/generate-thumbnail.usecase';
 
 // Mock implementations
@@ -44,10 +49,20 @@ const mockSourceResolver: jest.Mocked<ISourceResolver> = {
   resolveSource: jest.fn(),
 };
 
+const mockMessagePublisher: jest.Mocked<IMessagePublisher> = {
+  publish: jest.fn(),
+  connect: jest.fn(),
+  ack: jest.fn(),
+  nack: jest.fn(),
+  close: jest.fn(),
+  getChannel: jest.fn(),
+};
+
 // DI container setup
 container.registerInstance(DI_TOKENS.TaskRepository, mockTaskRepository);
 container.registerInstance(DI_TOKENS.MediaProcessor, mockMediaProcessor);
 container.registerInstance(DI_TOKENS.SourceResolver, mockSourceResolver);
+container.registerInstance(DI_TOKENS.MessagePublisher, mockMessagePublisher);
 
 describe('GenerateThumbnailUseCase', () => {
   let generateThumbnailUseCase: GenerateThumbnailUseCase;
@@ -60,7 +75,7 @@ describe('GenerateThumbnailUseCase', () => {
   const input = {
     jobId: 'job-1',
     taskId: 'task-1',
-    sourceUrl: '/path/to/video.mp4',
+    sourceUrl: 'services/thumbnail-worker/__test__/sample.mp4',
   };
 
   const resolvedSource = '/resolved/path/to/video.mp4';
@@ -107,6 +122,15 @@ describe('GenerateThumbnailUseCase', () => {
       'completed',
       100,
     );
+    expect(mockMessagePublisher.publish).toHaveBeenCalledWith(
+      MessageQueueChannels.TaskCompleted,
+      {
+        jobId: input.jobId,
+        taskId: input.taskId,
+        status: 'completed',
+        output: workerOutput.output,
+      },
+    );
     expect(mockTaskRepository.failTask).not.toHaveBeenCalled();
   });
 
@@ -126,6 +150,7 @@ describe('GenerateThumbnailUseCase', () => {
       mediaProcessorError.message,
     );
     expect(mockTaskRepository.updateTaskOutput).not.toHaveBeenCalled();
+    expect(mockMessagePublisher.publish).not.toHaveBeenCalled();
   });
 
   it('should handle progress updates from the media processor', async () => {
@@ -133,13 +158,11 @@ describe('GenerateThumbnailUseCase', () => {
     mockSourceResolver.resolveSource.mockResolvedValue(resolvedSource);
 
     mockMediaProcessor.process.mockImplementation(async () => {
-      // Find the progress callback registered by the use case
       const progressCallback = mockMediaProcessor.on.mock.calls.find(
         (call) => call[0] === MediaPrcessorEvent.Progress,
       )?.[1];
 
       if (progressCallback) {
-        // Simulate a progress event
         (progressCallback as (progress: number) => void)(50);
       }
 
@@ -155,12 +178,41 @@ describe('GenerateThumbnailUseCase', () => {
       expect.any(Function),
     );
 
-    // Check that updateTaskStatus was called with the progress value
+    expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
+      input.jobId,
+      input.taskId,
+      'running',
+      0,
+    );
     expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
       input.jobId,
       input.taskId,
       'running',
       50,
     );
+    expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
+      input.jobId,
+      input.taskId,
+      'completed',
+      100,
+    );
+  });
+
+  it('should mark task as failed if source resolution fails', async () => {
+    // Arrange
+    const resolutionError = new Error('Failed to resolve source');
+    mockSourceResolver.resolveSource.mockRejectedValue(resolutionError);
+
+    // Act & Assert
+    await expect(generateThumbnailUseCase.execute(input)).rejects.toThrow(
+      resolutionError,
+    );
+    expect(mockTaskRepository.failTask).toHaveBeenCalledWith(
+      input.jobId,
+      input.taskId,
+      resolutionError.message,
+    );
+    expect(mockMediaProcessor.process).not.toHaveBeenCalled();
+    expect(mockMessagePublisher.publish).not.toHaveBeenCalled();
   });
 });

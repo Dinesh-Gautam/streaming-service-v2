@@ -4,7 +4,10 @@ import { container } from 'tsyringe';
 
 import type { WorkerMessages } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
-import type { IMessageConsumer } from '@monorepo/message-queue';
+import type {
+  IMessageConsumer,
+  IMessagePublisher,
+} from '@monorepo/message-queue';
 
 import { DI_TOKENS, MessageQueueChannels } from '@monorepo/core';
 import { config } from '@thumbnail-worker/config';
@@ -12,16 +15,19 @@ import { setupDI } from '@thumbnail-worker/config/di.config';
 import { logger } from '@thumbnail-worker/config/logger';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/use-cases/generate-thumbnail.usecase';
 
+setupDI();
+
 const dbConnection = container.resolve<IDatabaseConnection>(
   DI_TOKENS.DatabaseConnection,
 );
 const messageConsumer = container.resolve<IMessageConsumer>(
   DI_TOKENS.MessageConsumer,
 );
+const messagePublisher = container.resolve<IMessagePublisher>(
+  DI_TOKENS.MessagePublisher,
+);
 
 async function main() {
-  setupDI();
-
   await dbConnection.connect(config.MONGO_URL).catch((error) => {
     logger.fatal('Failed to connect to MongoDB', error);
     process.exit(1);
@@ -59,13 +65,23 @@ async function main() {
 
         logger.debug('message', message);
 
-        await generateThumbnailUseCase.execute({
+        const result = await generateThumbnailUseCase.execute({
           jobId: message.jobId,
           taskId: message.taskId,
           sourceUrl: message.sourceUrl,
         });
+
+        await messagePublisher.publish(MessageQueueChannels.TaskCompleted, {
+          jobId: message.jobId,
+          taskId: message.taskId,
+          output: result.output,
+        });
         messageConsumer.ack(msg);
       } catch (error) {
+        await messagePublisher.publish(MessageQueueChannels.TaskFailed, {
+          jobId: message.jobId,
+          taskId: message.taskId,
+        });
         logger.error('Error processing message', error);
         // Requeue the message for a retry, or send to a dead-letter queue
         messageConsumer.nack(msg, false);

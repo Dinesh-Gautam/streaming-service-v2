@@ -17,8 +17,7 @@ ENV PNPM_STORE_PATH="/pnpm/store"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 
 # Pre-fetch dependencies (cached by lockfile)
-RUN --mount=type=cache,target=/pnpm/store \
-  pnpm fetch
+RUN --mount=type=cache,target=/pnpm/store pnpm fetch
 
 # ==============================
 # Dev stage

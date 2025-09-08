@@ -1,4 +1,4 @@
-import { Collection } from 'mongodb';
+import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
 import type {
@@ -23,7 +23,7 @@ export class MongoTaskRepository implements ITaskRepository {
   }
 
   async findJobById(id: string): Promise<Job | null> {
-    return this.collection.findOne({ _id: id as any });
+    return this.collection.findOne({ _id: new ObjectId(id) });
   }
 
   async updateTaskStatus(
@@ -33,14 +33,15 @@ export class MongoTaskRepository implements ITaskRepository {
     progress?: number,
   ): Promise<void> {
     const updateFields: any = {
-      'tasks.$.status': status,
+      'tasks.$[task].status': status,
     };
     if (progress !== undefined) {
-      updateFields['tasks.$.progress'] = progress;
+      updateFields['tasks.$[task].progress'] = progress;
     }
     await this.collection.updateOne(
-      { _id: jobId as any, 'tasks.taskId': taskId },
+      { _id: new ObjectId(jobId) },
       { $set: updateFields },
+      { arrayFilters: [{ 'task.taskId': taskId }] },
     );
   }
 
@@ -50,8 +51,9 @@ export class MongoTaskRepository implements ITaskRepository {
     output: ThumbnailOutput,
   ): Promise<void> {
     await this.collection.updateOne(
-      { _id: jobId as any, 'tasks.taskId': taskId },
-      { $set: { 'tasks.$.output': output } },
+      { _id: new ObjectId(jobId) },
+      { $set: { 'tasks.$[task].output': output } },
+      { arrayFilters: [{ 'task.taskId': taskId }] },
     );
   }
 
@@ -61,12 +63,15 @@ export class MongoTaskRepository implements ITaskRepository {
     errorMessage: string,
   ): Promise<void> {
     await this.collection.updateOne(
-      { _id: jobId as any, 'tasks.taskId': taskId },
+      { _id: new ObjectId(jobId) },
       {
         $set: {
-          'tasks.$.status': 'failed',
-          'tasks.$.errorMessage': errorMessage,
+          'tasks.$[task].status': 'failed',
+          'tasks.$[task].errorMessage': errorMessage,
         },
+      },
+      {
+        arrayFilters: [{ 'task.taskId': taskId }],
       },
     );
   }
