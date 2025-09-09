@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 
 import type { IJobRepository } from '@monorepo/core';
-import type { WorkerMessages, WorkerTypes } from '@monorepo/message-queue';
+import type { WorkerTypes } from '@monorepo/workers';
 
 import { logger } from '@job-service/adapters/logger.adapter';
 import { DI_TOKENS, MediaJob, MediaTask } from '@monorepo/core';

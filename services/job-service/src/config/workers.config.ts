@@ -1,4 +1,4 @@
-import type { WorkerTypes } from '@monorepo/message-queue';
+import type { WorkerTypes } from '@monorepo/workers';
 
 export const WORKERS: { name: string; type: WorkerTypes }[] = [
   {

@@ -4,10 +4,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { container } from 'tsyringe';
 
 import type { IDatabaseConnection } from '@monorepo/database';
-import type {
-  IMessageConsumer,
-  TaskFailedMessage,
-} from '@monorepo/message-queue';
+import type { IMessageConsumer } from '@monorepo/message-queue';
 
 import { logger } from '@job-service/adapters/logger.adapter';
 import { config } from '@job-service/config';
@@ -95,7 +92,6 @@ async function main() {
     }
 
     try {
-      const content: TaskFailedMessage = JSON.parse(msg.content.toString());
       logger.info('Received task failure message:', content);
 
       await updateJobStatusUseCase.execute({

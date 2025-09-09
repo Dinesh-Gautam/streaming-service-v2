@@ -249,6 +249,9 @@ importers:
       '@monorepo/message-queue':
         specifier: workspace:*
         version: link:../message-queue
+      '@monorepo/workers':
+        specifier: workspace:*
+        version: link:../workers
       tsyringe:
         specifier: ^4.8.0
         version: 4.10.0
@@ -306,9 +309,9 @@ importers:
         specifier: ^5.3.3
         version: 5.9.2
     devDependencies:
-      '@monorepo/core':
+      '@monorepo/workers':
         specifier: workspace:*
-        version: link:../core
+        version: link:../workers
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.7
@@ -321,6 +324,12 @@ importers:
       ts-jest:
         specifier: ^29.4.1
         version: 29.4.1(@babel/core@7.28.3)(@jest/transform@29.7.0)(@jest/types@30.0.5)(babel-jest@29.7.0(@babel/core@7.28.3))(jest-util@30.0.5)(jest@29.7.0(@types/node@24.3.0)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@24.3.0)(typescript@5.9.2)))(typescript@5.9.2)
+
+  packages/workers:
+    dependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.2
 
   services/auth-service:
     dependencies:
@@ -466,6 +475,9 @@ importers:
       '@monorepo/message-queue':
         specifier: workspace:*
         version: link:../../packages/message-queue
+      '@monorepo/workers':
+        specifier: workspace:*
+        version: link:../../packages/workers
       amqplib:
         specifier: ^0.10.3
         version: 0.10.9
@@ -554,6 +566,9 @@ importers:
       '@monorepo/message-queue':
         specifier: workspace:*
         version: link:../../packages/message-queue
+      '@monorepo/workers':
+        specifier: workspace:*
+        version: link:../../packages/workers
       amqplib:
         specifier: ^0.10.3
         version: 0.10.9

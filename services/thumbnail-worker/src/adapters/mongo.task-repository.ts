@@ -3,7 +3,7 @@ import { inject, injectable } from 'tsyringe';
 
 import type { ITaskRepository, TaskStatus } from '@monorepo/core';
 import type { IDatabaseConnection } from '@monorepo/database';
-import type { ThumbnailOutput } from '@monorepo/message-queue';
+import type { ThumbnailOutput } from '@monorepo/workers';
 
 import { DI_TOKENS, MediaJob as Job } from '@monorepo/core';
 

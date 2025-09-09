@@ -3,10 +3,12 @@ import type { ILogger } from '@monorepo/logger';
 import type {
   IMessageConsumer,
   IMessagePublisher,
+} from '@monorepo/message-queue';
+import type {
   ThumbnailOutput,
   WorkerOutput,
   WorkerTypes,
-} from '@monorepo/message-queue';
+} from '@monorepo/workers';
 import type { InjectionToken } from 'tsyringe';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';

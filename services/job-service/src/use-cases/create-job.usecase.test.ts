@@ -3,7 +3,9 @@ import 'reflect-metadata';
 import { ObjectId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import type { MockMessageQueue, WorkerTypes } from '@monorepo/message-queue';
+import type { MockMongoJobAdapter } from '@job-service/adapters/mongo-job.adapter.mock';
+import type { MockMessageQueue } from '@monorepo/message-queue';
+import type { WorkerTypes } from '@monorepo/workers';
 
 import { setupDI } from '@job-service/config/di.config';
 import { DI_TOKENS, IJobRepository, MediaJob } from '@monorepo/core';
@@ -12,7 +14,6 @@ import {
   MessageQueueChannels,
 } from '@monorepo/message-queue';
 
-import { MockMongoJobAdapter } from '../adapters/mongo-job.adapter.mock';
 import { CreateJobUseCase } from './create-job.usecase';
 
 describe('CreateJobUseCase', () => {
@@ -40,7 +41,7 @@ describe('CreateJobUseCase', () => {
     const input = {
       mediaId: 'media-123',
       sourceUrl: 'http://example.com/video.mp4',
-      workers: [{ name: 'thumbnail', type: 'thumbnail-worker' as WorkerTypes }],
+      workers: [{ name: 'thumbnail', type: 'thumbnail' as WorkerTypes }],
     };
 
     jobRepository.getJobByMediaId.mockResolvedValue(null);
@@ -80,7 +81,7 @@ describe('CreateJobUseCase', () => {
     const input = {
       mediaId: 'media-123',
       sourceUrl: 'http://example.com/video.mp4',
-      workers: [{ name: 'thumbnail', type: 'thumbnail-worker' as WorkerTypes }],
+      workers: [{ name: 'thumbnail', type: 'thumbnail' as WorkerTypes }],
     };
 
     const result = await createJobUseCase.execute(input);

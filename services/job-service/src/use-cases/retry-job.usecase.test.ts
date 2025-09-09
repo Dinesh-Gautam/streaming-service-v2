@@ -3,18 +3,18 @@ import 'reflect-metadata';
 import { ObjectId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import type { MockMessageQueue, WorkerTypes } from '@monorepo/message-queue';
+import type { MockMongoJobAdapter } from '@job-service/adapters/mongo-job.adapter.mock';
+import type { MockMessageQueue } from '@monorepo/message-queue';
+import type { WorkerTypes } from '@monorepo/workers';
 
 import { setupDI } from '@job-service/config/di.config';
 import { JobNotFoundError } from '@job-service/entities/errors.entity';
+import { RetryJobUseCase } from '@job-service/use-cases/retry-job.usecase';
 import { DI_TOKENS, IJobRepository, MediaJob, MediaTask } from '@monorepo/core';
 import {
   IMessagePublisher,
   MessageQueueChannels,
 } from '@monorepo/message-queue';
-
-import { MockMongoJobAdapter } from '../adapters/mongo-job.adapter.mock';
-import { RetryJobUseCase } from './retry-job.usecase';
 
 describe('RetryJobUseCase', () => {
   beforeAll(() => {

@@ -7,11 +7,8 @@ import type {
   ISourceResolver,
   ITaskRepository,
 } from '@monorepo/core';
-import type {
-  IMessagePublisher,
-  ThumbnailOutput,
-  WorkerOutput,
-} from '@monorepo/message-queue';
+import type { IMessagePublisher } from '@monorepo/message-queue';
+import type { ThumbnailOutput, WorkerOutput } from '@monorepo/workers';
 
 import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
 import { MessageQueueChannels } from '@monorepo/message-queue';
