@@ -41,8 +41,6 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
     this._ensureDirectoryExists(outputDir);
     this._ensureDirectoryExists(thumbnailsDir);
 
-    console.log(__dirname);
-    console.log(path.resolve(inputFile));
     logger.info(`Generating thumbnails for ${inputFile} in ${thumbnailsDir}`);
 
     const duration = await this._getVideoDuration(inputFile);
@@ -89,7 +87,6 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
         if (err) {
-          console.error(`[FfmpegProcessor] ffprobe error:`, err);
           resolve(undefined);
           return;
         }
