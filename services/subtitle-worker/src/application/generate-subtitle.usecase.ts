@@ -1,3 +1,4 @@
+import { existsSync, mkdirSync } from 'fs';
 import * as path from 'path';
 import { inject, injectable } from 'tsyringe';
 
@@ -11,6 +12,7 @@ import {
   ITranscriptionService,
   ITranslationService,
 } from '@monorepo/core';
+import { logger } from '@subtitle-worker/config/logger';
 
 import { SubtitleJobPayload } from '../domain/subtitle-job.entity';
 import { SubtitleResult } from '../domain/subtitle-result.entity';
@@ -56,6 +58,8 @@ export class GenerateSubtitleUseCase {
     const { sourceFileUrl, outputDir, sourceLanguage, targetLanguages } =
       payload;
 
+    logger.info('starting subtitle generation');
+
     try {
       await this.taskRepository.updateTaskStatus(jobId, taskId, 'running', 0);
 
@@ -70,6 +74,7 @@ export class GenerateSubtitleUseCase {
         );
       });
 
+      logger.info('starting audio extraction');
       // 1. Extract audio from video
       const resolvedSource =
         await this.sourceResolver.resolveSource(sourceFileUrl);
@@ -78,6 +83,8 @@ export class GenerateSubtitleUseCase {
         '/tmp/audio',
       );
       baseProgress += ProgressWeights.AUDIO_EXTRACTION * 100;
+
+      logger.info('Audio extracted', { audioPath });
 
       this.transcriptionService.on('progress', (progress) => {
         this.taskRepository.updateTaskStatus(
@@ -88,6 +95,7 @@ export class GenerateSubtitleUseCase {
         );
       });
 
+      logger.info('Starting Trascription');
       // 2. Transcribe audio
       const transcription = await this.transcriptionService.transcribe(
         audioPath,
@@ -95,13 +103,19 @@ export class GenerateSubtitleUseCase {
       );
       baseProgress += ProgressWeights.TRANSCRIPTION * 100;
 
+      logger.info('transcription complete');
+
       // 3. Generate and save source language VTT
       const sourceVtt = this.generateVtt(transcription);
       const vttPaths: Record<string, string> = {};
+
       const sourceVttPath = path.join(
         outputDir,
         `${path.basename(sourceFileUrl, path.extname(sourceFileUrl))}.${sourceLanguage}.vtt`,
       );
+
+      this._ensureDirectoryExists(outputDir);
+
       await this.storage.writeFile(sourceVttPath, sourceVtt);
       vttPaths[sourceLanguage] = sourceVttPath;
 
@@ -148,7 +162,6 @@ export class GenerateSubtitleUseCase {
       // 5. Finalize task
       const output: SubtitleResult = {
         vttPaths,
-        transcriptionData: transcription,
         ...(Object.keys(translationErrors).length > 0 && {
           translationErrors,
         }),
@@ -166,6 +179,12 @@ export class GenerateSubtitleUseCase {
       const message = error instanceof Error ? error.message : 'Unknown error';
       await this.taskRepository.failTask(jobId, taskId, message);
       throw error;
+    }
+  }
+
+  private _ensureDirectoryExists(outputDir: string) {
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
     }
   }
 
