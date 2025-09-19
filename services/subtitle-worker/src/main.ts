@@ -3,7 +3,6 @@ import 'reflect-metadata';
 import { container } from 'tsyringe';
 
 import type { IDatabaseConnection } from '@monorepo/database';
-import type { ILogger } from '@monorepo/logger';
 import type {
   IMessageConsumer,
   IMessagePublisher,
@@ -11,6 +10,8 @@ import type {
 
 // Core monorepo imports, following the thumbnail-worker pattern
 import { DI_TOKENS } from '@monorepo/core';
+import { MessageQueueChannels } from '@monorepo/message-queue';
+import { logger } from '@subtitle-worker/config/logger';
 
 // Local subtitle-worker imports
 import { GenerateSubtitleUseCase } from './application/generate-subtitle.usecase';
@@ -21,7 +22,9 @@ import { setupDI } from './config/di.config';
 // similar to how other workers in the monorepo are configured.
 setupDI();
 
-const logger = container.resolve<ILogger>(DI_TOKENS.Logger);
+const sourceLanguage = 'en';
+const targetLanguages = ['hi', 'pa'];
+
 const dbConnection = container.resolve<IDatabaseConnection>(
   DI_TOKENS.DatabaseConnection,
 );
@@ -35,13 +38,13 @@ const messagePublisher = container.resolve<IMessagePublisher>(
 async function main() {
   logger.info('Starting Subtitle Worker...');
 
-  await dbConnection.connect(config.mongoUrl).catch((error) => {
+  await dbConnection.connect(config.MONGO_URL).catch((error) => {
     logger.fatal('Failed to connect to MongoDB', { error });
     process.exit(1);
   });
   logger.info('Successfully connected to MongoDB');
 
-  await messageConsumer.connect(config.rabbitmqUrl).catch((error) => {
+  await messageConsumer.connect(config.RABBITMQ_URL).catch((error) => {
     logger.fatal('Failed to connect to RabbitMQ', { error });
     process.exit(1);
   });
@@ -53,7 +56,7 @@ async function main() {
       return;
     }
 
-    if (!content || !content.jobId || !content.taskId || !content.payload) {
+    if (!content || !content.jobId || !content.taskId || !content.sourceUrl) {
       logger.warn('Received invalid message format. Discarding.', {
         content,
       });
@@ -73,7 +76,12 @@ async function main() {
       const output = await generateSubtitle.execute({
         jobId,
         taskId,
-        payload,
+        payload: {
+          outputDir: '/tmp/output',
+          sourceFileUrl: content.sourceUrl,
+          sourceLanguage: content.payload?.sourceLanguage ?? sourceLanguage,
+          targetLanguages: content.payload?.targetLanguages ?? targetLanguages,
+        },
       });
 
       await messagePublisher.publish('task_completed', {
@@ -90,10 +98,10 @@ async function main() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`Error processing job ${jobId}. Message will be rejected.`, {
-        jobId,
-        error: errorMessage,
-      });
+      logger.error(
+        `Error processing job ${jobId}. Message will be rejected.`,
+        error,
+      );
 
       await messagePublisher.publish('task_failed', {
         jobId,
@@ -105,7 +113,9 @@ async function main() {
     }
   });
 
-  logger.info(`Waiting for messages in queue: ${config.subtitleQueue}`);
+  logger.info(
+    `Waiting for messages in queue: ${MessageQueueChannels.subtitle}`,
+  );
 
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}. Shutting down gracefully...`);

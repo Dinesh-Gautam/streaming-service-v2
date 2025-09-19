@@ -10,10 +10,6 @@ WORKDIR /usr/src/app
 # Install global tools
 RUN npm install -g pnpm turbo
 
-# RUN apt-get -y update
-# RUN apt-get -y upgrade
-# RUN apt-get install -y ffmpeg
-
 # Setup pnpm global store (for caching)
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"

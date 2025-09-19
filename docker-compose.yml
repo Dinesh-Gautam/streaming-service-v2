@@ -172,6 +172,34 @@ services:
       - backend
       - messaging
 
+  subtitle-worker:
+      <<: *service-base
+      profiles: ["workers"] # Only run when needed
+      build:
+        context: .
+        dockerfile: services/subtitle-worker/Dockerfile
+        target : dev
+      develop:
+        watch:
+          - action: sync
+            path: ./services/subtitle-worker/src
+            target: /usr/src/app/services/subtitle-worker/src
+            ignore: [node_modules/]
+          - action: rebuild
+            path: ./services/subtitle-worker/package.json
+      env_file:
+        - ./.env
+        - ./services/subtitle-worker/.env
+      depends_on:
+        mongo:
+          condition: service_healthy
+        rabbitmq:
+          condition: service_healthy
+      networks:
+        - backend
+        - messaging
+
+
 # ---------- NETWORKS ----------
 networks:
   backend:

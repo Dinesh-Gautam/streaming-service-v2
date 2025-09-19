@@ -54,10 +54,8 @@ export type WorkerMessages = {
   subtitle_tasks: {
     jobId: string;
     taskId: string;
-    payload: {
-      mediaId: string;
-      sourceFileUrl: string;
-      outputDir: string;
+    sourceUrl: string;
+    payload?: {
       sourceLanguage: string;
       targetLanguages: string[];
     };
