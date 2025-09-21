@@ -3,12 +3,12 @@ import { inject, injectable } from 'tsyringe';
 
 import type { SubtitleOutput } from '@monorepo/workers';
 import type { MediaJob, TaskStatus } from '..';
+import type { ITaskRepository } from '../interfaces/repositories';
 
 import { IDatabaseConnection } from '@monorepo/database';
 import { ThumbnailOutput } from '@monorepo/workers';
 
 import { DI_TOKENS } from '../di-tokens';
-import { ITaskRepository } from '../media.interface';
 
 @injectable()
 export class MongoTaskRepository implements ITaskRepository {

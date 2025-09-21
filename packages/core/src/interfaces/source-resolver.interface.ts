@@ -7,7 +7,3 @@ export interface ISourceResolver {
    */
   resolveSource(url: string): Promise<string>;
 }
-
-// export const DI_TOKENS = {
-//   SourceResolver: Symbol('SourceResolver') as InjectionToken<ISourceResolver>,
-// };

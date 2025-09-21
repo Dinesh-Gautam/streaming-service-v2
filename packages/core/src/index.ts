@@ -1,11 +1,9 @@
 import type { WorkerTypes } from '@monorepo/workers';
 
-export * from './audio-extractor.interface';
-export * from './media.interface';
-export * from './transcription.interface';
-export * from './translation.interface';
-export * from './storage.interface';
-export * from './source-resolver.interface';
+export * from './interfaces/audio-extractor.interface';
+export * from './interfaces/media.interface';
+export * from './interfaces/storage.interface';
+export * from './interfaces/source-resolver.interface';
 export * from './adapters/mongo.task-repository';
 export * from './di-tokens';
 
