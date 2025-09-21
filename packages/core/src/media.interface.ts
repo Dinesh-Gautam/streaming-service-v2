@@ -1,5 +1,5 @@
 import type { WorkerOutput, WorkerOutputs } from '@monorepo/workers';
-import type { InjectionToken } from 'tsyringe';
+import type { MediaJob, TaskStatus } from '.';
 
 export const MediaPrcessorEvent = {
   Progress: 'progress',
@@ -18,11 +18,11 @@ export interface IMediaProcessor<T extends WorkerOutputs[keyof WorkerOutputs]>
 }
 
 export interface ITaskRepository {
-  findJobById(id: string): Promise<any | null>;
+  findJobById(id: string): Promise<MediaJob | null>;
   updateTaskStatus(
     jobId: string,
     taskId: string,
-    status: any,
+    status: TaskStatus,
     progress?: number,
   ): Promise<void>;
   updateTaskOutput(jobId: string, taskId: string, output: any): Promise<void>;
@@ -30,7 +30,7 @@ export interface ITaskRepository {
 }
 
 export interface IJobRepository {
-  save(job: any): Promise<any>;
-  getJobById(id: string): Promise<any | null>;
-  getJobByMediaId(mediaId: string): Promise<any | null>;
+  save(job: MediaJob): Promise<MediaJob>;
+  getJobById(id: string): Promise<MediaJob | null>;
+  getJobByMediaId(mediaId: string): Promise<MediaJob | null>;
 }

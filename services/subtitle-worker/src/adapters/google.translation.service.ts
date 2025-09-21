@@ -3,6 +3,7 @@ import { injectable } from 'tsyringe';
 
 import { TranslationServiceClient } from '@google-cloud/translate';
 import { ITranslationService } from '@monorepo/core';
+import config from '@subtitle-worker/config';
 
 @injectable()
 export class GoogleTranslationService
@@ -16,24 +17,11 @@ export class GoogleTranslationService
     super();
     // The Google Cloud SDK automatically finds credentials via the
     // GOOGLE_APPLICATION_CREDENTIALS environment variable.
-    this.translateClient = new TranslationServiceClient();
-    this.initializeProjectId();
-  }
+    this.translateClient = new TranslationServiceClient({
+      projectId: config.GOOGLE_PROJECT_ID,
+    });
 
-  private async initializeProjectId(): Promise<void> {
-    try {
-      const [projectId] = await this.translateClient.getProjectId();
-      this.googleProjectId = projectId;
-      console.log(
-        `[GoogleTranslationService] Google Project ID resolved: ${this.googleProjectId}`,
-      );
-    } catch (error) {
-      console.error(
-        `[GoogleTranslationService] Failed to get Google Project ID:`,
-        error,
-      );
-      // The service will fail at runtime if the project ID is needed but not resolved.
-    }
+    this.googleProjectId = config.GOOGLE_PROJECT_ID;
   }
 
   public async translateVtt(

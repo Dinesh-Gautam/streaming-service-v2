@@ -187,6 +187,8 @@ services:
             ignore: [node_modules/]
           - action: rebuild
             path: ./services/subtitle-worker/package.json
+      environment:
+        - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
       env_file:
         - ./services/subtitle-worker/.env
       volumes:

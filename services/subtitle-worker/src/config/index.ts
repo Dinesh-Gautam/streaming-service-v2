@@ -16,6 +16,7 @@ export const configSchema = z.object({
   OUTPUT_DIR: z.string().default('/tmp/output'),
   DEEPGRAM_API_KEY: z.string(),
   GOOGLE_APPLICATION_CREDENTIALS: z.string(),
+  GOOGLE_PROJECT_ID: z.string(),
 });
 
 export type Config = z.infer<typeof configSchema>;

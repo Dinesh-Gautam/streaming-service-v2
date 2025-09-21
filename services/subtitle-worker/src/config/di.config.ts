@@ -36,7 +36,7 @@ export function setupDI(): void {
     useClass: MockTranscriptionService,
   });
   container.register(DI_TOKENS.TranslationService, {
-    useClass: MockTranslaionService,
+    useClass: GoogleTranslationService,
   });
   container.register(DI_TOKENS.SourceResolver, {
     useClass: FsSourceResolver,
