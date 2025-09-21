@@ -2,7 +2,11 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { injectable } from 'tsyringe';
 
-import { createClient, DeepgramClient } from '@deepgram/sdk';
+import {
+  createClient,
+  DeepgramClient,
+  SyncPrerecordedResponse,
+} from '@deepgram/sdk';
 import { ITranscriptionService } from '@monorepo/core';
 
 @injectable()
@@ -21,7 +25,10 @@ export class DeepgramTranscriptionService
     this.deepgram = createClient(deepgramApiKey);
   }
 
-  public async transcribe(audioPath: string, language: string): Promise<any> {
+  public async transcribe(
+    audioPath: string,
+    language: string,
+  ): Promise<SyncPrerecordedResponse['results']> {
     try {
       this.emit('progress', 0);
       const audioBuffer = await fs.promises.readFile(audioPath);
@@ -48,7 +55,7 @@ export class DeepgramTranscriptionService
         `[DeepgramTranscriptionService] Transcription received from Deepgram.`,
       );
       this.emit('progress', 100);
-      return result;
+      return result.results;
     } catch (err: any) {
       console.error(
         `[DeepgramTranscriptionService] Error during transcription:`,

@@ -5,6 +5,7 @@ import type { IMessagePublisher } from '@monorepo/message-queue';
 import { DI_TOKENS, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessageConsumer, RabbitMQAdapter } from '@monorepo/message-queue';
+import { DeepgramTranscriptionService } from '@subtitle-worker/adapters/deepgram.transcription.service';
 import { FFmpegAudioExtractor } from '@subtitle-worker/adapters/ffmpeg.audio-extractor';
 import { FsSourceResolver } from '@subtitle-worker/adapters/fs.source-resolver';
 import { FsStorage } from '@subtitle-worker/adapters/fs.storage';
@@ -33,7 +34,7 @@ export function setupDI(): void {
   });
 
   container.register(DI_TOKENS.TranscriptionService, {
-    useClass: MockTranscriptionService,
+    useClass: DeepgramTranscriptionService,
   });
   container.register(DI_TOKENS.TranslationService, {
     useClass: GoogleTranslationService,

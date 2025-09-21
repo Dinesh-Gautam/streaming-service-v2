@@ -102,7 +102,6 @@ export class GenerateSubtitleUseCase {
         sourceLanguage,
       );
       baseProgress += ProgressWeights.TRANSCRIPTION * 100;
-
       logger.info('transcription complete');
 
       // 3. Generate and save source language VTT
