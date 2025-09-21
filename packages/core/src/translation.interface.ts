@@ -11,8 +11,8 @@ export interface ITranslationService extends EventEmitter {
   on(event: 'progress', listener: (progress: number) => void): this;
 }
 
-export const DI_TOKENS = {
-  TranslationService: Symbol(
-    'TranslationService',
-  ) as InjectionToken<ITranslationService>,
-};
+// export const DI_TOKENS = {
+//   TranslationService: Symbol(
+//     'TranslationService',
+//   ) as InjectionToken<ITranslationService>,
+// };

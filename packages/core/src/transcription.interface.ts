@@ -7,8 +7,8 @@ export interface ITranscriptionService extends EventEmitter {
   on(event: 'progress', listener: (progress: number) => void): this;
 }
 
-export const DI_TOKENS = {
-  TranscriptionService: Symbol(
-    'TranscriptionService',
-  ) as InjectionToken<ITranscriptionService>,
-};
+// export const DI_TOKENS = {
+//   TranscriptionService: Symbol(
+//     'TranscriptionService',
+//   ) as InjectionToken<ITranscriptionService>,
+// };

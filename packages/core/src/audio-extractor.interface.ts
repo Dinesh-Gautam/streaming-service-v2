@@ -7,6 +7,6 @@ export interface IAudioExtractor extends EventEmitter {
   on(event: 'progress', listener: (progress: number) => void): this;
 }
 
-export const DI_TOKENS = {
-  AudioExtractor: Symbol('AudioExtractor') as InjectionToken<IAudioExtractor>,
-};
+// export const DI_TOKENS = {
+//   AudioExtractor: Symbol('AudioExtractor') as InjectionToken<IAudioExtractor>,
+// };

@@ -1,25 +1,28 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import type { ITaskRepository, TaskStatus } from '@monorepo/core';
-import type { IDatabaseConnection } from '@monorepo/database';
-import type { ThumbnailOutput } from '@monorepo/workers';
+import type { SubtitleOutput } from '@monorepo/workers';
+import type { MediaJob, TaskStatus } from '..';
 
-import { DI_TOKENS, MediaJob as Job } from '@monorepo/core';
+import { IDatabaseConnection } from '@monorepo/database';
+import { ThumbnailOutput } from '@monorepo/workers';
+
+import { DI_TOKENS } from '../di-tokens';
+import { ITaskRepository } from '../media.interface';
 
 @injectable()
 export class MongoTaskRepository implements ITaskRepository {
-  private readonly collection: Collection<Job>;
+  private readonly collection: Collection<MediaJob>;
 
   constructor(
     @inject(DI_TOKENS.DatabaseConnection)
     private readonly dbConnection: IDatabaseConnection,
   ) {
     const db = this.dbConnection.getDb();
-    this.collection = db.collection<Job>('jobs');
+    this.collection = db.collection<MediaJob>('jobs');
   }
 
-  async findJobById(id: string): Promise<Job | null> {
+  async findJobById(id: string): Promise<MediaJob | null> {
     return this.collection.findOne({ _id: new ObjectId(id) });
   }
 
@@ -45,7 +48,7 @@ export class MongoTaskRepository implements ITaskRepository {
   async updateTaskOutput(
     jobId: string,
     taskId: string,
-    output: ThumbnailOutput,
+    output: ThumbnailOutput | SubtitleOutput,
   ): Promise<void> {
     await this.collection.updateOne(
       { _id: new ObjectId(jobId) },

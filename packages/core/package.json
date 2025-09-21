@@ -20,7 +20,10 @@
     "@monorepo/message-queue": "workspace:*",
     "@monorepo/workers": "workspace:*",
     "typescript": "^5.3.3",
-    "tsyringe": "^4.8.0"
+    "tsyringe": "^4.8.0",
+    "mongodb": "6.19.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/mongodb": "^4.0.7"
+  }
 }

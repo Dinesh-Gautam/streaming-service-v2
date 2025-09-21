@@ -188,8 +188,9 @@ services:
           - action: rebuild
             path: ./services/subtitle-worker/package.json
       env_file:
-        - ./.env
         - ./services/subtitle-worker/.env
+      volumes:
+        - ${GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
       depends_on:
         mongo:
           condition: service_healthy

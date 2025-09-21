@@ -3,12 +3,11 @@ import { container } from 'tsyringe';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
-import { DI_TOKENS } from '@monorepo/core';
+import { DI_TOKENS, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
 import { FfmpegProcessor } from '@thumbnail-worker/adapters/ffmpeg.media-processor';
 import { FsSourceResolver } from '@thumbnail-worker/adapters/fs.source-resolver';
-import { MongoTaskRepository } from '@thumbnail-worker/adapters/mongo.task-repository';
 
 export function setupDI() {
   container.registerSingleton<IDatabaseConnection>(

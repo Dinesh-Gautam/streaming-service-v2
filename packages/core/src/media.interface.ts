@@ -17,8 +17,20 @@ export interface IMediaProcessor<T extends WorkerOutputs[keyof WorkerOutputs]>
   ): this;
 }
 
-export const DI_TOKENS = {
-  MediaProcessor: Symbol('MediaProcessor') as InjectionToken<
-    IMediaProcessor<any>
-  >,
-};
+export interface ITaskRepository {
+  findJobById(id: string): Promise<any | null>;
+  updateTaskStatus(
+    jobId: string,
+    taskId: string,
+    status: any,
+    progress?: number,
+  ): Promise<void>;
+  updateTaskOutput(jobId: string, taskId: string, output: any): Promise<void>;
+  failTask(jobId: string, taskId: string, errorMessage: string): Promise<void>;
+}
+
+export interface IJobRepository {
+  save(job: any): Promise<any>;
+  getJobById(id: string): Promise<any | null>;
+  getJobByMediaId(mediaId: string): Promise<any | null>;
+}

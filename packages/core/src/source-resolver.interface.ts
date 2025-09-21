@@ -1,9 +1,13 @@
-import type { InjectionToken } from 'tsyringe';
-
 export interface ISourceResolver {
-  resolveSource(source: string): Promise<string>;
+  /**
+   * Gives the file path.
+   * It should download the file if it's a remote URL.
+   * @param url The original source URL.
+   * @returns The local file path where the source can be accessed.
+   */
+  resolveSource(url: string): Promise<string>;
 }
 
-export const DI_TOKENS = {
-  SourceResolver: Symbol('SourceResolver') as InjectionToken<ISourceResolver>,
-};
+// export const DI_TOKENS = {
+//   SourceResolver: Symbol('SourceResolver') as InjectionToken<ISourceResolver>,
+// };
