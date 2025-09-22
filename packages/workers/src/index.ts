@@ -1,5 +1,5 @@
 // Define worker types
-export type WorkerTypes = 'thumbnail' | 'transcode' | 'subtitle';
+export type WorkerTypes = 'thumbnail' | 'transcode' | 'subtitle' | 'ai';
 
 // Define outputs
 export interface ThumbnailOutput {
@@ -19,11 +19,31 @@ export interface SubtitleOutput {
   translationErrors?: Record<string, string>;
 }
 
+export type AIEngineOutput = {
+  data: {
+    title?: string;
+    description?: string;
+    genres?: string[];
+    chapters?: {
+      vttPath: string;
+    };
+    subtitles?: {
+      vttPaths: Record<string, string>;
+    };
+    posterImagePath?: string;
+    backdropImagePath?: string;
+    subtitleErrors?: Record<string, string>;
+    dubbedAudioPaths?: Record<string, string>;
+    audioProcessingErrors?: Record<string, string>;
+  };
+};
+
 // Map worker -> output type
 export type WorkerOutputs = {
   thumbnail: ThumbnailOutput;
   transcode: TranscodingOutput;
   subtitle: SubtitleOutput;
+  ai: AIEngineOutput;
 };
 
 // Base messages
@@ -62,6 +82,11 @@ export type WorkerMessages = {
   };
   task_completed: TaskCompletedMessage<WorkerTypes>;
   task_failed: TaskFailedMessage;
+  ai_tasks: {
+    jobId: string;
+    taskId: string;
+    sourceUrl: string;
+  };
 };
 
 // Generic worker output wrapper

@@ -19,6 +19,7 @@ export const MessageQueueChannels = {
   thumbnail: 'thumbnail_tasks',
   transcode: 'transcode_tasks',
   subtitle: 'subtitle_tasks',
+  ai: 'ai_tasks',
   completed: 'task_completed',
   failed: 'task_failed',
 } as const;

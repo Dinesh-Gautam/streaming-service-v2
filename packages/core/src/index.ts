@@ -1,6 +1,7 @@
 import type { WorkerTypes } from '@monorepo/workers';
 
 export * from './interfaces/audio-extractor.interface';
+export * from './interfaces/repositories';
 export * from './interfaces/media.interface';
 export * from './interfaces/storage.interface';
 export * from './interfaces/source-resolver.interface';
