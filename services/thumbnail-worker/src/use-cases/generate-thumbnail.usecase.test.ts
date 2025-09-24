@@ -22,7 +22,7 @@ const mockTaskRepository: jest.Mocked<ITaskRepository> = {
   failTask: jest.fn(),
 };
 
-const mockMediaProcessor: jest.Mocked<IMediaProcessor> = {
+const mockMediaProcessor: jest.Mocked<IMediaProcessor<ThumbnailOutput>> = {
   process: jest.fn(),
   on: jest.fn(),
   emit: jest.fn(),

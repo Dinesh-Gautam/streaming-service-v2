@@ -3,11 +3,10 @@ import { container } from 'tsyringe';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
-import { DI_TOKENS, MongoTaskRepository } from '@monorepo/core';
+import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
 import { FfmpegProcessor } from '@thumbnail-worker/adapters/ffmpeg.media-processor';
-import { FsSourceResolver } from '@thumbnail-worker/adapters/fs.source-resolver';
 
 export function setupDI() {
   container.registerSingleton<IDatabaseConnection>(
@@ -35,7 +34,5 @@ export function setupDI() {
     useFactory: () => new FfmpegProcessor(),
   });
 
-  container.register(DI_TOKENS.SourceResolver, {
-    useClass: FsSourceResolver,
-  });
+  container.register(DI_TOKENS.Storage, LocalStorage);
 }

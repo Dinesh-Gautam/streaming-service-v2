@@ -11,8 +11,9 @@ export const configSchema = z.object({
     .default('development'),
   RABBITMQ_URL: z.url(),
   MONGO_URL: z.url(),
-  OUTPUT_DIR: z.string().default('/tmp/output'),
+  TEMP_OUT_DIR: z.string().default('/tmp/output'),
   THUMBNAIL_PUBLIC_URL: z.string().default('/api/static/playback'),
+  LOCAL_STORAGE_PATH: z.string().default('/temp/output'),
 });
 
 export type Config = z.infer<typeof configSchema>;

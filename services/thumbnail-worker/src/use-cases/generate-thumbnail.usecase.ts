@@ -2,7 +2,7 @@ import { inject, injectable } from 'tsyringe';
 
 import type {
   IMediaProcessor,
-  ISourceResolver,
+  IStorage,
   ITaskRepository,
 } from '@monorepo/core';
 import type { ThumbnailOutput, WorkerOutput } from '@monorepo/workers';
@@ -22,8 +22,9 @@ interface GenerateThumbnailInput {
 export class GenerateThumbnailUseCase {
   constructor(
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
-    @inject(DI_TOKENS.MediaProcessor) private mediaProcessor: IMediaProcessor,
-    @inject(DI_TOKENS.SourceResolver) private sourceResolver: ISourceResolver,
+    @inject(DI_TOKENS.MediaProcessor)
+    private mediaProcessor: IMediaProcessor<ThumbnailOutput>,
+    @inject(DI_TOKENS.Storage) private storage: IStorage,
   ) {}
 
   async execute(
@@ -47,14 +48,29 @@ export class GenerateThumbnailUseCase {
         );
       });
 
-      const resolvedSource = await this.sourceResolver.resolveSource(sourceUrl);
+      const tempInputPath = await this.storage.downloadFile(sourceUrl);
 
-      const result = await this.mediaProcessor.process(
-        resolvedSource,
-        `${config.OUTPUT_DIR}/${jobId}`,
+      const tempOutputDir = `${config.TEMP_OUT_DIR}/${jobId}`;
+
+      const { output } = await this.mediaProcessor.process(
+        tempInputPath,
+        tempOutputDir,
       );
 
-      await this.taskRepository.updateTaskOutput(jobId, taskId, result.output);
+      const finalPaths = {
+        vtt: await this.storage.saveFile(
+          output.paths.vtt,
+          `${jobId}/thumbnails.vtt`,
+        ),
+        thumbnailsDir: await this.storage.saveFile(
+          output.paths.thumbnailsDir,
+          `${jobId}/thumbnails`,
+        ),
+      };
+
+      await this.taskRepository.updateTaskOutput(jobId, taskId, {
+        paths: finalPaths,
+      });
       await this.taskRepository.updateTaskStatus(
         jobId,
         taskId,
@@ -64,7 +80,12 @@ export class GenerateThumbnailUseCase {
 
       logger.info(`Task ${taskId} completed successfully.`);
 
-      return result;
+      return {
+        success: true,
+        output: {
+          paths: finalPaths,
+        },
+      };
     } catch (error) {
       if (error instanceof MediaProcessorError) {
         logger.error(`Media processing error: ${error.message}`, {

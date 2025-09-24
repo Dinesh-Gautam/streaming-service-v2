@@ -160,6 +160,12 @@ services:
           ignore: [node_modules/]
         - action: rebuild
           path: ./services/thumbnail-worker/package.json
+    environment:
+      - STORAGE_SERVICE=local
+      - LOCAL_SOURCE_PATH=./local_storage
+      - LOCAL_STORAGE_PATH=/output
+    volumes:
+      - ./local_storage:/output
     env_file:
       - ./.env
       - ./services/thumbnail-worker/.env

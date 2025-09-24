@@ -23,7 +23,10 @@ const DEFAULT_OPTIONS: ThumbnailEngineOptions = {
 };
 
 @injectable()
-export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
+export class FfmpegProcessor
+  extends EventEmitter
+  implements IMediaProcessor<ThumbnailOutput>
+{
   private options: ThumbnailEngineOptions;
 
   constructor(options: Partial<ThumbnailEngineOptions> = {}) {
@@ -38,8 +41,11 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
     const thumbnailsDir = path.join(outputDir, 'thumbnails');
     const vttFilePath = path.join(outputDir, 'thumbnails.vtt');
 
-    this._ensureDirectoryExists(outputDir);
-    this._ensureDirectoryExists(thumbnailsDir);
+    if (!fs.existsSync(thumbnailsDir)) {
+      fs.mkdirSync(thumbnailsDir, { recursive: true });
+    }
+
+    await fs.promises.writeFile(vttFilePath, ''); // Ensure the file is created
 
     logger.info(`Generating thumbnails for ${inputFile} in ${thumbnailsDir}`);
 
@@ -57,7 +63,7 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
       thumbnailCount,
     );
 
-    this._generateVttFile(
+    await this._generateVttFile(
       thumbnailCount,
       this.options.interval,
       duration,
@@ -75,12 +81,6 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
         },
       },
     };
-  }
-
-  private _ensureDirectoryExists(dirPath: string): void {
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-    }
   }
 
   private _getVideoDuration(videoPath: string): Promise<number | undefined> {
@@ -127,20 +127,18 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
     });
   }
 
-  private _generateVttFile(
+  private async _generateVttFile(
     thumbnailCount: number,
     interval: number,
     duration: number,
     outputDir: string,
     thumbnailsDir: string,
     vttFilePath: string,
-  ): void {
+  ): Promise<void> {
     let vttContent = 'WEBVTT\n\n';
     const relativeThumbnailsPath = path
       .relative(outputDir, thumbnailsDir)
       .replace(/\\/g, '/');
-
-    const mediaId = path.basename(outputDir);
 
     for (let i = 0; i < thumbnailCount; i++) {
       const startTime = i * interval;
@@ -157,7 +155,7 @@ export class FfmpegProcessor extends EventEmitter implements IMediaProcessor {
       vttContent += `${thumbnailUrl}\n\n`;
     }
 
-    fs.writeFileSync(vttFilePath, vttContent);
+    await fs.promises.writeFile(vttFilePath, vttContent);
   }
 
   private _formatVttTime(seconds: number): string {

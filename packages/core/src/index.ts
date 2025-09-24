@@ -6,6 +6,7 @@ export * from './interfaces/media.interface';
 export * from './interfaces/storage.interface';
 export * from './interfaces/source-resolver.interface';
 export * from './adapters/mongo.task-repository';
+export * from './adapters/local.storage';
 export * from './di-tokens';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';

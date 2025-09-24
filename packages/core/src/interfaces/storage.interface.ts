@@ -1,3 +1,4 @@
 export interface IStorage {
-  writeFile(path: string, content: string): Promise<void>;
+  downloadFile(sourceUrl: string): Promise<string>;
+  saveFile(sourcePath: string, destinationPath: string): Promise<string>;
 }

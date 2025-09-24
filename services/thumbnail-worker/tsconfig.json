@@ -11,7 +11,8 @@
     }
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "../../packages/core/src/adapters/local.storage.ts"
   ],
   "exclude": [
     "node_modules",

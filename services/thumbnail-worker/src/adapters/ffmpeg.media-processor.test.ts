@@ -9,7 +9,14 @@ import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
 import { FfmpegProcessor } from './ffmpeg.media-processor';
 
 jest.mock('fluent-ffmpeg');
-jest.mock('fs');
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  promises: {
+    writeFile: jest.fn(),
+  },
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+}));
 
 const mockedFfmpeg = ffmpeg as jest.Mocked<any>;
 const mockedFs = fs as jest.Mocked<typeof fs>;
@@ -58,6 +65,9 @@ describe('FfmpegProcessor', () => {
   });
 
   it('should generate thumbnails and a VTT file successfully', async () => {
+    mockedFs.existsSync.mockReturnValue(true);
+    (mockedFs.promises.writeFile as jest.Mock).mockResolvedValue(undefined);
+
     const processPromise = ffmpegProcessor.process(sampleVideoPath, outputDir);
 
     // wait for the event loop to handle promise resolutions and set the callback
@@ -70,12 +80,9 @@ describe('FfmpegProcessor', () => {
 
     const result = await processPromise;
 
-    expect(mockedFs.mkdirSync).toHaveBeenCalledWith(outputDir, {
-      recursive: true,
-    });
-    expect(mockedFs.mkdirSync).toHaveBeenCalledWith(
-      path.join(outputDir, 'thumbnails'),
-      { recursive: true },
+    expect(mockedFs.promises.writeFile).toHaveBeenCalledWith(
+      path.join(outputDir, 'thumbnails.vtt'),
+      '',
     );
 
     expect(mockedFfmpeg.ffprobe).toHaveBeenCalledWith(
@@ -88,9 +95,10 @@ describe('FfmpegProcessor', () => {
       path.join(outputDir, 'thumbnails', 'thumb%04d.jpg'),
     );
 
-    expect(mockedFs.writeFileSync).toHaveBeenCalled();
+    expect(mockedFs.promises.writeFile).toHaveBeenCalled();
 
-    const vttContent = mockedFs.writeFileSync.mock.calls[0][1] as string;
+    const vttContent = (mockedFs.promises.writeFile as jest.Mock).mock
+      .calls[1][1] as string;
     expect(vttContent).toContain('WEBVTT');
     expect(vttContent).toContain('00:00:00.000 --> 00:00:05.000');
     expect(vttContent).toContain('thumbnails/thumb0001.jpg');
