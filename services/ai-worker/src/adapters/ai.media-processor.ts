@@ -3,24 +3,19 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
-import parseDataURL from 'data-urls';
 import ffmpeg from 'fluent-ffmpeg';
-import { genkit } from 'genkit';
 // Import from 'genkit'
-import { v4 as uuidv4 } from 'uuid'; // Keep uuid for filenames
 import { z } from 'zod'; // Using Zod for parsing the structured output
 
+import type { AiVideoAnalysisResponseSchema } from '@ai-worker/adapters/flow';
 import type { AIEngineOutput } from '@monorepo/workers';
-import type { Action } from 'genkit';
 
+import {
+  GenerateMovieImagesFlow,
+  VideoAnalysisFlow,
+} from '@ai-worker/adapters/flow';
 // Genkit Core and Google AI Plugin
 // Assume genkit is configured globally, e.g., in genkit.config.ts
-import {
-  gemini15Flash,
-  gemini20Flash001,
-  imagen3,
-  vertexAI,
-} from '@genkit-ai/vertexai';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import { IMediaProcessor, MediaPrcessorEvent } from '@monorepo/core';
 import { WorkerOutput } from '@monorepo/workers';
@@ -29,310 +24,6 @@ import config from '../config';
 import { logger } from '../config/logger';
 
 // Import base class and types
-
-export const AiVideoAnalysisResponseSchema = z.object({
-  title: z
-    .string()
-    .optional()
-    .describe('Tile for the movie, one to two words.'),
-  description: z
-    .string()
-    .optional()
-    .describe('Comprehensive description (potentially multi-paragraph).'),
-  genres: z.array(z.string()).optional().describe('List of applicable genres.'),
-  imageGenerationPrompt: z
-    .string()
-    .optional()
-    .describe(
-      'Prompt for image generation. This will be used to generate the poster and backdrop images.',
-    ),
-  chaptersVtt: z
-    .array(
-      z.object({
-        timecode: z.string().describe('Timecode of the chapter.'),
-        chapterTitle: z.string().describe('Title of the chapter.'),
-      }),
-    )
-    .optional()
-    .describe(
-      'Chapters in english language from the video. they should not include any spoilers and Please only capture key events and highlights. If you are not sure about any info, please do not make it up. ',
-    ),
-  subtities: z
-    .object({
-      hi: z.array(
-        z.object({
-          startTimecode: z.string().describe('start Timecode of the subtitle'),
-          endTimecode: z.string().describe('end Timecode of the subtitle'),
-          text: z
-            .string()
-            .describe(
-              'natural sounding Translated hindi Text of the subtitles.',
-            ),
-          voiceGender: z.enum(['male', 'female']).describe('Voice gender.'),
-          voiceType: z
-            .enum(['neutral', 'angry', 'happy'])
-            .describe('Voice type.'),
-        }),
-      ),
-      pa: z.array(
-        z.object({
-          startTimecode: z.string().describe('start Timecode of the subtitle'),
-          endTimecode: z.string().describe('end Timecode of the subtitle'),
-          text: z
-            .string()
-            .describe(
-              'Natural sounding Translated punjabi Text of the subtitles.',
-            ),
-          voiceGender: z.enum(['male', 'female']).describe('Voice gender.'),
-          voiceType: z
-            .enum(['neutral', 'angry', 'happy'])
-            .describe('Voice type.'),
-        }),
-      ),
-    })
-    .describe('Subtitles in hindi and punjabi.'),
-});
-// Define schema for image generation flow output
-export const AiImageResponseSchema = z.object({
-  posterImagePath: z
-    .string()
-    .optional()
-    .describe('Path to the generated poster image.'),
-  backdropImagePath: z
-    .string()
-    .optional()
-    .describe('Path to the generated backdrop image.'),
-});
-
-export const ai = genkit({
-  plugins: [
-    vertexAI({
-      location: 'us-central1',
-      projectId: config.GOOGLE_PROJECT_ID,
-    }),
-  ],
-});
-
-export const GenerateMovieImagesFlow: Action = ai.defineFlow(
-  {
-    name: 'GenerateMovieImagesFlow',
-    inputSchema: z.object({
-      title: z.string().describe('Movie title.'),
-      description: z.string().describe('Movie description.'),
-      genres: z.array(z.string()).describe('List of movie genres.'),
-      movieId: z
-        .string()
-        .describe('Unique ID for the movie to associate images.'), // Used for saving path
-      imageGenerationPrompt: z
-        .string()
-        .optional()
-        .describe(
-          'Prompt for image generation. This will be used to generate the poster and backdrop images.',
-        ),
-    }) as any,
-    outputSchema: AiImageResponseSchema as any,
-  },
-  async (input) => {
-    logger.info(
-      `[GenerateMovieImagesFlow] Starting image generation for: ${input.title}`,
-    );
-
-    // Step 1: Generate a detailed image prompt using Gemini
-    const promptGenerator = await ai.generate({
-      model: gemini20Flash001,
-      prompt: `Based on the following movie details, create a concise and evocative prompt suitable for an AI image generator. The prompt should capture the essence, mood, and visual style implied by the title, description, and genres. it is very important that the prompt should not offend any one wether it is an organization or a person. the prompt should not contain any name of person, organization. the prompt should not mention generation of any person.
-
-      Title: ${input.title}
-      Description: ${input.description}
-      Genres: ${input.genres.join(', ')}
-      Initial Prompt: ${input.imageGenerationPrompt}
-
-      Consider the genres:
-      - If genres include 'Documentary' or 'Educational', aim for a realistic or informative style.
-      - If genres include 'Comedy', suggest a lighthearted or humorous visual.
-      - If genres include 'Horror' or 'Thriller', imply suspense or darkness.
-      - If genres include 'Sci-Fi' or 'Fantasy', suggest imaginative or futuristic visuals.
-      - If genres include 'Animation', suggest a cartoonish or stylized look.
-      - If genres include 'Action', imply dynamic movement or intensity.
-
-       Generate a single, effective prompt string. The prompt should be able to generate visually stunning, vivid and colorful images.`,
-
-      config: {
-        temperature: 1, // Allow for some creativity in prompt generation
-      },
-      output: {
-        schema: z.object({
-          prompt: z.string().describe('Generated image prompt.'),
-        }) as any,
-        format: 'json',
-      },
-    });
-
-    const imagePrompt = promptGenerator.text; // Revert to property access based on linter feedback
-    if (!imagePrompt) {
-      throw new Error('Failed to generate image prompt.');
-    }
-    logger.info(
-      `[GenerateMovieImagesFlow] Generated Image Prompt: ${imagePrompt}`,
-    );
-
-    const outputDir = path.join(process.cwd(), 'tmp', 'ai-generated');
-    await fs.promises.mkdir(outputDir, { recursive: true }); // Ensure directory exists
-
-    let posterImagePath: string | undefined = undefined;
-    let backdropImagePath: string | undefined = undefined;
-
-    // Generate Poster Image
-    try {
-      logger.info('[GenerateMovieImagesFlow] Generating Poster Image...');
-      const { media: posterImage } = await ai.generate({
-        model: imagen3, // Use for image generation
-        prompt: `${imagePrompt} - movie poster style, cinematic, high quality`,
-        config: {
-          temperature: 1,
-          // mumbai
-          location: 'asia-south1',
-          aspectRatio: '9:16',
-          language: 'en',
-          safetySetting: 'block_few',
-        },
-        output: {
-          format: 'media', // Expecting image data
-        },
-      });
-
-      if (!posterImage) {
-        throw new Error('Failed to generate poster image.');
-      }
-
-      const posterImageData = parseDataURL(posterImage.url);
-
-      if (posterImageData) {
-        const extension = posterImageData.mimeType.subtype;
-        const posterFilename = `poster-${uuidv4()}.${extension}`;
-        const fullPosterPath = path.join(outputDir, posterFilename);
-
-        await fs.promises.writeFile(fullPosterPath, posterImageData.body);
-        // Store path relative to the 'public' directory for web access
-        posterImagePath = path
-          .join('tmp', 'ai-generated', posterFilename) // Prepend '/' for root-relative path
-          .replace(/\\/g, '/') // Ensure forward slashes for URL
-          .replaceAll('/tmp', '');
-
-        logger.info(
-          `[GenerateMovieImagesFlow] Poster image saved to: ${fullPosterPath}, Web path: ${posterImagePath}`,
-        );
-      } else {
-        logger.warn(
-          '[GenerateMovieImagesFlow] Poster image generation did not return expected data/contentType.',
-        );
-        logger.warn(`Poster Media Object: ${posterImage}`);
-      }
-    } catch (error) {
-      logger.error(
-        `[GenerateMovieImagesFlow] Error generating poster image: ${error}`,
-      );
-    }
-
-    // Generate Backdrop Image
-    try {
-      logger.info('[GenerateMovieImagesFlow] Generating Backdrop Image...');
-      const { media: backdropImage } = await ai.generate({
-        model: imagen3, // Use for image generation
-        prompt: `${imagePrompt} - cinematic wide aspect ratio movie backdrop style, high quality`,
-        config: {
-          temperature: 1,
-          aspectRatio: '16:9',
-          language: 'en',
-          safetySetting: 'block_few',
-        },
-        output: {
-          format: 'media',
-        },
-      });
-
-      if (!backdropImage) {
-        throw new Error('Failed to generate backdrop image.');
-      }
-
-      const backdropImageData = parseDataURL(backdropImage.url);
-      if (backdropImageData) {
-        const extension = backdropImageData.mimeType.subtype;
-        const backdropFilename = `backdrop-${uuidv4()}.${extension}`;
-        const fullBackdropPath = path.join(outputDir, backdropFilename);
-
-        await fs.promises.writeFile(fullBackdropPath, backdropImageData.body);
-        backdropImagePath = path
-          .join('tmp', 'ai-generated', backdropFilename) // Prepend '/' for root-relative path
-          .replace(/\\/g, '/') // Ensure forward slashes for URL
-          .replaceAll('/tmp', '');
-        logger.info(
-          `[GenerateMovieImagesFlow] Backdrop image saved to: ${fullBackdropPath}, Web path: ${backdropImagePath}`,
-        );
-      } else {
-        logger.warn(
-          '[GenerateMovieImagesFlow] Backdrop image generation did not return expected data/contentType.',
-        );
-        logger.warn(`Backdrop Media Object: ${backdropImage}`);
-      }
-    } catch (error) {
-      logger.error(
-        `[GenerateMovieImagesFlow] Error generating backdrop image: ${error}`,
-      );
-    }
-
-    if (!posterImagePath && !backdropImagePath) {
-      throw new Error('Failed to generate any images.');
-    }
-
-    return { posterImagePath, backdropImagePath };
-  },
-);
-
-export const VideoAnalysisFlow: Action = ai.defineFlow(
-  {
-    name: 'VideoAnalysisFlow',
-    inputSchema: z.object({
-      videoFilePath: z.string().describe('Path to the video file.'),
-    }) as any,
-    outputSchema: AiVideoAnalysisResponseSchema as any,
-  },
-  async (input) => {
-    const b64Data = await fs.promises.readFile(input.videoFilePath, {
-      encoding: 'base64url',
-    });
-    const dataUrl = `data:video/mp4;base64,${b64Data}`;
-
-    const output = await ai.generate({
-      model: gemini20Flash001,
-      messages: [
-        {
-          role: 'user' as const,
-          content: [
-            {
-              media: {
-                mimeType: 'video/mp4',
-                url: dataUrl,
-              },
-            },
-            {
-              text: `Generate translated subtitles and chapters for the following video file the subtitles should be in hindi and punjabi. They feel like a natural human translation.`,
-            },
-            {
-              text: `Also generate chapters for the video file. in english language`,
-            },
-          ],
-        },
-      ],
-      output: {
-        format: 'json',
-        schema: AiVideoAnalysisResponseSchema as any,
-      },
-    });
-
-    return JSON.parse(output.text);
-  },
-);
 
 type AiSubtitleEntry = {
   startTimecode: string;
@@ -435,7 +126,7 @@ export class AIMediaProcessor
 
       this.updateProgress(40);
 
-      const aiData = analysisResult as AiVideoAnalysisResponseType;
+      const aiData = analysisResult;
       logger.info(
         `[${this.engineName}] Received and parsed AI video analysis response.`,
       );

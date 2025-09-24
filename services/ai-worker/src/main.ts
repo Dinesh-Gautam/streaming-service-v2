@@ -106,7 +106,7 @@ async function main() {
     },
   );
 
-  logger.info(`Waiting for messages in queue: ${config.AI_QUEUE}`);
+  logger.info(`Waiting for messages in queue: ${MessageQueueChannels.ai}`);
 
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}. Shutting down gracefully...`);

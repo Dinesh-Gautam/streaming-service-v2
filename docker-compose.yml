@@ -201,6 +201,35 @@ services:
       networks:
         - backend
         - messaging
+  ai-worker:
+      <<: *service-base
+      profiles: ["workers"] # Only run when needed
+      build:
+        context: .
+        dockerfile: services/ai-worker/Dockerfile
+        target : dev
+      develop:
+        watch:
+          - action: sync
+            path: ./services/ai-worker/src
+            target: /usr/src/app/services/ai-worker/src
+            ignore: [node_modules/]
+          - action: rebuild
+            path: ./services/ai-worker/package.json
+      environment:
+        - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+      env_file:
+        - ./services/ai-worker/.env
+      volumes:
+        - ${GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
+      depends_on:
+        mongo:
+          condition: service_healthy
+        rabbitmq:
+          condition: service_healthy
+      networks:
+        - backend
+        - messaging
 
 
 # ---------- NETWORKS ----------
