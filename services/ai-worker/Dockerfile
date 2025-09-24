@@ -1,9 +1,20 @@
 # ==============================
 # Base image
 # ==============================
-FROM node:20-alpine AS base
+FROM ubuntu:24.04 AS base
 
-RUN apk add --no-cache ffmpeg
+# Install Node.js 20, ffmpeg, and other dependencies
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  ffmpeg \
+  nodejs \
+  npm && \
+  rm -rf /var/lib/apt/lists/*
+
+# Set up Node.js 20
+RUN npm install -g n && n 20
 
 WORKDIR /usr/src/app
 
@@ -62,7 +73,7 @@ RUN pnpm prune --prod
 # ==============================
 # Production image
 # ==============================
-FROM node:20-alpine AS prod
+FROM base AS prod
 
 WORKDIR /usr/src/app
 

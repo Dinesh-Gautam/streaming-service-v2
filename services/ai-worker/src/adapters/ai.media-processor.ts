@@ -103,16 +103,13 @@ export class AIMediaProcessor
     }
     logger.info(`[${this.engineName}] Using movieId: ${movieId}`);
 
-    const tempAudioDir = await fs.promises.mkdir(path.join('temp/'), {
-      recursive: true,
-    });
-    logger.info(`[${this.engineName}] Created temp directory: ${tempAudioDir}`);
-
-    if (!tempAudioDir) {
-      throw new Error(
-        `[${this.engineName}] Failed to create temp directory: ${tempAudioDir}`,
-      );
-    }
+    const tempDir = 'temp/';
+    await fs.promises.mkdir(outputDir, { recursive: true });
+    await fs.promises.mkdir(tempDir, { recursive: true });
+    logger.info(`[${this.engineName}] Created temp directory: ${tempDir}`);
+    logger.info(
+      `[${this.engineName}] Ensured output directory exists: ${outputDir}`,
+    );
 
     try {
       logger.info(
@@ -199,48 +196,45 @@ export class AIMediaProcessor
       let posterImagePath: string | undefined = undefined;
       let backdropImagePath: string | undefined = undefined;
 
-      if (aiData.title && aiData.description && aiData.genres) {
-        logger.info(`[${this.engineName}] Starting AI image generation...`);
-        this.updateProgress(65);
-        try {
-          const imageResult = await GenerateMovieImagesFlow({
-            movieId: movieId,
-            title: aiData.title,
-            description: aiData.description,
-            genres: aiData.genres,
-            imageGenerationPrompt: aiData.imageGenerationPrompt,
-          });
-          posterImagePath = imageResult.posterImagePath;
-          backdropImagePath = imageResult.backdropImagePath;
-          logger.info(`[${this.engineName}] AI image generation completed.`);
-          this.updateProgress(90);
-        } catch (imageError: any) {
-          logger.warn(
-            `[${this.engineName}] AI image generation failed: ${imageError.message}`,
-            imageError,
-          );
-          this.updateProgress(90);
-        }
-      } else {
-        logger.warn(
-          `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
-        );
-        this.updateProgress(90);
-      }
+      // if (aiData.title && aiData.description && aiData.genres) {
+      //   logger.info(`[${this.engineName}] Starting AI image generation...`);
+      //   this.updateProgress(65);
+      //   try {
+      //     const imageResult = await GenerateMovieImagesFlow({
+      //       movieId: movieId,
+      //       title: aiData.title,
+      //       description: aiData.description,
+      //       genres: aiData.genres,
+      //       imageGenerationPrompt: aiData.imageGenerationPrompt,
+      //     });
+      //     posterImagePath = imageResult.posterImagePath;
+      //     backdropImagePath = imageResult.backdropImagePath;
+      //     logger.info(`[${this.engineName}] AI image generation completed.`);
+      //     this.updateProgress(90);
+      //   } catch (imageError: any) {
+      //     logger.warn(
+      //       `[${this.engineName}] AI image generation failed: ${imageError.message}`,
+      //       imageError,
+      //     );
+      //     this.updateProgress(90);
+      //   }
+      // } else {
+      //   logger.warn(
+      //     `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
+      //   );
+      //   this.updateProgress(90);
+      // }
       this.updateProgress(90);
 
       let dubbedAudioPaths: Record<string, string> = {};
       let audioProcessingErrors: Record<string, string> = {};
-      const originalAudioPath = path.join(
-        tempAudioDir,
-        `${baseName}_original.wav`,
-      );
+      const originalAudioPath = path.join(tempDir, `${baseName}_original.wav`);
       const instrumentalAudioPath = path.join(
-        tempAudioDir,
+        tempDir,
         `${baseName}_original_Instruments.wav`,
       );
       const vocalAudioPath = path.join(
-        tempAudioDir,
+        tempDir,
         `${baseName}_original_Vocals.wav`,
       );
 
@@ -254,10 +248,10 @@ export class AIMediaProcessor
 
         logger.info(`[${this.engineName}] Removing vocals...`);
         const binDir = path.resolve('bin');
-        const vocalRemoverExe = 'vocal_remover.exe';
+        const vocalRemoverExe = './vocal_remover';
         const absoluteInputAudioPath = path.resolve(originalAudioPath);
 
-        const vocalRemoverCommand = `"${vocalRemoverExe}" -P "models/baseline.pth" --output_dir "${path.join(process.cwd(), 'temp')}" --input "${absoluteInputAudioPath}"`;
+        const vocalRemoverCommand = `${vocalRemoverExe} -P "models/baseline.pth" --output_dir "${path.resolve('temp')}" --input "${absoluteInputAudioPath}"`;
 
         logger.info(
           `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
@@ -302,7 +296,7 @@ export class AIMediaProcessor
                   instrumentalAudioPath,
                   langSubtitles,
                   langCode,
-                  tempAudioDir,
+                  tempDir,
                   finalDubbedPath,
                   (progress) =>
                     this.updateProgress(langProgressStart + progress * 0.06),
@@ -331,13 +325,13 @@ export class AIMediaProcessor
       } finally {
         try {
           logger.info(
-            `[${this.engineName}] Cleaning up temporary directory: ${tempAudioDir}`,
+            `[${this.engineName}] Cleaning up temporary directory: ${tempDir}`,
           );
-          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
+          await fs.promises.rm(tempDir, { recursive: true, force: true });
           logger.info(`[${this.engineName}] Temporary directory removed.`);
         } catch (cleanupError: any) {
           logger.warn(
-            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir}: ${cleanupError.message}`,
+            `[${this.engineName}] Failed to remove temporary directory ${tempDir}: ${cleanupError.message}`,
           );
         }
       }
@@ -376,17 +370,15 @@ export class AIMediaProcessor
         },
       };
     } catch (error: any) {
-      if (tempAudioDir) {
-        try {
-          logger.warn(
-            `[${this.engineName}] Cleaning up temporary directory due to error: ${tempAudioDir}`,
-          );
-          await fs.promises.rm(tempAudioDir, { recursive: true, force: true });
-        } catch (cleanupError: any) {
-          logger.error(
-            `[${this.engineName}] Failed to remove temporary directory ${tempAudioDir} after error: ${cleanupError.message}`,
-          );
-        }
+      try {
+        logger.warn(
+          `[${this.engineName}] Cleaning up temporary directory due to error: ${tempDir}`,
+        );
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      } catch (cleanupError: any) {
+        logger.error(
+          `[${this.engineName}] Failed to remove temporary directory ${tempDir} after error: ${cleanupError.message}`,
+        );
       }
 
       let errorMessage = 'An unexpected error occurred during AI processing.';
@@ -490,7 +482,10 @@ export class AIMediaProcessor
       `[${this.engineName}] Executing command: ${command} in ${cwd || process.cwd()}`,
     );
     try {
-      const { stdout, stderr } = await execPromise(command, { cwd });
+      const { stdout, stderr } = await execPromise(command, {
+        cwd,
+        shell: '/bin/sh',
+      });
       if (stderr) {
         logger.warn(`[${this.engineName}] Command stderr:\n${stderr}`);
       }

@@ -221,6 +221,7 @@ services:
       env_file:
         - ./services/ai-worker/.env
       volumes:
+        - ./bin:/usr/src/app/services/ai-worker/bin
         - ${GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
       depends_on:
         mongo:
