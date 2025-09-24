@@ -7,13 +7,13 @@ import ffmpeg from 'fluent-ffmpeg';
 // Import from 'genkit'
 import { z } from 'zod'; // Using Zod for parsing the structured output
 
-import type { AiVideoAnalysisResponseSchema } from '@ai-worker/adapters/flow';
+import type { AiVideoAnalysisResponseSchema } from '@ai-worker/domain/schemas';
 import type { AIEngineOutput } from '@monorepo/workers';
 
 import {
   GenerateMovieImagesFlow,
   VideoAnalysisFlow,
-} from '@ai-worker/adapters/flow';
+} from '@ai-worker/use-cases/flow';
 // Genkit Core and Google AI Plugin
 // Assume genkit is configured globally, e.g., in genkit.config.ts
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
@@ -196,34 +196,34 @@ export class AIMediaProcessor
       let posterImagePath: string | undefined = undefined;
       let backdropImagePath: string | undefined = undefined;
 
-      // if (aiData.title && aiData.description && aiData.genres) {
-      //   logger.info(`[${this.engineName}] Starting AI image generation...`);
-      //   this.updateProgress(65);
-      //   try {
-      //     const imageResult = await GenerateMovieImagesFlow({
-      //       movieId: movieId,
-      //       title: aiData.title,
-      //       description: aiData.description,
-      //       genres: aiData.genres,
-      //       imageGenerationPrompt: aiData.imageGenerationPrompt,
-      //     });
-      //     posterImagePath = imageResult.posterImagePath;
-      //     backdropImagePath = imageResult.backdropImagePath;
-      //     logger.info(`[${this.engineName}] AI image generation completed.`);
-      //     this.updateProgress(90);
-      //   } catch (imageError: any) {
-      //     logger.warn(
-      //       `[${this.engineName}] AI image generation failed: ${imageError.message}`,
-      //       imageError,
-      //     );
-      //     this.updateProgress(90);
-      //   }
-      // } else {
-      //   logger.warn(
-      //     `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
-      //   );
-      //   this.updateProgress(90);
-      // }
+      if (aiData.title && aiData.description && aiData.genres) {
+        logger.info(`[${this.engineName}] Starting AI image generation...`);
+        this.updateProgress(65);
+        try {
+          const imageResult = await GenerateMovieImagesFlow({
+            movieId: movieId,
+            title: aiData.title,
+            description: aiData.description,
+            genres: aiData.genres,
+            imageGenerationPrompt: aiData.imageGenerationPrompt,
+          });
+          posterImagePath = imageResult.posterImagePath;
+          backdropImagePath = imageResult.backdropImagePath;
+          logger.info(`[${this.engineName}] AI image generation completed.`);
+          this.updateProgress(90);
+        } catch (imageError: any) {
+          logger.warn(
+            `[${this.engineName}] AI image generation failed: ${imageError.message}`,
+            imageError,
+          );
+          this.updateProgress(90);
+        }
+      } else {
+        logger.warn(
+          `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
+        );
+        this.updateProgress(90);
+      }
       this.updateProgress(90);
 
       let dubbedAudioPaths: Record<string, string> = {};
