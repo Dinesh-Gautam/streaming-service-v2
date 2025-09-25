@@ -23,8 +23,7 @@ x-worker-base: &worker-base
   networks:
     - backend
     - messaging
-  volumes:
-   - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
+
 
 services:
   # ---------- DATABASES & BROKERS ----------
@@ -133,16 +132,13 @@ services:
       - messaging
 
   job-service:
-    <<: *service-base
+    <<: [*service-base , *worker-base]
     build:
       context: .
       dockerfile: services/job-service/Dockerfile
       target: dev
     ports:
-      - "${JOB_SERVICE_PORT}:${JOB_SERVICE_PORT}"
-    env_file:
-      - ./.env
-      - ./services/job-service/.env
+      - "3002:3002"
     develop:
       watch:
         - action: sync
@@ -151,19 +147,14 @@ services:
           ignore: [node_modules/]
         - action: rebuild
           path: ./services/job-service/package.json
-    depends_on:
-      mongo:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - backend
-      - messaging
+    environment:
+      PORT : 3002
 
   thumbnail-worker:
     <<: [*service-base, *worker-base]
     build:
       dockerfile: services/thumbnail-worker/Dockerfile
+      target: dev
     develop:
       watch:
         - action: sync
@@ -174,6 +165,8 @@ services:
           path: ./services/thumbnail-worker/package.json
     environment:
       PORT: 3003
+    volumes:
+    - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
   subtitle-worker:
       <<: *service-base

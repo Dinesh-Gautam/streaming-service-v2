@@ -3,7 +3,6 @@ import { container } from 'tsyringe';
 import type { IMessagePublisher } from '@monorepo/message-queue';
 
 import { AIMediaProcessor } from '@ai-worker/adapters/ai.media-processor';
-import { FsSourceResolver } from '@ai-worker/adapters/fs.source-resolver';
 import { AudioService } from '@ai-worker/services/audio.service';
 import { TtsService } from '@ai-worker/services/tts.service';
 import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
@@ -25,9 +24,6 @@ export function setupDI(): void {
   // Worker-specific services
   container.register(DI_TOKENS.TaskRepository, MongoTaskRepository);
 
-  container.register(DI_TOKENS.SourceResolver, {
-    useClass: FsSourceResolver,
-  });
   container.registerSingleton(TtsService);
   container.registerSingleton(AudioService);
   container.register(DI_TOKENS.MediaProcessor, {

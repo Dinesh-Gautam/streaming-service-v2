@@ -8,7 +8,7 @@ dotenv.config();
 export const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']),
   PORT: z.coerce.number().int().positive(),
-  MONGO_URI: z.string().url(),
+  MONGO_URL: z.string().url(),
   CORS_ORIGIN: z.string().min(1),
   RABBITMQ_URL: z.string().url(),
 });

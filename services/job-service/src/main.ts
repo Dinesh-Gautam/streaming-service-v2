@@ -35,7 +35,7 @@ app.use(express.json());
 async function main() {
   await messageQueue.connect(config.RABBITMQ_URL);
 
-  await dbConnection.connect(config.MONGO_URI);
+  await dbConnection.connect(config.MONGO_URL);
 
   app.get('/health', (req: Request, res: Response) => {
     res.status(200).send('OK');
