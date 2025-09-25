@@ -49,70 +49,14 @@ export class AIProcessingUseCase {
 
       const tempInputPath = await this.storage.downloadFile(sourceUrl);
 
-      const tempOutputDir = `${config.TEMP_OUT_DIR}/${jobId}`;
+      const outputDir = jobId;
 
-      const { output } = await this.mediaProcessor.process(
+      const result = await this.mediaProcessor.process(
         tempInputPath,
-        tempOutputDir,
+        outputDir,
       );
 
-      const finalOutputData: AIEngineOutput['data'] = {};
-
-      if (output.data.posterImagePath) {
-        finalOutputData.posterImagePath = output.data.posterImagePath;
-      }
-
-      if (output.data.backdropImagePath) {
-        finalOutputData.backdropImagePath = output.data.backdropImagePath;
-      }
-
-      if (output.data.chapters?.vttPath) {
-        finalOutputData.chapters = {
-          vttPath: await this.storage.saveFile(
-            output.data.chapters.vttPath,
-            `${jobId}/chapters.vtt`,
-          ),
-        };
-      }
-
-      if (output.data.subtitles?.vttPaths) {
-        finalOutputData.subtitles = { vttPaths: {} };
-        for (const lang in output.data.subtitles.vttPaths) {
-          finalOutputData.subtitles.vttPaths[lang] =
-            await this.storage.saveFile(
-              output.data.subtitles.vttPaths[lang],
-              `${jobId}/subtitles/${lang}.vtt`,
-            );
-        }
-      }
-
-      if (output.data.dubbedAudioPaths) {
-        finalOutputData.dubbedAudioPaths = {};
-        for (const lang in output.data.dubbedAudioPaths) {
-          const ext = output.data.dubbedAudioPaths[lang].split('.').pop();
-          finalOutputData.dubbedAudioPaths[lang] = await this.storage.saveFile(
-            output.data.dubbedAudioPaths[lang],
-            `${jobId}/dubbed-audio/${lang}.${ext}`,
-          );
-        }
-      }
-
-      // Copy other non-path related data directly
-      if (output.data.title) finalOutputData.title = output.data.title;
-      if (output.data.description)
-        finalOutputData.description = output.data.description;
-      if (output.data.genres) finalOutputData.genres = output.data.genres;
-      if (output.data.subtitleErrors)
-        finalOutputData.subtitleErrors = output.data.subtitleErrors;
-      if (output.data.audioProcessingErrors)
-        finalOutputData.audioProcessingErrors =
-          output.data.audioProcessingErrors;
-
-      await this.taskRepository.updateTaskOutput(
-        jobId,
-        taskId,
-        finalOutputData,
-      );
+      await this.taskRepository.updateTaskOutput(jobId, taskId, result.output);
       await this.taskRepository.updateTaskStatus(
         jobId,
         taskId,
@@ -122,12 +66,7 @@ export class AIProcessingUseCase {
 
       logger.info(`Task ${taskId} completed successfully.`);
 
-      return {
-        success: true,
-        output: {
-          data: finalOutputData,
-        },
-      };
+      return result;
     } catch (error) {
       logger.error(`Error during AI processing: ${(error as Error).message}`, {
         stack: (error as Error).stack,

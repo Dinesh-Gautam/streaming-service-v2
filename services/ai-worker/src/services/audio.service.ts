@@ -6,6 +6,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { injectable } from 'tsyringe';
 
 import { logger } from '../config/logger';
+import { AppError, CommandExecutionError, logError } from '../domain/errors';
 import { AiSubtitleEntry } from '../models/types';
 import { timecodeToSeconds } from '../utils/vtt.utils';
 import { TtsService } from './tts.service';
@@ -30,13 +31,9 @@ export class AudioService {
       if (stderr) logger.warn(`[${this.name}] Command stderr:\n${stderr}`);
       if (stdout) logger.info(`[${this.name}] Command stdout:\n${stdout}`);
     } catch (error: any) {
-      logger.error(
-        `[${this.name}] Command failed: ${command}\nError: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`,
-        error,
-      );
-      throw new Error(
-        `Command execution failed: ${error.message}. Stderr: ${error.stderr}`,
-      );
+      const cmdError = new CommandExecutionError(command, error);
+      logError(cmdError, `${this.name}:runCommand`);
+      throw cmdError;
     }
   }
 
@@ -52,11 +49,13 @@ export class AudioService {
         .audioChannels(2)
         .output(outputAudioFile)
         .on('error', (err) => {
-          logger.error(
-            `[${this.name}] Failed to extract audio from ${inputFile}: ${err.message}`,
-            err,
+          const error = new AppError(
+            'AudioExtractionError',
+            `Failed to extract audio from ${inputFile}: ${err.message}`,
+            { originalError: err },
           );
-          reject(new Error(`Failed to extract audio: ${err.message}`));
+          logError(error, `${this.name}:extractAudio`);
+          reject(error);
         })
         .on('end', () => {
           logger.info(
@@ -76,7 +75,7 @@ export class AudioService {
     const binDir = path.resolve('bin');
     const instrumentalAudioPath = path.join(
       tempDir,
-      `${path.parse(originalAudioPath).name.replace('_original', '')}_Instruments.wav`,
+      `${path.parse(originalAudioPath).name}_Instruments.wav`,
     );
     const command = `./vocal_remover -P "models/baseline.pth" --output_dir "${path.resolve(tempDir)}" --input "${path.resolve(originalAudioPath)}"`;
     try {
@@ -87,11 +86,13 @@ export class AudioService {
       );
       return instrumentalAudioPath;
     } catch (error: any) {
-      logger.error(
-        `[${this.name}] Failed to remove vocals from ${originalAudioPath}: ${error.message}`,
-        error,
+      const appError = new AppError(
+        'VocalRemovalError',
+        `Failed to remove vocals from ${originalAudioPath}: ${error.message}`,
+        { originalError: error },
       );
-      throw error;
+      logError(appError, `${this.name}:removeVocals`);
+      throw appError;
     }
   }
 
@@ -123,11 +124,12 @@ export class AudioService {
           );
           segmentFiles.push(segmentPath);
         } catch (error: any) {
-          logger.error(
-            `[${this.name}] Failed to generate TTS audio for subtitle segment ${i} (${langCode}): ${error.message}`,
-            error,
+          const appError = new AppError(
+            'TtsGenerationError',
+            `Failed to generate TTS audio for subtitle segment ${i} (${langCode}): ${error.message}`,
+            { originalError: error },
           );
-          // Continue processing other segments even if one fails
+          logError(appError, `${this.name}:generateDubbedAudio`);
         }
       }
       onProgress(((i + 1) / subtitles.length) * 50);
@@ -148,11 +150,13 @@ export class AudioService {
       );
       onProgress(80);
     } catch (error: any) {
-      logger.error(
-        `[${this.name}] Failed to assemble TTS track for ${langCode}: ${error.message}`,
-        error,
+      const appError = new AppError(
+        'TtsAssemblyError',
+        `Failed to assemble TTS track for ${langCode}: ${error.message}`,
+        { originalError: error },
       );
-      throw error;
+      logError(appError, `${this.name}:generateDubbedAudio`);
+      throw appError;
     }
 
     try {
@@ -166,11 +170,13 @@ export class AudioService {
       );
       onProgress(100);
     } catch (error: any) {
-      logger.error(
-        `[${this.name}] Failed to merge audio for ${langCode}: ${error.message}`,
-        error,
+      const appError = new AppError(
+        'AudioMergeError',
+        `Failed to merge audio for ${langCode}: ${error.message}`,
+        { originalError: error },
       );
-      throw error;
+      logError(appError, `${this.name}:generateDubbedAudio`);
+      throw appError;
     }
   }
 
@@ -207,11 +213,13 @@ export class AudioService {
         .audioQuality(2)
         .output(outputPath)
         .on('error', (err) => {
-          logger.error(
-            `[${this.name}] Failed to assemble TTS track to ${outputPath}: ${err.message}`,
-            err,
+          const error = new AppError(
+            'TtsAssemblyError',
+            `Failed to assemble TTS track to ${outputPath}: ${err.message}`,
+            { originalError: err },
           );
-          reject(new Error(`Failed to assemble TTS track: ${err.message}`));
+          logError(error, `${this.name}:assembleTtsTrack`);
+          reject(error);
         })
         .on('end', () => {
           logger.debug(
@@ -247,11 +255,13 @@ export class AudioService {
         .audioQuality(2)
         .output(outputPath)
         .on('error', (err) => {
-          logger.error(
-            `[${this.name}] Failed to merge final audio to ${outputPath}: ${err.message}`,
-            err,
+          const error = new AppError(
+            'AudioMergeError',
+            `Failed to merge final audio to ${outputPath}: ${err.message}`,
+            { originalError: err },
           );
-          reject(new Error(`Failed to merge final audio: ${err.message}`));
+          logError(error, `${this.name}:mergeAudio`);
+          reject(error);
         })
         .on('end', () => {
           logger.debug(

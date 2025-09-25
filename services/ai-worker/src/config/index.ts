@@ -12,7 +12,7 @@ export const configSchema = z.object({
   PORT: z.coerce.number().int().positive(),
   RABBITMQ_URL: z.url(),
   MONGO_URL: z.url(),
-  TEMP_OUT_DIR: z.string().default('/tmp/output'),
+  TEMP_OUT_DIR: z.string(),
   GOOGLE_APPLICATION_CREDENTIALS: z.string(),
   GOOGLE_PROJECT_ID: z.string(),
   GOOGLE_API_KEY: z.string(),

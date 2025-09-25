@@ -7,10 +7,11 @@ import type {
   AiChaptersData,
   AiVideoAnalysisResponseType,
 } from '@ai-worker/models/types';
-import type { AudioService } from '@ai-worker/services/audio.service';
 
 import config from '@ai-worker/config';
 import { logger } from '@ai-worker/config/logger';
+import { AppError, logError } from '@ai-worker/domain/errors';
+import { AudioService } from '@ai-worker/services/audio.service';
 import {
   GenerateMovieImagesFlow,
   VideoAnalysisFlow,
@@ -79,7 +80,7 @@ export class AIMediaProcessor
 
       logger.info(`[${this.name}] Processing subtitles...`);
       const { subtitlePaths, subtitleSaveErrors } = await this.processSubtitles(
-        analysisResult.subtities,
+        analysisResult.subtitles,
         outputDir,
         path.parse(inputFile).name,
         tempDir,
@@ -99,7 +100,7 @@ export class AIMediaProcessor
           inputFile,
           tempDir,
           outputDir,
-          analysisResult.subtities,
+          analysisResult.subtitles,
         );
       this.updateProgress(99);
       logger.info(`[${this.name}] Audio processing completed.`);
@@ -120,14 +121,14 @@ export class AIMediaProcessor
 
       return { success: true, output: { data: outputData } };
     } catch (error: any) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      logger.error(
-        `[${this.name}] Error during AI processing: ${errorMessage}`,
-        error,
+      const appError = new AppError(
+        'AiProcessingError',
+        `Error during AI processing: ${error.message}`,
+        { originalError: error },
       );
-      this.emit(MediaPrcessorEvent.Error, errorMessage);
-      throw new Error(errorMessage);
+      logError(appError, this.name);
+      this.emit(MediaPrcessorEvent.Error, appError.message);
+      throw appError;
     } finally {
       await this.cleanup(tempDir);
     }
@@ -146,7 +147,7 @@ export class AIMediaProcessor
     logger.info(
       `[${this.name}] Received and parsed AI video analysis response.`,
     );
-    return analysisResult as AiVideoAnalysisResponseType;
+    return analysisResult;
   }
 
   private async processChapters(
@@ -172,7 +173,7 @@ export class AIMediaProcessor
   }
 
   private async processSubtitles(
-    subtitles: AiVideoAnalysisResponseType['subtities'],
+    subtitles: AiVideoAnalysisResponseType['subtitles'],
     outputDir: string,
     baseName: string,
     tempDir: string,
@@ -203,12 +204,13 @@ export class AIMediaProcessor
             `[${this.name}] Subtitles VTT for '${langCode}' saved to: ${finalPath}`,
           );
         } catch (e: any) {
-          const errorMessage = e instanceof Error ? e.message : String(e);
-          subtitleSaveErrors[langCode] = errorMessage;
-          logger.error(
-            `[${this.name}] Failed to save subtitles for '${langCode}': ${errorMessage}`,
-            e,
+          const error = new AppError(
+            'SubtitleSaveError',
+            `Failed to save subtitles for '${langCode}': ${e.message}`,
+            { originalError: e, langCode },
           );
+          logError(error, this.name);
+          subtitleSaveErrors[langCode] = error.message;
         }
       } else {
         logger.debug(
@@ -234,12 +236,13 @@ export class AIMediaProcessor
       this.updateProgress(90);
       return imageResult;
     } catch (e: any) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      logger.warn(
-        `[${this.name}] AI image generation failed: ${errorMessage}`,
-        e,
+      const error = new AppError(
+        'ImageGenerationError',
+        `AI image generation failed: ${e.message}`,
+        { originalError: e },
       );
-      this.updateProgress(90); // Still update progress even if failed
+      logError(error, this.name);
+      this.updateProgress(90);
       return {};
     }
   }
@@ -248,7 +251,7 @@ export class AIMediaProcessor
     inputFile: string,
     tempDir: string,
     outputDir: string,
-    subtitles: AiVideoAnalysisResponseType['subtities'],
+    subtitles: AiVideoAnalysisResponseType['subtitles'],
   ) {
     const dubbedAudioPaths: Record<string, string> = {};
     const audioProcessingErrors: Record<string, string> = {};
@@ -313,12 +316,13 @@ export class AIMediaProcessor
         );
       }
     } catch (e: any) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      audioProcessingErrors['general'] = errorMessage;
-      logger.error(
-        `[${this.name}] General audio processing error: ${errorMessage}`,
-        e,
+      const error = new AppError(
+        'AudioProcessingError',
+        `General audio processing error: ${e.message}`,
+        { originalError: e },
       );
+      logError(error, this.name);
+      audioProcessingErrors['general'] = error.message;
     }
     return { dubbedAudioPaths, audioProcessingErrors };
   }
@@ -363,11 +367,12 @@ export class AIMediaProcessor
         `[${this.name}] Temporary directory ${tempDir} removed successfully.`,
       );
     } catch (e: any) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      logger.warn(
-        `[${this.name}] Failed to remove temporary directory ${tempDir}: ${errorMessage}`,
-        e,
+      const error = new AppError(
+        'CleanupError',
+        `Failed to remove temporary directory ${tempDir}: ${e.message}`,
+        { originalError: e },
       );
+      logError(error, this.name);
     }
   }
 }

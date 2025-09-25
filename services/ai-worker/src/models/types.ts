@@ -17,5 +17,5 @@ export type AiVideoAnalysisResponseType = {
   genres: string[];
   imageGenerationPrompt: string;
   chaptersVtt?: AiChaptersData;
-  subtities: Record<string, AiSubtitleEntry[]>;
+  subtitles: Record<string, AiSubtitleEntry[]>;
 };

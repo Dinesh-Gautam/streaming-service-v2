@@ -144,7 +144,7 @@ export const VideoAnalysisFlow = ai.defineFlow(
     const dataUrl = `data:video/mp4;base64,${b64Data}`;
 
     const { output } = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-lite'),
+      model: googleAI.model('gemini-2.5-flash'),
       prompt: `Generate translated subtitles (Hindi and Punjabi), chapters (English), title, description, and genres for the provided video. The translation should be natural and human-like.`,
       messages: [
         {

@@ -11,6 +11,21 @@ x-service-base: &service-base
         target: /usr/src/app/packages
         ignore: [node_modules/]
 
+x-worker-base: &worker-base
+  profiles: ["workers"]
+  env_file:
+   - "./.env"
+  depends_on:
+    mongo:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+  networks:
+    - backend
+    - messaging
+  volumes:
+   - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
+
 services:
   # ---------- DATABASES & BROKERS ----------
   postgres:
@@ -146,12 +161,9 @@ services:
       - messaging
 
   thumbnail-worker:
-    <<: *service-base
-    profiles: ["workers"] # Only run when needed
+    <<: [*service-base, *worker-base]
     build:
-      context: .
       dockerfile: services/thumbnail-worker/Dockerfile
-      target : dev
     develop:
       watch:
         - action: sync
@@ -160,20 +172,8 @@ services:
           ignore: [node_modules/]
         - action: rebuild
           path: ./services/thumbnail-worker/package.json
-    volumes:
-      - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
-    env_file:
-      - ./.env
     environment:
       PORT: 3003
-    depends_on:
-      mongo:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - backend
-      - messaging
 
   subtitle-worker:
       <<: *service-base
@@ -195,7 +195,7 @@ services:
       env_file:
         - ./services/subtitle-worker/.env
       volumes:
-        - ${GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
+        - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
       depends_on:
         mongo:
           condition: service_healthy
@@ -205,12 +205,10 @@ services:
         - backend
         - messaging
   ai-worker:
-      <<: *service-base
-      profiles: ["workers"] # Only run when needed
+      <<: [*service-base, *worker-base]
       build:
-        context: .
         dockerfile: services/ai-worker/Dockerfile
-        target : dev
+        target: dev
       develop:
         watch:
           - action: sync
@@ -220,21 +218,11 @@ services:
           - action: rebuild
             path: ./services/ai-worker/package.json
       environment:
-        - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
-      env_file:
-        - ./services/ai-worker/.env
+       PORT: 3005
       volumes:
         - ./bin:/usr/src/app/services/ai-worker/bin
-        - ${GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
-      depends_on:
-        mongo:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
-      networks:
-        - backend
-        - messaging
-
+        - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+        - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
 # ---------- NETWORKS ----------
 networks:
