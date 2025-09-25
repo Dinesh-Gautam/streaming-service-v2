@@ -6,9 +6,15 @@ export const MediaPrcessorEvent = {
   Error: 'error',
 } as const;
 
-export interface IMediaProcessor<T extends WorkerOutputs[keyof WorkerOutputs]>
-  extends NodeJS.EventEmitter {
-  process(inputFile: string, outputDir: string): Promise<WorkerOutput<T>>;
+export interface IMediaProcessor<
+  T extends WorkerOutputs[keyof WorkerOutputs],
+  O = unknown,
+> extends NodeJS.EventEmitter {
+  process(
+    inputFile: string,
+    outputDir: string,
+    options?: O,
+  ): Promise<WorkerOutput<T>>;
 
   on(
     event: (typeof MediaPrcessorEvent)[keyof typeof MediaPrcessorEvent],

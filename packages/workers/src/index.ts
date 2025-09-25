@@ -10,7 +10,9 @@ export interface ThumbnailOutput {
 }
 
 export interface TranscodingOutput {
-  test: boolean;
+  manifest: string;
+  dubbedLanguages: string[];
+  dubbedAudioTracks: string[];
 }
 
 export interface SubtitleOutput {
@@ -70,6 +72,7 @@ export type WorkerMessages = {
     jobId: string;
     taskId: string;
     sourceUrl: string;
+    aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } };
   };
   subtitle_tasks: {
     jobId: string;
