@@ -7,7 +7,9 @@ import { v4 as uuidv4 } from 'uuid'; // Keep uuid for filenames
 
 import type { IStorage } from '@monorepo/core';
 
+import config from '@ai-worker/config';
 import { ai } from '@ai-worker/config/ai.config';
+import { logger } from '@ai-worker/config/logger';
 import { generateImagePrompt } from '@ai-worker/domain/prompt-generator';
 import {
   AiImageResponseSchema,
@@ -23,7 +25,7 @@ async function generateAndSaveImage(
   outputDir: string,
 ): Promise<string | undefined> {
   try {
-    console.log(`[GenerateMovieImagesFlow] Generating ${imageType} image...`);
+    logger.info(`[GenerateMovieImagesFlow] Generating ${imageType} image...`);
 
     const generationConfig = {
       model: googleAI.model('gemini-2.5-flash-image-preview'),
@@ -44,7 +46,7 @@ async function generateAndSaveImage(
 
     const imageData = parseDataURL(image.url);
     if (!imageData) {
-      console.warn(
+      logger.warn(
         `[GenerateMovieImagesFlow] ${imageType} image generation did not return expected data.`,
         image,
       );
@@ -65,14 +67,14 @@ async function generateAndSaveImage(
     await fs.unlink(tempPath);
 
     const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
-    console.log(
+    logger.info(
       `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
       relativePath,
     );
 
     return relativePath;
   } catch (error) {
-    console.error(
+    logger.error(
       `[GenerateMovieImagesFlow] Error generating ${imageType} image:`,
       error,
     );
@@ -87,13 +89,12 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
       title: z.string(),
       description: z.string(),
       genres: z.array(z.string()),
-      movieId: z.string(),
       imageGenerationPrompt: z.string(),
     }),
     outputSchema: AiImageResponseSchema,
   },
   async (input) => {
-    console.log(
+    logger.info(
       `[GenerateMovieImagesFlow] Starting image generation for: ${input.title}`,
     );
 
@@ -107,12 +108,12 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
     if (!imagePrompt) {
       throw new Error('Failed to generate image prompt.');
     }
-    console.log(
+    logger.info(
       `[GenerateMovieImagesFlow] Generated Image Prompt: ${imagePrompt}`,
     );
 
     const storage = container.resolve<IStorage>(DI_TOKENS.Storage);
-    const outputDir = path.join(process.cwd(), 'tmp', 'ai-generated');
+    const outputDir = path.join(config.TEMP_OUT_DIR, 'ai-generated');
     await fs.mkdir(outputDir, { recursive: true });
 
     const [posterImagePath, backdropImagePath] = await Promise.all([

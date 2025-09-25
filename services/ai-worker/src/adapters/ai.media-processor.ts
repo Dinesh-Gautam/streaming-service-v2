@@ -1,72 +1,49 @@
-import { exec } from 'child_process';
 import { EventEmitter } from 'events';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
-import { promisify } from 'util';
-import ffmpeg from 'fluent-ffmpeg';
-// Import from 'genkit'
-import { z } from 'zod'; // Using Zod for parsing the structured output
+import { inject, injectable } from 'tsyringe';
 
-import type { AiVideoAnalysisResponseSchema } from '@ai-worker/domain/schemas';
-import type { AIEngineOutput } from '@monorepo/workers';
+import type {
+  AiChaptersData,
+  AiVideoAnalysisResponseType,
+} from '@ai-worker/models/types';
+import type { AudioService } from '@ai-worker/services/audio.service';
 
+import config from '@ai-worker/config';
+import { logger } from '@ai-worker/config/logger';
 import {
   GenerateMovieImagesFlow,
   VideoAnalysisFlow,
 } from '@ai-worker/use-cases/flow';
-// Genkit Core and Google AI Plugin
-// Assume genkit is configured globally, e.g., in genkit.config.ts
-import { TextToSpeechClient } from '@google-cloud/text-to-speech';
-import { IMediaProcessor, MediaPrcessorEvent } from '@monorepo/core';
-import { WorkerOutput } from '@monorepo/workers';
+import {
+  constructChaptersVtt,
+  constructSubtitlesVtt,
+} from '@ai-worker/utils/vtt.utils';
+import {
+  DI_TOKENS,
+  IMediaProcessor,
+  IStorage,
+  MediaPrcessorEvent,
+} from '@monorepo/core';
+import { AIEngineOutput, WorkerOutput } from '@monorepo/workers';
 
-import config from '../config';
-import { logger } from '../config/logger';
-
-// Import base class and types
-
-type AiSubtitleEntry = {
-  startTimecode: string;
-  endTimecode: string;
-  text: string;
-  voiceGender: 'male' | 'female';
-  voiceType: 'neutral' | 'angry' | 'happy';
-};
-
-type AiChaptersData = {
-  timecode: string;
-  chapterTitle: string;
-}[];
-
-type AiVideoAnalysisResponseType = z.infer<
-  typeof AiVideoAnalysisResponseSchema
->;
-
-const execPromise = promisify(exec);
-
+@injectable()
 export class AIMediaProcessor
   extends EventEmitter
   implements IMediaProcessor<AIEngineOutput>
 {
-  private ttsClient: TextToSpeechClient;
-  private engineName = 'AIMediaProcessor';
+  private name = 'AIMediaProcessor';
 
-  constructor() {
+  constructor(
+    private audioService: AudioService,
+    @inject(DI_TOKENS.Storage) private storage: IStorage,
+  ) {
     super();
-    try {
-      this.ttsClient = new TextToSpeechClient({
-        projectId: config.GOOGLE_PROJECT_ID,
-      });
-      logger.info(`[${this.engineName}] Google TTS Client Initialized.`);
-    } catch (error: any) {
-      logger.error(
-        `[${this.engineName}] Failed to initialize Google TTS Client: ${error.message}`,
-      );
-      this.ttsClient = null as any;
-    }
+    logger.info(`[${this.name}] Initialized.`);
   }
 
   private updateProgress(progress: number) {
+    logger.debug(`[${this.name}] Progress updated: ${progress}%`);
     this.emit(MediaPrcessorEvent.Progress, progress);
   }
 
@@ -74,645 +51,323 @@ export class AIMediaProcessor
     inputFile: string,
     outputDir: string,
   ): Promise<WorkerOutput<AIEngineOutput>> {
-    this.emit(MediaPrcessorEvent.Progress, 0);
-
+    this.updateProgress(0);
     logger.info(
-      `[${this.engineName}] Starting AI processing for: ${inputFile}`,
+      `[${this.name}] Starting AI processing for: ${inputFile} into output directory: ${outputDir}`,
     );
 
-    if (!config.GOOGLE_API_KEY) {
-      const errorMsg = 'GOOGLE_API_KEY environment variable not set.';
-      logger.error(`[${this.engineName}] ${errorMsg}`);
-      this.emit(MediaPrcessorEvent.Error, errorMsg);
-      throw new Error(errorMsg);
-    }
-    if (!this.ttsClient) {
-      const errorMsg = 'Google TTS Client failed to initialize.';
-      logger.error(`[${this.engineName}] ${errorMsg}`);
-      this.emit(MediaPrcessorEvent.Error, errorMsg);
-      throw new Error(errorMsg);
-    }
+    const tempDir = config.TEMP_OUT_DIR;
 
-    const movieId = path.basename(outputDir);
-    const baseName = path.parse(inputFile).name;
-    if (!movieId) {
-      const errorMsg = `Could not determine movieId from outputDir: ${outputDir}`;
-      logger.error(`[${this.engineName}] ${errorMsg}`);
-      this.emit(MediaPrcessorEvent.Error, errorMsg);
-      throw new Error(errorMsg);
-    }
-    logger.info(`[${this.engineName}] Using movieId: ${movieId}`);
-
-    const tempDir = 'temp/';
-    await fs.promises.mkdir(outputDir, { recursive: true });
-    await fs.promises.mkdir(tempDir, { recursive: true });
-    logger.info(`[${this.engineName}] Created temp directory: ${tempDir}`);
-    logger.info(
-      `[${this.engineName}] Ensured output directory exists: ${outputDir}`,
-    );
+    logger.debug(`[${this.name}] Creating temporary directory: ${tempDir}`);
+    await fs.mkdir(tempDir, { recursive: true });
 
     try {
-      logger.info(
-        `[${this.engineName}] Sending video analysis request to Gemini...`,
-      );
-      this.updateProgress(15);
-
-      const analysisResult = await VideoAnalysisFlow({
-        videoFilePath: inputFile,
-      });
-
+      logger.info(`[${this.name}] Running video analysis for ${inputFile}...`);
+      const analysisResult = await this.runVideoAnalysis(inputFile);
       this.updateProgress(40);
+      logger.info(`[${this.name}] Video analysis completed.`);
 
-      const aiData = analysisResult;
-      logger.info(
-        `[${this.engineName}] Received and parsed AI video analysis response.`,
+      logger.info(`[${this.name}] Processing chapters...`);
+      const chaptersVttPath = await this.processChapters(
+        analysisResult.chaptersVtt,
+        outputDir,
+        path.parse(inputFile).name,
+        tempDir,
       );
-
-      let chaptersVttContent: string | undefined = undefined;
-      let chaptersVttPath: string | undefined = undefined;
-      if (aiData.chaptersVtt && aiData.chaptersVtt.length > 0) {
-        chaptersVttContent = this._constructChaptersVtt(aiData.chaptersVtt);
-        chaptersVttPath = path.join(outputDir, `${baseName}.chapters.vtt`);
-        try {
-          await fs.promises.writeFile(chaptersVttPath, chaptersVttContent);
-          logger.info(
-            `[${this.engineName}] Chapters VTT saved to: ${chaptersVttPath}`,
-          );
-        } catch (writeError: any) {
-          logger.warn(
-            `[${this.engineName}] Failed to save chapters VTT file: ${writeError.message}`,
-          );
-          chaptersVttPath = undefined;
-          chaptersVttContent = undefined;
-        }
-      } else {
-        logger.info(`[${this.engineName}] No chapter VTT generated by AI.`);
-      }
       this.updateProgress(45);
+      logger.info(`[${this.name}] Chapters processing completed.`);
 
-      const subtitlePaths: Record<string, string> = {};
-      const subtitleSaveErrors: Record<string, string> = {};
+      logger.info(`[${this.name}] Processing subtitles...`);
+      const { subtitlePaths, subtitleSaveErrors } = await this.processSubtitles(
+        analysisResult.subtities,
+        outputDir,
+        path.parse(inputFile).name,
+        tempDir,
+      );
+      this.updateProgress(60);
+      logger.info(`[${this.name}] Subtitles processing completed.`);
 
-      if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
-        logger.info(`[${this.engineName}] Processing generated subtitles...`);
-        const languages = Object.keys(aiData.subtities);
-        const totalLangs = languages.length;
-        let langsProcessed = 0;
-
-        for (const langCode of languages) {
-          const subtitles =
-            aiData.subtities[langCode as keyof typeof aiData.subtities];
-          if (subtitles && subtitles.length > 0) {
-            const vttContent = this._constructSubtitlesVtt(subtitles);
-            const vttPath = path.join(
-              outputDir,
-              `${baseName}.${langCode}.ai.vtt`,
-            );
-            try {
-              await fs.promises.writeFile(vttPath, vttContent);
-              subtitlePaths[langCode] = vttPath;
-              logger.info(
-                `[${this.engineName}] Subtitles VTT for '${langCode}' saved to: ${vttPath}`,
-              );
-            } catch (writeError: any) {
-              const errorMsg = `Failed to save subtitles VTT for '${langCode}': ${writeError.message}`;
-              logger.warn(`[${this.engineName}] ${errorMsg}`);
-              subtitleSaveErrors[langCode] = errorMsg;
-            }
-          } else {
-            logger.info(
-              `[${this.engineName}] No subtitle entries found for language '${langCode}'.`,
-            );
-          }
-          langsProcessed++;
-          const subtitleProgress = 45 + (langsProcessed / totalLangs) * 15;
-          this.updateProgress(subtitleProgress);
-        }
-      } else {
-        logger.info(`[${this.engineName}] No subtitles generated by AI.`);
-        this.updateProgress(60);
-      }
-
-      let posterImagePath: string | undefined = undefined;
-      let backdropImagePath: string | undefined = undefined;
-
-      if (aiData.title && aiData.description && aiData.genres) {
-        logger.info(`[${this.engineName}] Starting AI image generation...`);
-        this.updateProgress(65);
-        try {
-          const imageResult = await GenerateMovieImagesFlow({
-            movieId: movieId,
-            title: aiData.title,
-            description: aiData.description,
-            genres: aiData.genres,
-            imageGenerationPrompt: aiData.imageGenerationPrompt,
-          });
-          posterImagePath = imageResult.posterImagePath;
-          backdropImagePath = imageResult.backdropImagePath;
-          logger.info(`[${this.engineName}] AI image generation completed.`);
-          this.updateProgress(90);
-        } catch (imageError: any) {
-          logger.warn(
-            `[${this.engineName}] AI image generation failed: ${imageError.message}`,
-            imageError,
-          );
-          this.updateProgress(90);
-        }
-      } else {
-        logger.warn(
-          `[${this.engineName}] Skipping image generation due to missing title, description, or genres from text analysis.`,
-        );
-        this.updateProgress(90);
-      }
+      logger.info(`[${this.name}] Generating images...`);
+      const { posterImagePath, backdropImagePath } =
+        await this.generateImages(analysisResult);
       this.updateProgress(90);
+      logger.info(`[${this.name}] Image generation completed.`);
 
-      let dubbedAudioPaths: Record<string, string> = {};
-      let audioProcessingErrors: Record<string, string> = {};
-      const originalAudioPath = path.join(tempDir, `${baseName}_original.wav`);
-      const instrumentalAudioPath = path.join(
-        tempDir,
-        `${baseName}_original_Instruments.wav`,
-      );
-      const vocalAudioPath = path.join(
-        tempDir,
-        `${baseName}_original_Vocals.wav`,
-      );
-
-      try {
-        logger.info(`[${this.engineName}] Extracting original audio...`);
-        await this._extractAudio(inputFile, originalAudioPath);
-        logger.info(
-          `[${this.engineName}] Original audio extracted to: ${originalAudioPath}`,
+      logger.info(`[${this.name}] Processing audio...`);
+      const { dubbedAudioPaths, audioProcessingErrors } =
+        await this.processAudio(
+          inputFile,
+          tempDir,
+          outputDir,
+          analysisResult.subtities,
         );
-        this.updateProgress(91);
-
-        logger.info(`[${this.engineName}] Removing vocals...`);
-        const binDir = path.resolve('bin');
-        const vocalRemoverExe = './vocal_remover';
-        const absoluteInputAudioPath = path.resolve(originalAudioPath);
-
-        const vocalRemoverCommand = `${vocalRemoverExe} -P "models/baseline.pth" --output_dir "${path.resolve('temp')}" --input "${absoluteInputAudioPath}"`;
-
-        logger.info(
-          `[${this.engineName}] Executing vocal remover command: ${vocalRemoverCommand} in CWD: ${binDir}`,
-        );
-        await this._runCommand(vocalRemoverCommand, binDir);
-        logger.info(
-          `[${this.engineName}] Vocal removal complete. Instrumental expected at: ${instrumentalAudioPath}`,
-        );
-
-        try {
-          await fs.promises.access(instrumentalAudioPath);
-        } catch (accessError) {
-          throw new Error(
-            `Vocal remover did not produce the expected instrumental file: ${instrumentalAudioPath}`,
-          );
-        }
-        this.updateProgress(93);
-
-        if (aiData.subtities && Object.keys(aiData.subtities).length > 0) {
-          const languages = Object.keys(
-            aiData.subtities,
-          ) as (keyof typeof aiData.subtities)[];
-          const totalLangs = languages.length;
-          let langsProcessed = 0;
-
-          for (const langCode of languages) {
-            const langSubtitles = aiData.subtities[langCode];
-            if (langSubtitles && langSubtitles.length > 0) {
-              logger.info(
-                `[${this.engineName}] Starting dubbing process for language: ${langCode}`,
-              );
-              const langProgressStart = 93 + (langsProcessed / totalLangs) * 6;
-              this.updateProgress(langProgressStart);
-
-              try {
-                const finalDubbedPath = path.join(
-                  outputDir,
-                  `${baseName}.${langCode}.dubbed.mp3`,
-                );
-
-                await this._generateDubbedAudio(
-                  instrumentalAudioPath,
-                  langSubtitles,
-                  langCode,
-                  tempDir,
-                  finalDubbedPath,
-                  (progress) =>
-                    this.updateProgress(langProgressStart + progress * 0.06),
-                );
-                dubbedAudioPaths[langCode] = finalDubbedPath;
-                logger.info(
-                  `[${this.engineName}] Dubbed audio for '${langCode}' saved to: ${finalDubbedPath}`,
-                );
-              } catch (dubError: any) {
-                const errorMsg = `Failed to generate dubbed audio for '${langCode}': ${dubError.message}`;
-                logger.error(`[${this.engineName}] ${errorMsg}`, dubError);
-                audioProcessingErrors[langCode] = errorMsg;
-              }
-            }
-            langsProcessed++;
-          }
-        } else {
-          logger.info(`[${this.engineName}] No subtitles found for dubbing.`);
-        }
-      } catch (audioError: any) {
-        const errorMsg = `Audio processing failed: ${audioError.message}`;
-        logger.error(`[${this.engineName}] ${errorMsg}`, audioError);
-        if (Object.keys(audioProcessingErrors).length === 0) {
-          audioProcessingErrors['general'] = errorMsg;
-        }
-      } finally {
-        try {
-          logger.info(
-            `[${this.engineName}] Cleaning up temporary directory: ${tempDir}`,
-          );
-          await fs.promises.rm(tempDir, { recursive: true, force: true });
-          logger.info(`[${this.engineName}] Temporary directory removed.`);
-        } catch (cleanupError: any) {
-          logger.warn(
-            `[${this.engineName}] Failed to remove temporary directory ${tempDir}: ${cleanupError.message}`,
-          );
-        }
-      }
-
       this.updateProgress(99);
+      logger.info(`[${this.name}] Audio processing completed.`);
 
-      const outputData: AIEngineOutput['data'] = {
-        title: aiData.title,
-        description: aiData.description,
-        genres: aiData.genres,
-        chapters: chaptersVttPath ? { vttPath: chaptersVttPath } : undefined,
-        subtitles:
-          Object.keys(subtitlePaths).length > 0 ?
-            { vttPaths: subtitlePaths }
-          : undefined,
-        posterImagePath: posterImagePath,
-        backdropImagePath: backdropImagePath,
-        ...(Object.keys(subtitleSaveErrors).length > 0 && {
-          subtitleErrors: subtitleSaveErrors,
-        }),
-        ...(Object.keys(dubbedAudioPaths).length > 0 && {
-          dubbedAudioPaths: dubbedAudioPaths,
-        }),
-        ...(Object.keys(audioProcessingErrors).length > 0 && {
-          audioProcessingErrors,
-        }),
-      };
-
+      const outputData = this.constructOutput(
+        analysisResult,
+        chaptersVttPath,
+        subtitlePaths,
+        subtitleSaveErrors,
+        posterImagePath,
+        backdropImagePath,
+        dubbedAudioPaths,
+        audioProcessingErrors,
+      );
       this.updateProgress(100);
-      logger.info(`[${this.engineName}] AI processing completed successfully.`);
+      logger.info(`[${this.name}] AI processing completed successfully.`);
       this.emit(MediaPrcessorEvent.Completed, 100);
-      return {
-        success: true,
-        output: {
-          data: outputData,
-        },
-      };
-    } catch (error: any) {
-      try {
-        logger.warn(
-          `[${this.engineName}] Cleaning up temporary directory due to error: ${tempDir}`,
-        );
-        await fs.promises.rm(tempDir, { recursive: true, force: true });
-      } catch (cleanupError: any) {
-        logger.error(
-          `[${this.engineName}] Failed to remove temporary directory ${tempDir} after error: ${cleanupError.message}`,
-        );
-      }
 
-      let errorMessage = 'An unexpected error occurred during AI processing.';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
+      return { success: true, output: { data: outputData } };
+    } catch (error: any) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error(
-        `[${this.engineName}] Error during AI processing: ${errorMessage}`,
+        `[${this.name}] Error during AI processing: ${errorMessage}`,
         error,
       );
       this.emit(MediaPrcessorEvent.Error, errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      await this.cleanup(tempDir);
     }
   }
 
-  private _constructChaptersVtt(chapters: AiChaptersData): string {
-    let vttContent = 'WEBVTT\n\n';
-    chapters.sort(
-      (a, b) =>
-        this._timecodeToSeconds(a.timecode) -
-        this._timecodeToSeconds(b.timecode),
-    );
-
-    for (let i = 0; i < chapters.length; i++) {
-      const chapter = chapters[i];
-      const nextChapter = chapters[i + 1];
-      const startTimeFormatted = this._formatVttTime(chapter.timecode);
-
-      let endTimeFormattedFinal: string;
-      if (nextChapter) {
-        endTimeFormattedFinal = this._formatVttTime(nextChapter.timecode);
-      } else {
-        const startSeconds = this._timecodeToSeconds(chapter.timecode);
-        endTimeFormattedFinal = this._secondsToVttTime(startSeconds + 300);
-      }
-
-      vttContent += `${startTimeFormatted} --> ${endTimeFormattedFinal}\n`;
-      vttContent += `${chapter.chapterTitle}\n\n`;
-    }
-
-    return vttContent;
-  }
-
-  private _constructSubtitlesVtt(subtitles: AiSubtitleEntry[]): string {
-    let vttContent = 'WEBVTT\n\n';
-
-    for (const sub of subtitles) {
-      if (sub.text.trim() === '') continue;
-
-      const startTime = this._formatVttTime(sub.startTimecode);
-      const endTime = this._formatVttTime(sub.endTimecode);
-
-      vttContent += `${startTime} --> ${endTime}\n`;
-      vttContent += `${sub.text.trim()}\n\n`;
-    }
-
-    return vttContent;
-  }
-
-  private _timecodeToSeconds(timecode: string): number {
-    const parts = timecode.split(':').map(Number);
-    let seconds = 0;
-    if (parts.length === 3) {
-      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-      seconds = parts[0] * 60 + parts[1];
-    } else if (parts.length === 1) {
-      seconds = parts[0];
-    }
-    return isNaN(seconds) ? 0 : Math.max(0, seconds);
-  }
-
-  private _secondsToVttTime(seconds: number): string {
-    const validSeconds = Math.max(0, seconds);
-    const totalMilliseconds = Math.round(validSeconds * 1000);
-
-    const ms = (totalMilliseconds % 1000).toString().padStart(3, '0');
-    const totalSecondsInt = Math.floor(totalMilliseconds / 1000);
-    const secs = (totalSecondsInt % 60).toString().padStart(2, '0');
-    const totalMinutesInt = Math.floor(totalSecondsInt / 60);
-    const minutes = (totalMinutesInt % 60).toString().padStart(2, '0');
-    const hours = Math.floor(totalMinutesInt / 60)
-      .toString()
-      .padStart(2, '0');
-
-    return `${hours}:${minutes}:${secs}.${ms}`;
-  }
-
-  private _formatVttTime(timecode: string): string {
-    const seconds = this._timecodeToSeconds(timecode);
-    return this._secondsToVttTime(seconds);
-  }
-
-  private async _runCommand(
-    command: string,
-    cwd?: string,
-  ): Promise<{ stdout: string; stderr: string }> {
-    logger.info(
-      `[${this.engineName}] Executing command: ${command} in ${cwd || process.cwd()}`,
-    );
-    try {
-      const { stdout, stderr } = await execPromise(command, {
-        cwd,
-        shell: '/bin/sh',
-      });
-      if (stderr) {
-        logger.warn(`[${this.engineName}] Command stderr:\n${stderr}`);
-      }
-      logger.info(`[${this.engineName}] Command stdout:\n${stdout}`);
-      return { stdout, stderr };
-    } catch (error: any) {
-      logger.error(
-        `[${this.engineName}] Command failed: ${command}\nError: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`,
-      );
-      throw new Error(
-        `Command execution failed: ${error.message}. Stderr: ${error.stderr}`,
-      );
-    }
-  }
-
-  private _extractAudio(
+  private async runVideoAnalysis(
     inputFile: string,
-    outputAudioFile: string,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputFile)
-        .noVideo()
-        .audioCodec('pcm_s16le')
-        .audioFrequency(44100)
-        .audioChannels(2)
-        .output(outputAudioFile)
-        .on('error', (err) => {
-          logger.error(
-            `[${this.engineName}] Error extracting audio: ${err.message}`,
-          );
-          reject(new Error(`Failed to extract audio: ${err.message}`));
-        })
-        .on('end', () => {
-          logger.info(
-            `[${this.engineName}] Audio extraction finished: ${outputAudioFile}`,
-          );
-          resolve();
-        })
-        .run();
+  ): Promise<AiVideoAnalysisResponseType> {
+    logger.info(
+      `[${this.name}] Sending video analysis request to Gemini for file: ${inputFile}...`,
+    );
+    this.updateProgress(15);
+    const analysisResult = await VideoAnalysisFlow({
+      videoFilePath: inputFile,
     });
+    logger.info(
+      `[${this.name}] Received and parsed AI video analysis response.`,
+    );
+    return analysisResult as AiVideoAnalysisResponseType;
   }
 
-  private async _generateTTSAudio(
-    text: string,
-    languageCode: string,
-    voiceGender: 'male' | 'female',
-    outputFile: string,
-  ): Promise<void> {
-    let voiceName = '';
-    if (languageCode.startsWith('hi')) {
-      voiceName =
-        voiceGender === 'male' ?
-          'hi-IN-Chirp3-HD-Charon'
-        : 'hi-IN-Chirp3-HD-Aoede';
-    } else if (languageCode.startsWith('pa')) {
-      voiceName =
-        voiceGender === 'male' ? 'pa-IN-Wavenet-B' : 'pa-IN-Wavenet-C';
-    } else {
-      throw new Error(`Unsupported language code for TTS: ${languageCode}`);
+  private async processChapters(
+    chapters: AiChaptersData | undefined,
+    outputDir: string,
+    baseName: string,
+    tempDir: string,
+  ): Promise<string | undefined> {
+    if (!chapters || chapters.length === 0) {
+      logger.info(`[${this.name}] No chapters found to process.`);
+      return undefined;
+    }
+    logger.debug(`[${this.name}] Constructing chapters VTT.`);
+    const vttContent = constructChaptersVtt(chapters);
+    const tempPath = path.join(tempDir, `${baseName}.chapters.vtt`);
+    await fs.writeFile(tempPath, vttContent);
+    const finalPath = await this.storage.saveFile(
+      tempPath,
+      path.join(outputDir, `${baseName}.chapters.vtt`),
+    );
+    logger.info(`[${this.name}] Chapters VTT saved to: ${finalPath}`);
+    return finalPath;
+  }
+
+  private async processSubtitles(
+    subtitles: AiVideoAnalysisResponseType['subtities'],
+    outputDir: string,
+    baseName: string,
+    tempDir: string,
+  ) {
+    const subtitlePaths: Record<string, string> = {};
+    const subtitleSaveErrors: Record<string, string> = {};
+    if (!subtitles) {
+      logger.info(`[${this.name}] No subtitles found to process.`);
+      return { subtitlePaths, subtitleSaveErrors };
     }
 
-    const request = {
-      input: { text: text },
-      voice: { languageCode: languageCode, name: voiceName },
-      audioConfig: { audioEncoding: 'MP3' as const },
-    };
+    for (const langCode of Object.keys(subtitles)) {
+      const langSubtitles = subtitles[langCode as keyof typeof subtitles];
+      if (langSubtitles && langSubtitles.length > 0) {
+        logger.debug(
+          `[${this.name}] Constructing subtitles VTT for language: ${langCode}`,
+        );
+        const vttContent = constructSubtitlesVtt(langSubtitles);
+        const tempPath = path.join(tempDir, `${baseName}.${langCode}.ai.vtt`);
+        try {
+          await fs.writeFile(tempPath, vttContent);
+          const finalPath = await this.storage.saveFile(
+            tempPath,
+            path.join(outputDir, `${baseName}.${langCode}.ai.vtt`),
+          );
+          subtitlePaths[langCode] = finalPath;
+          logger.info(
+            `[${this.name}] Subtitles VTT for '${langCode}' saved to: ${finalPath}`,
+          );
+        } catch (e: any) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          subtitleSaveErrors[langCode] = errorMessage;
+          logger.error(
+            `[${this.name}] Failed to save subtitles for '${langCode}': ${errorMessage}`,
+            e,
+          );
+        }
+      } else {
+        logger.debug(
+          `[${this.name}] No subtitle entries for language: ${langCode}`,
+        );
+      }
+    }
+    return { subtitlePaths, subtitleSaveErrors };
+  }
+
+  private async generateImages(aiData: AiVideoAnalysisResponseType) {
+    if (!aiData.title || !aiData.description || !aiData.genres) {
+      logger.warn(
+        `[${this.name}] Skipping image generation due to missing data (title, description, or genres).`,
+      );
+      return {};
+    }
+    logger.info(`[${this.name}] Starting AI image generation ...`);
+    this.updateProgress(65);
+    try {
+      const imageResult = await GenerateMovieImagesFlow(aiData);
+      logger.info(`[${this.name}] AI image generation completed.`);
+      this.updateProgress(90);
+      return imageResult;
+    } catch (e: any) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logger.warn(
+        `[${this.name}] AI image generation failed: ${errorMessage}`,
+        e,
+      );
+      this.updateProgress(90); // Still update progress even if failed
+      return {};
+    }
+  }
+
+  private async processAudio(
+    inputFile: string,
+    tempDir: string,
+    outputDir: string,
+    subtitles: AiVideoAnalysisResponseType['subtities'],
+  ) {
+    const dubbedAudioPaths: Record<string, string> = {};
+    const audioProcessingErrors: Record<string, string> = {};
+    const baseName = path.parse(inputFile).name;
+    const originalAudioPath = path.join(tempDir, `${baseName}_original.wav`);
 
     try {
       logger.info(
-        `[${this.engineName}] Requesting TTS for "${text.substring(0, 30)}..." (Voice: ${voiceName})`,
+        `[${this.name}] Extracting audio from ${inputFile} to ${originalAudioPath}...`,
       );
-      const [response] = await this.ttsClient.synthesizeSpeech(request);
-      if (!response.audioContent) {
-        throw new Error('TTS response did not contain audio content.');
-      }
-      await fs.promises.writeFile(outputFile, response.audioContent, 'binary');
+      await this.audioService.extractAudio(inputFile, originalAudioPath);
+      this.updateProgress(91);
       logger.info(
-        `[${this.engineName}] TTS audio content written to file: ${outputFile}`,
+        `[${this.name}] Audio extracted. Removing vocals from ${originalAudioPath}...`,
       );
-    } catch (error: any) {
+      const instrumentalAudioPath = await this.audioService.removeVocals(
+        originalAudioPath,
+        tempDir,
+      );
+      this.updateProgress(93);
+      logger.info(
+        `[${this.name}] Vocals removed. Instrumental audio path: ${instrumentalAudioPath}`,
+      );
+
+      if (subtitles) {
+        for (const langCode of Object.keys(subtitles)) {
+          const langSubtitles = subtitles[langCode];
+          if (langSubtitles && langSubtitles.length > 0) {
+            const tempDubbedPath = path.join(
+              tempDir,
+              `${baseName}.${langCode}.dubbed.mp3`,
+            );
+            logger.info(
+              `[${this.name}] Generating dubbed audio for language ${langCode}...`,
+            );
+
+            await this.audioService.generateDubbedAudio(
+              instrumentalAudioPath,
+              langSubtitles,
+              langCode,
+              tempDir,
+              tempDubbedPath,
+              (p) => this.updateProgress(93 + p * 0.06),
+            );
+            const finalPath = await this.storage.saveFile(
+              tempDubbedPath,
+              path.join(outputDir, `${baseName}.${langCode}.dubbed.mp3`),
+            );
+            dubbedAudioPaths[langCode] = finalPath;
+            logger.info(
+              `[${this.name}] Dubbed audio for ${langCode} saved to: ${finalPath}`,
+            );
+          } else {
+            logger.debug(
+              `[${this.name}] No subtitle entries for dubbed audio generation for language: ${langCode}`,
+            );
+          }
+        }
+      } else {
+        logger.info(
+          `[${this.name}] No subtitles provided for audio processing.`,
+        );
+      }
+    } catch (e: any) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      audioProcessingErrors['general'] = errorMessage;
       logger.error(
-        `[${this.engineName}] Google TTS API error for voice ${voiceName}: ${error.message}`,
+        `[${this.name}] General audio processing error: ${errorMessage}`,
+        e,
       );
-      throw new Error(`TTS generation failed: ${error.message}`);
     }
+    return { dubbedAudioPaths, audioProcessingErrors };
   }
 
-  private async _generateDubbedAudio(
-    instrumentalAudioPath: string,
-    subtitles: AiSubtitleEntry[],
-    langCode: string,
-    tempDir: string,
-    finalOutputPath: string,
-    onProgress: (progress: number) => void,
-  ): Promise<void> {
-    const ttsLangCode = langCode === 'hi' ? 'hi-IN' : 'pa-IN';
-    const segmentFiles: string[] = [];
-    let lastEndTimeSec = 0;
+  private constructOutput(
+    aiData: AiVideoAnalysisResponseType,
+    chaptersVttPath: string | undefined,
+    subtitlePaths: Record<string, string>,
+    subtitleSaveErrors: Record<string, string>,
+    posterImagePath: string | undefined,
+    backdropImagePath: string | undefined,
+    dubbedAudioPaths: Record<string, string>,
+    audioProcessingErrors: Record<string, string>,
+  ): AIEngineOutput['data'] {
+    logger.debug(`[${this.name}] Constructing final output data.`);
+    return {
+      title: aiData.title,
+      description: aiData.description,
+      genres: aiData.genres,
+      chapters: chaptersVttPath ? { vttPath: chaptersVttPath } : undefined,
+      subtitles:
+        Object.keys(subtitlePaths).length > 0 ?
+          { vttPaths: subtitlePaths }
+        : undefined,
+      posterImagePath,
+      backdropImagePath,
+      ...(Object.keys(subtitleSaveErrors).length > 0 && {
+        subtitleErrors: subtitleSaveErrors,
+      }),
+      ...(Object.keys(dubbedAudioPaths).length > 0 && { dubbedAudioPaths }),
+      ...(Object.keys(audioProcessingErrors).length > 0 && {
+        audioProcessingErrors,
+      }),
+    };
+  }
 
-    onProgress(0);
-
-    for (let i = 0; i < subtitles.length; i++) {
-      const sub = subtitles[i];
-      const startTimeSec = this._timecodeToSeconds(sub.startTimecode);
-      const endTimeSec = this._timecodeToSeconds(sub.endTimecode);
-      const segmentPath = path.join(tempDir, `tts_${langCode}_${i}.mp3`);
-
-      if (sub.text.trim()) {
-        await this._generateTTSAudio(
-          sub.text,
-          ttsLangCode,
-          sub.voiceGender,
-          segmentPath,
-        );
-
-        segmentFiles.push(segmentPath);
-        lastEndTimeSec = endTimeSec;
-      }
-      onProgress(((i + 1) / subtitles.length) * 50);
-    }
-
-    onProgress(50);
-
-    const assembledTTSPath = path.join(tempDir, `assembled_${langCode}.mp3`);
-
-    if (segmentFiles.length === 0) {
+  private async cleanup(tempDir: string) {
+    try {
+      logger.info(`[${this.name}] Cleaning up temporary directory: ${tempDir}`);
+      await fs.rm(tempDir, { recursive: true, force: true });
       logger.info(
-        `[${this.engineName}] No TTS segments generated for ${langCode}, skipping assembly and merge.`,
+        `[${this.name}] Temporary directory ${tempDir} removed successfully.`,
       );
-      return;
+    } catch (e: any) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logger.warn(
+        `[${this.name}] Failed to remove temporary directory ${tempDir}: ${errorMessage}`,
+        e,
+      );
     }
-
-    await new Promise<void>((resolve, reject) => {
-      const command = ffmpeg();
-      const filterComplex: string[] = [];
-      let outputStreams = '';
-
-      segmentFiles.forEach((segmentPath, index) => {
-        command.input(segmentPath);
-        const sub = subtitles[index];
-        const startTimeMs = Math.round(
-          this._timecodeToSeconds(sub.startTimecode) * 1000,
-        );
-        filterComplex.push(
-          `[${index}:a]adelay=${startTimeMs}|${startTimeMs}[aud${index}]`,
-        );
-        outputStreams += `[aud${index}]`;
-      });
-
-      filterComplex.push(
-        `${outputStreams}amix=inputs=${segmentFiles.length}:normalize=1:dropout_transition=0[mixed]`,
-      );
-      filterComplex.push(`[mixed]dynaudnorm=p=0.95:m=20[mixout]`);
-
-      command
-        .complexFilter(filterComplex)
-        .map('[mixout]')
-        .audioCodec('libmp3lame')
-        .audioQuality(2)
-        .output(assembledTTSPath)
-        .on('start', (commandLine) => {
-          logger.info(
-            `[${this.engineName}] Assembling TTS track for ${langCode} with command: ${commandLine}`,
-          );
-        })
-        .on('error', (err, stdout, stderr) => {
-          logger.error(
-            `[${this.engineName}] Error assembling TTS track for ${langCode}: ${err.message}`,
-          );
-          logger.error(`[${this.engineName}] ffmpeg stderr: ${stderr}`);
-          reject(
-            new Error(
-              `Failed to assemble TTS track for ${langCode}: ${err.message}`,
-            ),
-          );
-        })
-        .on('end', () => {
-          logger.info(
-            `[${this.engineName}] Assembled TTS track saved to: ${assembledTTSPath}`,
-          );
-          resolve();
-        })
-        .run();
-    });
-
-    onProgress(80);
-
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg()
-        .input(instrumentalAudioPath)
-        .input(assembledTTSPath)
-        .complexFilter([
-          '[0:a]dynaudnorm=p=0.95:m=20[instr_norm]',
-          '[instr_norm]volume=0.2:precision=fixed[instr_lowered]',
-          '[1:a]dynaudnorm=p=0.95:m=20[tts_normalized]',
-          '[tts_normalized]volume=2.0[tts_boosted]',
-          '[instr_lowered][tts_boosted]amerge=inputs=2[aout]',
-        ])
-        .map('[aout]')
-        .audioCodec('libmp3lame')
-        .audioQuality(2)
-        .output(finalOutputPath)
-        .on('start', (commandLine) => {
-          logger.info(
-            `[${this.engineName}] Merging final audio for ${langCode} with command: ${commandLine}`,
-          );
-        })
-        .on('error', (err, stdout, stderr) => {
-          logger.error(
-            `[${this.engineName}] Error merging final audio for ${langCode}: ${err.message}`,
-          );
-          logger.error(`[${this.engineName}] ffmpeg stderr: ${stderr}`);
-          reject(
-            new Error(
-              `Failed to merge final audio for ${langCode}: ${err.message}`,
-            ),
-          );
-        })
-        .on('end', () => {
-          logger.info(
-            `[${this.engineName}] Final dubbed audio saved to: ${finalOutputPath}`,
-          );
-          resolve();
-        })
-        .run();
-    });
-
-    onProgress(100);
   }
 }
