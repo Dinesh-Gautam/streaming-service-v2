@@ -5,11 +5,15 @@ import { promisify } from 'util';
 import ffmpeg from 'fluent-ffmpeg';
 import { injectable } from 'tsyringe';
 
+import type { AiSubtitleEntry } from '@ai-worker/models/types';
+import type { TtsService } from '@ai-worker/services/tts.service';
+import type { SubtitleBlock } from '@ai-worker/utils/subtitle.utils';
+
+import { getAudioDuration } from '@ai-worker/utils/audio.utils';
+import { groupSubtitles } from '@ai-worker/utils/subtitle.utils';
+
 import { logger } from '../config/logger';
 import { AppError, CommandExecutionError, logError } from '../domain/errors';
-import { AiSubtitleEntry } from '../models/types';
-import { timecodeToSeconds } from '../utils/vtt.utils';
-import { TtsService } from './tts.service';
 
 const execPromise = promisify(exec);
 
@@ -107,127 +111,140 @@ export class AudioService {
     logger.info(
       `[${this.name}] Generating dubbed audio for language ${langCode}`,
     );
-    const ttsLangCode = langCode === 'hi' ? 'hi-IN' : 'pa-IN';
-    const segmentFiles: string[] = [];
     onProgress(0);
 
-    for (let i = 0; i < subtitles.length; i++) {
-      const sub = subtitles[i];
-      if (sub.text.trim()) {
-        const segmentPath = path.join(tempDir, `tts_${langCode}_${i}.mp3`);
-        try {
-          await this.ttsService.generateTTSAudio(
-            sub.text,
-            ttsLangCode,
-            sub.voiceGender,
-            segmentPath,
-          );
-          segmentFiles.push(segmentPath);
-        } catch (error: any) {
-          const appError = new AppError(
-            'TtsGenerationError',
-            `Failed to generate TTS audio for subtitle segment ${i} (${langCode}): ${error.message}`,
-            { originalError: error },
-          );
-          logError(appError, `${this.name}:generateDubbedAudio`);
-        }
-      }
-      onProgress(((i + 1) / subtitles.length) * 50);
-    }
-
-    if (segmentFiles.length === 0) {
+    const subtitleBlocks = groupSubtitles(subtitles, langCode);
+    if (subtitleBlocks.length === 0) {
       logger.warn(
-        `[${this.name}] No TTS audio segments generated for language ${langCode}. Skipping dubbing.`,
+        `[${this.name}] No subtitle blocks to process for language ${langCode}.`,
       );
       return;
     }
 
-    const assembledTTSPath = path.join(tempDir, `assembled_${langCode}.mp3`);
-    try {
-      await this.assembleTtsTrack(segmentFiles, subtitles, assembledTTSPath);
-      logger.info(
-        `[${this.name}] Assembled TTS track for ${langCode} to ${assembledTTSPath}`,
+    const processedSegments: string[] = [];
+    let lastEndTime = 0;
+
+    for (let i = 0; i < subtitleBlocks.length; i++) {
+      const block = subtitleBlocks[i];
+      const { segmentPath, ttsDuration } = await this.processSubtitleBlock(
+        block,
+        i,
+        tempDir,
+        lastEndTime,
       );
-      onProgress(80);
-    } catch (error: any) {
-      const appError = new AppError(
-        'TtsAssemblyError',
-        `Failed to assemble TTS track for ${langCode}: ${error.message}`,
-        { originalError: error },
-      );
-      logError(appError, `${this.name}:generateDubbedAudio`);
-      throw appError;
+      processedSegments.push(segmentPath);
+      lastEndTime = block.startTime + ttsDuration;
+      onProgress(((i + 1) / subtitleBlocks.length) * 80);
     }
 
-    try {
-      await this.mergeAudio(
-        instrumentalAudioPath,
-        assembledTTSPath,
-        finalOutputPath,
-      );
-      logger.info(
-        `[${this.name}] Merged instrumental and TTS audio for ${langCode} to ${finalOutputPath}`,
-      );
-      onProgress(100);
-    } catch (error: any) {
-      const appError = new AppError(
-        'AudioMergeError',
-        `Failed to merge audio for ${langCode}: ${error.message}`,
-        { originalError: error },
-      );
-      logError(appError, `${this.name}:generateDubbedAudio`);
-      throw appError;
-    }
+    const assembledTTSPath = path.join(tempDir, `assembled_${langCode}.mp3`);
+    await this.concatenateAudioFiles(processedSegments, assembledTTSPath);
+    logger.info(
+      `[${this.name}] Assembled TTS track for ${langCode} to ${assembledTTSPath}`,
+    );
+    onProgress(90);
+
+    await this.mergeAudio(
+      instrumentalAudioPath,
+      assembledTTSPath,
+      finalOutputPath,
+    );
+    logger.info(
+      `[${this.name}] Merged instrumental and TTS audio for ${langCode} to ${finalOutputPath}`,
+    );
+    onProgress(100);
   }
 
-  private assembleTtsTrack(
-    segmentFiles: string[],
-    subtitles: AiSubtitleEntry[],
+  private async processSubtitleBlock(
+    block: SubtitleBlock,
+    index: number,
+    tempDir: string,
+    lastEndTime: number,
+  ): Promise<{ segmentPath: string; ttsDuration: number }> {
+    const ttsLangCode = block.langCode === 'hi' ? 'hi-IN' : 'pa-IN';
+    const ttsAudioPath = path.join(
+      tempDir,
+      `tts_${block.langCode}_${index}.mp3`,
+    );
+
+    await this.ttsService.generateTTSAudio(
+      block.text,
+      ttsLangCode,
+      block.voiceGender,
+      ttsAudioPath,
+    );
+
+    const ttsDuration = await getAudioDuration(ttsAudioPath);
+
+    const silenceDuration = block.startTime - lastEndTime;
+    const finalSegmentPath = path.join(
+      tempDir,
+      `segment_${block.langCode}_${index}.mp3`,
+    );
+
+    if (silenceDuration > 0) {
+      const silencePath = path.join(
+        tempDir,
+        `silence_${block.langCode}_${index}.mp3`,
+      );
+      await this.createSilentAudio(silenceDuration, silencePath);
+      await this.concatenateAudioFiles(
+        [silencePath, ttsAudioPath],
+        finalSegmentPath,
+      );
+    } else {
+      await fs.rename(ttsAudioPath, finalSegmentPath);
+    }
+
+    return { segmentPath: finalSegmentPath, ttsDuration };
+  }
+
+  private createSilentAudio(
+    duration: number,
     outputPath: string,
   ): Promise<void> {
-    logger.debug(
-      `[${this.name}] Assembling TTS track from ${segmentFiles.length} segments to ${outputPath}`,
-    );
-    return new Promise<void>((resolve, reject) => {
-      const command = ffmpeg();
-      const filterComplex: string[] = [];
-      let outputStreams = '';
-      segmentFiles.forEach((segmentPath, index) => {
-        command.input(segmentPath);
-        const startTimeMs = Math.round(
-          timecodeToSeconds(subtitles[index].startTimecode) * 1000,
-        );
-        filterComplex.push(
-          `[${index}:a]adelay=${startTimeMs}|${startTimeMs}[aud${index}]`,
-        );
-        outputStreams += `[aud${index}]`;
-      });
-      filterComplex.push(
-        `${outputStreams}amix=inputs=${segmentFiles.length}:normalize=1:dropout_transition=0[mixed]`,
-        `[mixed]dynaudnorm=p=0.95:m=20[mixout]`,
-      );
-      command
-        .complexFilter(filterComplex)
-        .map('[mixout]')
-        .audioCodec('libmp3lame')
-        .audioQuality(2)
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input('anullsrc=r=44100:cl=stereo')
+        .inputFormat('lavfi')
+        .duration(duration)
         .output(outputPath)
-        .on('error', (err) => {
-          const error = new AppError(
-            'TtsAssemblyError',
-            `Failed to assemble TTS track to ${outputPath}: ${err.message}`,
-            { originalError: err },
-          );
-          logError(error, `${this.name}:assembleTtsTrack`);
-          reject(error);
-        })
-        .on('end', () => {
-          logger.debug(
-            `[${this.name}] TTS track assembled successfully to ${outputPath}`,
-          );
-          resolve();
-        })
+        .on('end', () => resolve())
+        .on('error', (err) =>
+          reject(
+            new AppError(
+              'AudioCreationError',
+              `Failed to create silent audio: ${err.message}`,
+              { originalError: err },
+            ),
+          ),
+        )
         .run();
+    });
+  }
+
+  private concatenateAudioFiles(
+    filePaths: string[],
+    outputPath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (filePaths.length === 0) {
+        return resolve();
+      }
+      const command = ffmpeg();
+      filePaths.forEach((p) => command.input(p));
+      command
+        .mergeToFile(outputPath, path.dirname(outputPath))
+        .on('end', () => resolve())
+        .on('error', (err) =>
+          reject(
+            new AppError(
+              'AudioConcatenationError',
+              `Failed to concatenate audio files: ${err.message}`,
+              { originalError: err },
+            ),
+          ),
+        );
     });
   }
 

@@ -1,5 +1,5 @@
 export const tempOutput = {
-  subtities: {
+  subtitles: {
     hi: [
       {
         endTimecode: '0:05',
@@ -401,4 +401,4 @@ export const tempOutput = {
   imageGenerationPrompt:
     'Create a stunning visual showcasing the earth from space with emphasis on preserving nature and the importance of environmental conservation.',
   title: 'Nature Speaking',
-};
+} as any;
