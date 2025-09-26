@@ -6,9 +6,7 @@ import type { IMessageConsumer } from '@monorepo/message-queue';
 import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
-
-import { FfmpegTranscodingProcessor } from '../adapters/ffmpeg.media-processor';
-import { TranscodingUseCase } from '../use-cases/transcoding.usecase';
+import { FfmpegTranscodingProcessor } from '@transcoding-worker/adapters/ffmpeg.media-processor';
 
 export function setupDI() {
   container.registerSingleton<IDatabaseConnection>(

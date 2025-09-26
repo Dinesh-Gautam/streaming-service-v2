@@ -9,10 +9,10 @@ import type {
 } from '@monorepo/message-queue';
 
 import { DI_TOKENS } from '@monorepo/core';
+import { config } from '@transcoding-worker/config';
+import { setupDI } from '@transcoding-worker/config/di.config';
+import { logger } from '@transcoding-worker/config/logger';
 
-import { config } from './config';
-import { setupDI } from './config/di.config';
-import { logger } from './config/logger';
 import { TranscodingUseCase } from './use-cases/transcoding.usecase';
 
 setupDI();
@@ -63,7 +63,7 @@ async function main() {
           jobId: content.jobId,
           taskId: content.taskId,
           sourceUrl: content.sourceUrl,
-          aiOutput: content.aiOutput,
+          dubbedAudioPaths: content.payload?.dubbedAudioPaths,
         });
 
         await messagePublisher.publish('task_completed', {

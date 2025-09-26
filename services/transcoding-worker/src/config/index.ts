@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import z from 'zod';
 
-import { logger } from '@thumbnail-worker/config/logger';
+import { logger } from '@transcoding-worker/config/logger';
 
 dotenv.config();
 

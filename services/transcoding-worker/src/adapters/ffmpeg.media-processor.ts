@@ -5,9 +5,8 @@ import { injectable } from 'tsyringe';
 
 import { IMediaProcessor, MediaPrcessorEvent } from '@monorepo/core';
 import { TranscodingOutput, WorkerOutput } from '@monorepo/workers';
-
-import { logger } from '../config/logger';
-import { MediaProcessorError } from '../entities/errors.entity';
+import { logger } from '@transcoding-worker/config/logger';
+import { MediaProcessorError } from '@transcoding-worker/entities/errors.entity';
 
 interface TranscodingOptions {
   aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } };

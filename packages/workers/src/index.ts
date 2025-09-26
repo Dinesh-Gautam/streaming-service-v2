@@ -72,7 +72,7 @@ export type WorkerMessages = {
     jobId: string;
     taskId: string;
     sourceUrl: string;
-    aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } };
+    payload?: { dubbedAudioPaths?: Record<string, string> };
   };
   subtitle_tasks: {
     jobId: string;

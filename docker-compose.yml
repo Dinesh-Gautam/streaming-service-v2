@@ -152,16 +152,16 @@ services:
   transcoding-worker:
       <<: [*service-base, *worker-base]
       build:
-        dockerfile: services/tanscoding-worker/Dockerfile
+        dockerfile: services/transcoding-worker/Dockerfile
         target: dev
       develop:
         watch:
           - action: sync
-            path: ./services/tanscoding-worker/src
+            path: ./services/transcoding-worker/src
             target: /usr/src/app/services/transcoding-worker/src
             ignore: [node_modules/]
           - action: rebuild
-            path: ./services/tanscoding-worker/package.json
+            path: ./services/transcoding-worker/package.json
       environment:
         PORT: 3003
       volumes:

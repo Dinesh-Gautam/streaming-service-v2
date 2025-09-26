@@ -9,17 +9,15 @@ import {
   MediaPrcessorEvent,
 } from '@monorepo/core';
 import { TranscodingOutput, WorkerOutput } from '@monorepo/workers';
-
-import { FfmpegTranscodingProcessor } from '../adapters/ffmpeg.media-processor';
-import { config } from '../config';
-import { logger } from '../config/logger';
-import { MediaProcessorError } from '../entities/errors.entity';
+import { config } from '@transcoding-worker/config';
+import { logger } from '@transcoding-worker/config/logger';
+import { MediaProcessorError } from '@transcoding-worker/entities/errors.entity';
 
 interface TranscodingInput {
   jobId: string;
   taskId: string;
   sourceUrl: string;
-  aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } };
+  dubbedAudioPaths?: Record<string, string>;
 }
 
 @injectable()
@@ -37,7 +35,7 @@ export class TranscodingUseCase {
   async execute(
     input: TranscodingInput,
   ): Promise<WorkerOutput<TranscodingOutput>> {
-    const { jobId, taskId, sourceUrl, aiOutput } = input;
+    const { jobId, taskId, sourceUrl, dubbedAudioPaths } = input;
 
     logger.info(`Starting transcoding for job: ${jobId}, task: ${taskId}`);
 
@@ -60,10 +58,10 @@ export class TranscodingUseCase {
       const tempOutputDir = `${config.TEMP_OUT_DIR}/${jobId}`;
 
       // Download dubbed audio files
-      const dubbedAudioPaths = aiOutput?.data?.dubbedAudioPaths || {};
+      const _dubbedAudioPaths = dubbedAudioPaths || {};
       const downloadedDubbedAudioPaths: Record<string, string> = {};
-      for (const langCode in dubbedAudioPaths) {
-        const audioUrl = dubbedAudioPaths[langCode];
+      for (const langCode in _dubbedAudioPaths) {
+        const audioUrl = _dubbedAudioPaths[langCode];
         downloadedDubbedAudioPaths[langCode] =
           await this.storage.downloadFile(audioUrl);
       }
