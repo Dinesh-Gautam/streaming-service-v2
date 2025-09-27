@@ -1,5 +1,6 @@
-import * as path from 'path';
 import { inject, injectable } from 'tsyringe';
+
+import type { TranscodingOptions } from '@transcoding-worker/adapters/ffmpeg.media-processor';
 
 import {
   DI_TOKENS,
@@ -27,7 +28,7 @@ export class TranscodingUseCase {
     @inject(DI_TOKENS.MediaProcessor)
     private mediaProcessor: IMediaProcessor<
       TranscodingOutput,
-      { aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } } }
+      TranscodingOptions
     >,
     @inject(DI_TOKENS.Storage) private storage: IStorage,
   ) {}
@@ -70,18 +71,13 @@ export class TranscodingUseCase {
         tempInputPath,
         tempOutputDir,
         {
-          aiOutput: {
-            data: { dubbedAudioPaths: downloadedDubbedAudioPaths },
-          },
+          dubbedAudioPaths: downloadedDubbedAudioPaths,
         },
       );
 
       const finalOutput: TranscodingOutput = {
         ...output,
-        manifest: await this.storage.saveFile(
-          output.manifest,
-          `${jobId}/${path.basename(output.manifest)}`,
-        ),
+        manifest: await this.storage.saveFile(output.manifestDir, `${jobId}`),
       };
 
       await this.taskRepository.updateTaskOutput(jobId, taskId, finalOutput);

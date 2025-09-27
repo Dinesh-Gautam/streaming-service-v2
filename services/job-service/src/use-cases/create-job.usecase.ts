@@ -59,6 +59,12 @@ export class CreateJobUseCase {
           jobId: savedJob._id,
           taskId: firstPendingTask.taskId,
           sourceUrl: input.sourceUrl,
+          payload: {
+            dubbedAudioPaths: {
+              hi: 'sample.hi.dubbed.mp3',
+              pa: 'sample.pa.dubbed.mp3',
+            },
+          },
         },
       );
     } else {

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { existsSync, mkdirSync } from 'fs';
 import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { injectable } from 'tsyringe';
@@ -8,8 +9,8 @@ import { TranscodingOutput, WorkerOutput } from '@monorepo/workers';
 import { logger } from '@transcoding-worker/config/logger';
 import { MediaProcessorError } from '@transcoding-worker/entities/errors.entity';
 
-interface TranscodingOptions {
-  aiOutput?: { data?: { dubbedAudioPaths?: Record<string, string> } };
+export interface TranscodingOptions {
+  dubbedAudioPaths?: Record<string, string>;
 }
 
 @injectable()
@@ -30,8 +31,12 @@ export class FfmpegTranscodingProcessor
       const outputFileName = 'video';
       const outputManifest = path.join(outputDir, `${outputFileName}.mpd`);
 
-      const dubbedAudioPaths = options?.aiOutput?.data?.dubbedAudioPaths || {};
+      const dubbedAudioPaths = options?.dubbedAudioPaths || {};
       const hasDubbedAudio = Object.keys(dubbedAudioPaths).length > 0;
+
+      if (!existsSync(outputDir)) {
+        mkdirSync(outputDir, { recursive: true });
+      }
 
       if (hasDubbedAudio) {
         logger.info(
@@ -45,8 +50,7 @@ export class FfmpegTranscodingProcessor
 
       const command = ffmpeg({
         source: inputFile,
-        cwd: outputDir,
-        logger,
+        logger: console,
       });
 
       const dubbedAudioLanguages: string[] = [];
@@ -192,6 +196,7 @@ export class FfmpegTranscodingProcessor
           resolve({
             success: true,
             output: {
+              manifestDir: outputDir,
               manifest: outputManifest,
               dubbedLanguages: dubbedLanguages,
               dubbedAudioTracks: dubbedLanguages,

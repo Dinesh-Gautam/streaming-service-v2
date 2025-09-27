@@ -1,5 +1,4 @@
 import * as path from 'path';
-
 import ffmpeg from 'fluent-ffmpeg';
 
 import { AIEngineOutput, TranscodingOutput } from '../engine-outputs'; // Import AIEngineOutput

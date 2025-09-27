@@ -11,6 +11,7 @@ export interface ThumbnailOutput {
 
 export interface TranscodingOutput {
   manifest: string;
+  manifestDir: string;
   dubbedLanguages: string[];
   dubbedAudioTracks: string[];
 }
