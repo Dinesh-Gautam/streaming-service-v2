@@ -3,10 +3,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import ffmpeg from 'fluent-ffmpeg';
-import { i } from 'genkit/lib/index-D0wVUZ6a';
 import { inject, injectable } from 'tsyringe';
 
-import type { AiSubtitleEntry } from '@ai-worker/models/types';
+import type {
+  AiSubtitleEntry,
+  AiVideoAnalysisResponseType,
+} from '@ai-worker/models/types';
 import type { SubtitleBlock } from '@ai-worker/utils/subtitle.utils';
 
 import { TtsService, TtsServiceToken } from '@ai-worker/services/tts.service';
@@ -15,6 +17,7 @@ import { groupSubtitles } from '@ai-worker/utils/subtitle.utils';
 
 import { logger } from '../config/logger';
 import { AppError, CommandExecutionError, logError } from '../domain/errors';
+import { GeminiTtsService, GeminiTtsServiceToken } from './gemini-tts.service';
 
 const execPromise = promisify(exec);
 
@@ -24,7 +27,10 @@ export const AudioServiceToken = Symbol('AudioService');
 export class AudioService {
   private name = 'AudioService';
 
-  constructor(@inject(TtsServiceToken) private ttsService: TtsService) {}
+  constructor(
+    @inject(TtsServiceToken) private ttsService: TtsService,
+    @inject(GeminiTtsServiceToken) private geminiTtsService: GeminiTtsService,
+  ) {}
 
   private async runCommand(command: string, cwd?: string): Promise<void> {
     logger.info(
@@ -105,6 +111,113 @@ export class AudioService {
 
   async generateDubbedAudio(
     instrumentalAudioPath: string,
+    analysisResult: AiVideoAnalysisResponseType,
+    tempDir: string,
+    onProgress: (progress: number) => void,
+  ): Promise<Record<string, string>> {
+    const dubbedAudioPaths: Record<string, string> = {};
+    const { subtitles, geminiTtsPrompts } = analysisResult;
+
+    const { style, ...prompts } = geminiTtsPrompts || {};
+
+    const languages = new Set([
+      ...Object.keys(subtitles || {}),
+      ...Object.keys(prompts || {}),
+    ]);
+
+    let langIndex = 0;
+    const totalLangs = languages.size;
+
+    for (const langCode of languages) {
+      if (langCode === 'style') continue;
+
+      const langProgress = (p: number) => {
+        const baseProgress = (langIndex / totalLangs) * 100;
+        const langShare = 100 / totalLangs;
+        onProgress(baseProgress + (p / 100) * langShare);
+      };
+
+      const geminiPrompt =
+        geminiTtsPrompts?.[langCode as keyof typeof geminiTtsPrompts];
+      const langSubtitles = subtitles?.[langCode as keyof typeof subtitles];
+      const baseName = path.parse(instrumentalAudioPath).name;
+      const finalOutputPath = path.join(
+        tempDir,
+        `${baseName.replace('_original_Instruments', '')}.${langCode}.dubbed.mp3`,
+      );
+
+      if (geminiPrompt && typeof geminiPrompt === 'string') {
+        logger.info(
+          `[${this.name}] Generating dubbed audio for language ${langCode} using Gemini TTS...`,
+        );
+
+        const fullPrompt = style ? `${style}\n\n${geminiPrompt}` : geminiPrompt;
+        await this._generateDubbedAudioBatch(
+          instrumentalAudioPath,
+          fullPrompt,
+          langCode,
+          tempDir,
+          finalOutputPath,
+          langProgress,
+        );
+        dubbedAudioPaths[langCode] = finalOutputPath;
+      } else if (langSubtitles && langSubtitles.length > 0) {
+        logger.info(
+          `[${this.name}] Generating dubbed audio for language ${langCode} using legacy TTS...`,
+        );
+        await this._generateDubbedAudioLegacy(
+          instrumentalAudioPath,
+          langSubtitles,
+          langCode,
+          tempDir,
+          finalOutputPath,
+          langProgress,
+        );
+        dubbedAudioPaths[langCode] = finalOutputPath;
+      } else {
+        logger.debug(
+          `[${this.name}] No subtitles for dubbed audio generation for language: ${langCode}`,
+        );
+      }
+      langIndex++;
+    }
+    return dubbedAudioPaths;
+  }
+
+  private async _generateDubbedAudioBatch(
+    instrumentalAudioPath: string,
+    prompt: string,
+    langCode: string,
+    tempDir: string,
+    finalOutputPath: string,
+    onProgress: (progress: number) => void,
+  ): Promise<void> {
+    logger.info(
+      `[${this.name}] Generating dubbed audio for language ${langCode} using batch mode.`,
+    );
+    onProgress(0);
+
+    const ttsAudioPath = path.join(tempDir, `tts_batch_${langCode}`);
+
+    const generatedTtsPath = await this.geminiTtsService.generateTTSAudio(
+      prompt,
+      ttsAudioPath,
+    );
+    onProgress(80);
+
+    await this.mergeAudio(
+      instrumentalAudioPath,
+      generatedTtsPath,
+      finalOutputPath,
+    );
+    logger.info(
+      `[${this.name}] Merged instrumental and batch TTS audio for ${langCode} to ${finalOutputPath}`,
+    );
+    onProgress(100);
+  }
+
+  private async _generateDubbedAudioLegacy(
+    instrumentalAudioPath: string,
     subtitles: AiSubtitleEntry[],
     langCode: string,
     tempDir: string,
@@ -170,14 +283,14 @@ export class AudioService {
       `tts_${block.langCode}_${index}.mp3`,
     );
 
-    await this.ttsService.generateTTSAudio(
+    const generatedTtsPath = await this.ttsService.generateTTSAudio(
       block.text,
+      ttsAudioPath,
       ttsLangCode,
       block.voiceGender,
-      ttsAudioPath,
     );
 
-    const ttsDuration = await getAudioDuration(ttsAudioPath);
+    const ttsDuration = await getAudioDuration(generatedTtsPath);
 
     const silenceDuration = block.startTime - lastEndTime;
     const finalSegmentPath = path.join(
@@ -192,11 +305,11 @@ export class AudioService {
       );
       await this.createSilentAudio(silenceDuration, silencePath);
       await this.concatenateAudioFiles(
-        [silencePath, ttsAudioPath],
+        [silencePath, generatedTtsPath],
         finalSegmentPath,
       );
     } else {
-      await fs.rename(ttsAudioPath, finalSegmentPath);
+      await fs.rename(generatedTtsPath, finalSegmentPath);
     }
 
     return { segmentPath: finalSegmentPath, ttsDuration };
@@ -268,7 +381,7 @@ export class AudioService {
           '[instr_norm]volume=0.2:precision=fixed[instr_lowered]',
           '[1:a]dynaudnorm=p=0.95:m=20[tts_normalized]',
           '[tts_normalized]volume=2.0[tts_boosted]',
-          '[instr_lowered][tts_boosted]amerge=inputs=2[aout]',
+          '[instr_lowered][tts_boosted]amix=inputs=2:duration=longest[aout]',
         ])
         .map('[aout]')
         .audioCodec('libmp3lame')

@@ -102,6 +102,44 @@ export const AiVideoAnalysisResponseSchema = z.object({
         'Avoid overly short subtitles like "wow" or "hi" alone. ' +
         'Prefer combining adjacent lines so TTS reads them smoothly.',
     ),
+
+  geminiTtsPrompts: z
+    .object({
+      style: z
+        .string()
+        .describe(
+          'A concise, overarching instruction for the TTS voice style. ' +
+            'This should guide the overall tone, pacing, and emotional delivery. ' +
+            'For example: "A calm, narrative voice, like a documentary narrator" or "An energetic, youthful voice, excited and fast-paced."',
+        ),
+      hi: z
+        .string()
+        .describe(
+          'A single string for the full Hindi transcript, formatted for Gemini TTS. ' +
+            'Each entry must follow the format: "Start: HH : MM : SS . mmm (\'emotion ,  style\')say: Text\\n". ' +
+            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting', 'curious, thoughtful'). " +
+            'Ensure text is a complete, natural-sounding sentence or phrase. ' +
+            'Inline style changes are also supported for dynamic delivery, e.g., "...some text... (whispering , crying / laughing) ...more text...". ' +
+            "For example: \"Start: 00:00:02.000 ( ' joyful, celebratory ' ) say: वाह, क्या शानदार दिन है!\\n" +
+            "Start: 00:00:12.000 ( ' suspicious, quiet ' ) say: मुझे यकीन है कि (whispering) कुछ गड़बड़ है।\\n\"",
+        ),
+      pa: z
+        .string()
+        .describe(
+          'A single string for the full Punjabi transcript, formatted for Gemini TTS. ' +
+            'Follow the same format as Hindi: "Start: HH : MM : SS . mmm (\'emotion , style\')\\nText\\n". ' +
+            'Use expressive emotion and style tags. ' +
+            'Inline style changes are also supported for dynamic delivery, e.g., "...some text... (loudly) ...more text...". ' +
+            "For example: \"Start: 00:00:05.000 ( ' excited, loud ' ) say: ਵਾਹ! ਕੀ ਸੋਹਣਾ ਮੌਸਮ ਹੈ!\\n" +
+            "Start: 00:00:15.000 ('serious, firm') say: ਇਹ ਮਜ਼ਾਕ ਕਰਨ ਦਾ (firmly) ਸਮਾਂ ਨਹੀਂ ਹੈ। (laugh)\\n\"",
+        ),
+    })
+    .optional()
+    .describe(
+      'TTS-friendly prompts for Gemini, combining timestamp, emotion, and style of dialogue into a single string for each language. ' +
+        'This allows for highly expressive and accurately timed audio generation. ' +
+        'The AI should generate one continuous string per language, with each line correctly formatted.',
+    ),
 });
 
 export const AiImageResponseSchema = z.object({

@@ -159,6 +159,8 @@ export const VideoAnalysisFlow = ai.defineFlow(
       throw new Error('Video analysis flow failed to generate output.');
     }
 
+    console.log(JSON.stringify(output, null, 2));
+
     return output;
   },
 );

@@ -6,11 +6,12 @@ import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import config from '../config';
 import { logger } from '../config/logger';
 import { AiSubtitleEntry } from '../models/types';
+import { ITtsService } from './tts.service.interface';
 
 export const TtsServiceToken = Symbol('TtsService');
 
 @injectable()
-export class TtsService {
+export class TtsService implements ITtsService {
   private ttsClient: TextToSpeechClient;
   private name = 'TtsService';
 
@@ -34,10 +35,10 @@ export class TtsService {
 
   async generateTTSAudio(
     text: string,
-    languageCode: string,
-    voiceGender: AiSubtitleEntry['voiceGender'],
     outputFile: string,
-  ): Promise<void> {
+    languageCode?: string,
+    voiceGender?: AiSubtitleEntry['voiceGender'],
+  ): Promise<string> {
     if (!this.isInitialized()) {
       logger.error(`[${this.name}] TTS Client is not initialized.`);
       throw new Error('TTS Client is not initialized.');
@@ -50,7 +51,9 @@ export class TtsService {
       'pa-IN': { male: 'pa-IN-Wavenet-B', female: 'pa-IN-Wavenet-C' },
     };
     const voiceName =
-      voiceMap[languageCode as keyof typeof voiceMap]?.[voiceGender];
+      voiceMap[languageCode as keyof typeof voiceMap]?.[
+        voiceGender as AiSubtitleEntry['voiceGender']
+      ];
     if (!voiceName) {
       logger.error(
         `[${this.name}] Unsupported language/gender for TTS: ${languageCode}/${voiceGender}`,
@@ -79,6 +82,7 @@ export class TtsService {
       logger.info(
         `[${this.name}] TTS audio content written to file: ${outputFile}`,
       );
+      return outputFile;
     } catch (error: any) {
       logger.error(
         `[${this.name}] Google TTS API error for voice ${voiceName} and text "${text.substring(0, 30)}...": ${error.message}`,

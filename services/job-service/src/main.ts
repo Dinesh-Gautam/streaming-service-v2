@@ -109,9 +109,13 @@ async function main() {
           );
           const taskDispatcher = container.resolve(TaskDispatcher);
           await taskDispatcher.dispatch(nextPendingTask, payload);
+        } else {
+          await updateJobStatusUseCase.execute({
+            jobId: content.jobId,
+            status: 'completed',
+          });
         }
       } else {
-        // This was the last task, mark the job as completed
         await updateJobStatusUseCase.execute({
           jobId: content.jobId,
           status: 'completed',

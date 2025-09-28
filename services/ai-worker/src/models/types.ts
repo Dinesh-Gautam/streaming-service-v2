@@ -18,4 +18,8 @@ export type AiVideoAnalysisResponseType = {
   imageGenerationPrompt: string;
   chaptersVtt?: AiChaptersData;
   subtitles: Record<string, AiSubtitleEntry[]>;
+  geminiTtsPrompts?: {
+    style: string;
+    [x: string]: string;
+  };
 };

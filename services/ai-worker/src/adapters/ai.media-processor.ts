@@ -99,12 +99,7 @@ export class AIMediaProcessor
 
       logger.info(`[${this.name}] Processing audio...`);
       const { dubbedAudioPaths, audioProcessingErrors } =
-        await this.processAudio(
-          inputFile,
-          tempDir,
-          outputDir,
-          analysisResult.subtitles,
-        );
+        await this.processAudio(inputFile, tempDir, outputDir, analysisResult);
       this.updateProgress(99);
       logger.info(`[${this.name}] Audio processing completed.`);
 
@@ -254,7 +249,7 @@ export class AIMediaProcessor
     inputFile: string,
     tempDir: string,
     outputDir: string,
-    subtitles: AiVideoAnalysisResponseType['subtitles'],
+    analysisResult: AiVideoAnalysisResponseType,
   ) {
     const dubbedAudioPaths: Record<string, string> = {};
     const audioProcessingErrors: Record<string, string> = {};
@@ -274,48 +269,32 @@ export class AIMediaProcessor
         originalAudioPath,
         tempDir,
       );
+
+      // const instrumentalAudioPath =
+      //   '/temp/output/sample_original_Instruments.wav';
+
       this.updateProgress(93);
       logger.info(
         `[${this.name}] Vocals removed. Instrumental audio path: ${instrumentalAudioPath}`,
       );
 
-      if (subtitles) {
-        for (const langCode of Object.keys(subtitles)) {
-          const langSubtitles = subtitles[langCode];
-          if (langSubtitles && langSubtitles.length > 0) {
-            const tempDubbedPath = path.join(
-              tempDir,
-              `${baseName}.${langCode}.dubbed.mp3`,
-            );
-            logger.info(
-              `[${this.name}] Generating dubbed audio for language ${langCode}...`,
-            );
+      const processedDubbedAudioPaths =
+        await this.audioService.generateDubbedAudio(
+          instrumentalAudioPath,
+          analysisResult,
+          tempDir,
+          (p) => this.updateProgress(93 + p * 0.06),
+        );
 
-            await this.audioService.generateDubbedAudio(
-              instrumentalAudioPath,
-              langSubtitles,
-              langCode,
-              tempDir,
-              tempDubbedPath,
-              (p) => this.updateProgress(93 + p * 0.06),
-            );
-            const finalPath = await this.storage.saveFile(
-              tempDubbedPath,
-              path.join(outputDir, `${baseName}.${langCode}.dubbed.mp3`),
-            );
-            dubbedAudioPaths[langCode] = finalPath;
-            logger.info(
-              `[${this.name}] Dubbed audio for ${langCode} saved to: ${finalPath}`,
-            );
-          } else {
-            logger.debug(
-              `[${this.name}] No subtitle entries for dubbed audio generation for language: ${langCode}`,
-            );
-          }
-        }
-      } else {
+      for (const langCode in processedDubbedAudioPaths) {
+        const tempDubbedPath = processedDubbedAudioPaths[langCode];
+        const finalPath = await this.storage.saveFile(
+          tempDubbedPath,
+          path.join(outputDir, `${baseName}.${langCode}.dubbed.mp3`),
+        );
+        dubbedAudioPaths[langCode] = finalPath;
         logger.info(
-          `[${this.name}] No subtitles provided for audio processing.`,
+          `[${this.name}] Dubbed audio for ${langCode} saved to: ${finalPath}`,
         );
       }
     } catch (e: any) {

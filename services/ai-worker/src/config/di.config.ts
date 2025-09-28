@@ -7,6 +7,10 @@ import {
   AudioService,
   AudioServiceToken,
 } from '@ai-worker/services/audio.service';
+import {
+  GeminiTtsService,
+  GeminiTtsServiceToken,
+} from '@ai-worker/services/gemini-tts.service';
 import { TtsService, TtsServiceToken } from '@ai-worker/services/tts.service';
 import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
@@ -28,6 +32,7 @@ export function setupDI(): void {
   container.register(DI_TOKENS.TaskRepository, MongoTaskRepository);
 
   container.registerSingleton(TtsServiceToken, TtsService);
+  container.registerSingleton(GeminiTtsServiceToken, GeminiTtsService);
   container.registerSingleton(AudioServiceToken, AudioService);
 
   container.register(DI_TOKENS.MediaProcessor, {
