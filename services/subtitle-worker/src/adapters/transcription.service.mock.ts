@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { injectable } from 'tsyringe';
 
-import { ITranscriptionService } from '@monorepo/core';
+import type { ITranscriptionService } from '@subtitle-worker/interfaces/transcription.interface';
 
 @injectable()
 export class MockTranscriptionService

@@ -5,20 +5,21 @@ export const WORKERS: { name: string; type: WorkerTypes }[] = [
   //   name: 'ThumbnailWorker',
   //   type: 'thumbnail',
   // },
-  // {
-  //   name: 'SubtitleWorker',
-  //   type: 'subtitle',
-  // },
+
+  {
+    name: 'SubtitleWorker',
+    type: 'subtitle',
+  },
 
   // {
   //   name: 'AIWorker',
   //   type: 'ai',
   // },
 
-  {
-    name: 'TranscodingWorker',
-    type: 'transcode',
-  },
+  // {
+  //   name: 'TranscodingWorker',
+  //   type: 'transcode',
+  // },
 
   // Add other workers here
 ];

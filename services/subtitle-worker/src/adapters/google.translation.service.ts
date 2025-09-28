@@ -1,8 +1,9 @@
 import { EventEmitter } from 'events';
 import { injectable } from 'tsyringe';
 
+import type { ITranslationService } from '@subtitle-worker/interfaces/translation.interface';
+
 import { TranslationServiceClient } from '@google-cloud/translate';
-import { ITranslationService } from '@monorepo/core';
 import config from '@subtitle-worker/config';
 
 @injectable()

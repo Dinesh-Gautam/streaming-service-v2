@@ -2,12 +2,13 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { injectable } from 'tsyringe';
 
+import type { ITranscriptionService } from '@subtitle-worker/interfaces/transcription.interface';
+
 import {
   createClient,
   DeepgramClient,
   SyncPrerecordedResponse,
 } from '@deepgram/sdk';
-import { ITranscriptionService } from '@monorepo/core';
 
 @injectable()
 export class DeepgramTranscriptionService

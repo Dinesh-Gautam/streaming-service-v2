@@ -1,18 +1,15 @@
-import { existsSync, mkdirSync } from 'fs';
+import { promises as fs } from 'fs';
 import * as path from 'path';
 import { inject, injectable } from 'tsyringe';
 
 import type { IStorage } from '@monorepo/core';
+import type { ITranscriptionService } from '@subtitle-worker/interfaces/transcription.interface';
+import type { ITranslationService } from '@subtitle-worker/interfaces/translation.interface';
 
-import {
-  DI_TOKENS,
-  IAudioExtractor,
-  ISourceResolver,
-  ITaskRepository,
-  ITranscriptionService,
-  ITranslationService,
-} from '@monorepo/core';
+import { DI_TOKENS, IAudioExtractor, ITaskRepository } from '@monorepo/core';
 import { logger } from '@subtitle-worker/config/logger';
+import { TranscriptionServiceToken } from '@subtitle-worker/interfaces/transcription.interface';
+import { TranslationServiceToken } from '@subtitle-worker/interfaces/translation.interface';
 
 import { SubtitleJobPayload } from '../domain/subtitle-job.entity';
 import { SubtitleResult } from '../domain/subtitle-result.entity';
@@ -44,19 +41,17 @@ export class GenerateSubtitleUseCase {
   constructor(
     @inject(DI_TOKENS.AudioExtractor)
     private audioExtractor: IAudioExtractor,
-    @inject(DI_TOKENS.TranscriptionService)
+    @inject(TranscriptionServiceToken)
     private transcriptionService: ITranscriptionService,
-    @inject(DI_TOKENS.TranslationService)
+    @inject(TranslationServiceToken)
     private translationService: ITranslationService,
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
-    @inject(DI_TOKENS.SourceResolver) private sourceResolver: ISourceResolver,
     @inject(DI_TOKENS.Storage) private storage: IStorage,
   ) {}
 
   public async execute(input: GenerateSubtitleInput): Promise<SubtitleResult> {
     const { jobId, taskId, payload } = input;
-    const { sourceFileUrl, outputDir, sourceLanguage, targetLanguages } =
-      payload;
+    const { sourceFileUrl, sourceLanguage, targetLanguages } = payload;
 
     logger.info('starting subtitle generation');
 
@@ -75,12 +70,12 @@ export class GenerateSubtitleUseCase {
       });
 
       logger.info('starting audio extraction');
-      // 1. Extract audio from video
-      const resolvedSource =
-        await this.sourceResolver.resolveSource(sourceFileUrl);
+      // 1. Download video and extract audio
+      const tempSourcePath = await this.storage.downloadFile(sourceFileUrl);
+      const tempOutputDir = path.dirname(tempSourcePath);
       const audioPath = await this.audioExtractor.extractAudio(
-        resolvedSource,
-        '/tmp/audio',
+        tempSourcePath,
+        tempOutputDir,
       );
       baseProgress += ProgressWeights.AUDIO_EXTRACTION * 100;
 
@@ -108,15 +103,17 @@ export class GenerateSubtitleUseCase {
       const sourceVtt = this.generateVtt(transcription);
       const vttPaths: Record<string, string> = {};
 
-      const sourceVttPath = path.join(
-        outputDir,
+      const tempSourceVttPath = path.join(
+        tempOutputDir,
         `${path.basename(sourceFileUrl, path.extname(sourceFileUrl))}.${sourceLanguage}.vtt`,
       );
 
-      this._ensureDirectoryExists(outputDir);
+      await fs.writeFile(tempSourceVttPath, sourceVtt);
 
-      await this.storage.writeFile(sourceVttPath, sourceVtt);
-      vttPaths[sourceLanguage] = sourceVttPath;
+      vttPaths[sourceLanguage] = await this.storage.saveFile(
+        tempSourceVttPath,
+        `${jobId}/${path.basename(tempSourceVttPath)}`,
+      );
 
       // 4. Translate and save target language VTTs
       const translationErrors: Record<string, string> = {};
@@ -145,12 +142,15 @@ export class GenerateSubtitleUseCase {
             sourceLanguage,
             targetLang,
           );
-          const targetVttPath = path.join(
-            outputDir,
+          const tempTargetVttPath = path.join(
+            tempOutputDir,
             `${path.basename(sourceFileUrl, path.extname(sourceFileUrl))}.${targetLang}.vtt`,
           );
-          await this.storage.writeFile(targetVttPath, translatedVtt);
-          vttPaths[targetLang] = targetVttPath;
+          await fs.writeFile(tempTargetVttPath, translatedVtt);
+          vttPaths[targetLang] = await this.storage.saveFile(
+            tempTargetVttPath,
+            `${jobId}/${path.basename(tempTargetVttPath)}`,
+          );
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Unknown error';
@@ -178,12 +178,6 @@ export class GenerateSubtitleUseCase {
       const message = error instanceof Error ? error.message : 'Unknown error';
       await this.taskRepository.failTask(jobId, taskId, message);
       throw error;
-    }
-  }
-
-  private _ensureDirectoryExists(outputDir: string) {
-    if (!existsSync(outputDir)) {
-      mkdirSync(outputDir, { recursive: true });
     }
   }
 

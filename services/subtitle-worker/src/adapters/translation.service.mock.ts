@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { injectable } from 'tsyringe';
 
-import { ITranslationService } from '@monorepo/core';
+import type { ITranslationService } from '@subtitle-worker/interfaces/translation.interface';
 
 @injectable()
 export class MockTranslaionService

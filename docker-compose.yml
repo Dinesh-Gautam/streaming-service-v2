@@ -149,24 +149,6 @@ services:
           path: ./services/job-service/package.json
     environment:
       PORT : 3002
-  transcoding-worker:
-      <<: [*service-base, *worker-base]
-      build:
-        dockerfile: services/transcoding-worker/Dockerfile
-        target: dev
-      develop:
-        watch:
-          - action: sync
-            path: ./services/transcoding-worker/src
-            target: /usr/src/app/services/transcoding-worker/src
-            ignore: [node_modules/]
-          - action: rebuild
-            path: ./services/transcoding-worker/package.json
-      environment:
-        PORT: 3003
-      volumes:
-      - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
-
   thumbnail-worker:
     <<: [*service-base, *worker-base]
     build:
@@ -186,10 +168,8 @@ services:
     - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
   subtitle-worker:
-      <<: *service-base
-      profiles: ["workers"] # Only run when needed
+      <<: [*service-base, *worker-base]
       build:
-        context: .
         dockerfile: services/subtitle-worker/Dockerfile
         target : dev
       develop:
@@ -201,19 +181,11 @@ services:
           - action: rebuild
             path: ./services/subtitle-worker/package.json
       environment:
-        - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
-      env_file:
-        - ./services/subtitle-worker/.env
+        PORT: 3004
       volumes:
-        - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:/app/google-credentials.json:ro
-      depends_on:
-        mongo:
-          condition: service_healthy
-        rabbitmq:
-          condition: service_healthy
-      networks:
-        - backend
-        - messaging
+        - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+        - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
+
   ai-worker:
       <<: [*service-base, *worker-base]
       build:
@@ -233,6 +205,23 @@ services:
         - ./bin:/usr/src/app/services/ai-worker/bin
         - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
         - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
+  transcoding-worker:
+      <<: [*service-base, *worker-base]
+      build:
+        dockerfile: services/transcoding-worker/Dockerfile
+        target: dev
+      develop:
+        watch:
+          - action: sync
+            path: ./services/transcoding-worker/src
+            target: /usr/src/app/services/transcoding-worker/src
+            ignore: [node_modules/]
+          - action: rebuild
+            path: ./services/transcoding-worker/package.json
+      environment:
+        PORT: 3006
+      volumes:
+      - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
 # ---------- NETWORKS ----------
 networks:
