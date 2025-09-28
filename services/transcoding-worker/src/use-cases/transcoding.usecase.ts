@@ -77,16 +77,11 @@ export class TranscodingUseCase {
 
       const finalOutput: TranscodingOutput = {
         ...output,
-        manifest: await this.storage.saveFile(output.manifestDir, `${jobId}`),
+        manifestDir: await this.storage.saveFile(
+          output.manifestDir,
+          `${jobId}`,
+        ),
       };
-
-      await this.taskRepository.updateTaskOutput(jobId, taskId, finalOutput);
-      await this.taskRepository.updateTaskStatus(
-        jobId,
-        taskId,
-        'completed',
-        100,
-      );
 
       logger.info(`Task ${taskId} completed successfully.`);
 

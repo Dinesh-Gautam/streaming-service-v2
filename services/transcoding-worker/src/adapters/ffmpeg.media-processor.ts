@@ -197,7 +197,7 @@ export class FfmpegTranscodingProcessor
             success: true,
             output: {
               manifestDir: outputDir,
-              manifest: outputManifest,
+              manifest: `${outputFileName}.mpd`,
               dubbedLanguages: dubbedLanguages,
               dubbedAudioTracks: dubbedLanguages,
             },

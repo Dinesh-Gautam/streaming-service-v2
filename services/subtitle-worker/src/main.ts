@@ -77,7 +77,7 @@ async function main() {
         jobId,
         taskId,
         payload: {
-          outputDir: '/tmp/output',
+          outputDir: config.TEMP_OUTPUT_DIR,
           sourceFileUrl: content.sourceUrl,
           sourceLanguage: content.payload?.sourceLanguage ?? sourceLanguage,
           targetLanguages: content.payload?.targetLanguages ?? targetLanguages,

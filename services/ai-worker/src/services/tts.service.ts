@@ -7,6 +7,8 @@ import config from '../config';
 import { logger } from '../config/logger';
 import { AiSubtitleEntry } from '../models/types';
 
+export const TtsServiceToken = Symbol('TtsService');
+
 @injectable()
 export class TtsService {
   private ttsClient: TextToSpeechClient;

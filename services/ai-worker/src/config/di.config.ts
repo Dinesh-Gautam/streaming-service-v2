@@ -3,8 +3,11 @@ import { container } from 'tsyringe';
 import type { IMessagePublisher } from '@monorepo/message-queue';
 
 import { AIMediaProcessor } from '@ai-worker/adapters/ai.media-processor';
-import { AudioService } from '@ai-worker/services/audio.service';
-import { TtsService } from '@ai-worker/services/tts.service';
+import {
+  AudioService,
+  AudioServiceToken,
+} from '@ai-worker/services/audio.service';
+import { TtsService, TtsServiceToken } from '@ai-worker/services/tts.service';
 import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessageConsumer, RabbitMQAdapter } from '@monorepo/message-queue';
@@ -24,11 +27,13 @@ export function setupDI(): void {
   // Worker-specific services
   container.register(DI_TOKENS.TaskRepository, MongoTaskRepository);
 
-  container.registerSingleton(TtsService);
-  container.registerSingleton(AudioService);
+  container.registerSingleton(TtsServiceToken, TtsService);
+  container.registerSingleton(AudioServiceToken, AudioService);
+
   container.register(DI_TOKENS.MediaProcessor, {
     useClass: AIMediaProcessor,
   });
+
   container.register(DI_TOKENS.Storage, {
     useClass: LocalStorage,
   });

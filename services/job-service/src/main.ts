@@ -15,14 +15,17 @@ import {
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
 import { jobRouter } from '@job-service/routes/job.routes';
+import { TaskDispatcher } from '@job-service/services/task-dispatcher.service';
 import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
-import { DI_TOKENS } from '@monorepo/core';
+import { TaskPayloadFactory } from '@job-service/utils/task-payload.factory';
+import { DI_TOKENS, ITaskRepository } from '@monorepo/core';
 
 setupDI();
 
-const messageQueue = container.resolve<IMessageConsumer>(
+const messageConsumer = container.resolve<IMessageConsumer>(
   DI_TOKENS.MessageConsumer,
 );
+
 const dbConnection = container.resolve<IDatabaseConnection>(
   DI_TOKENS.DatabaseConnection,
 );
@@ -33,7 +36,7 @@ app.use(express.json());
 // Health check endpoint
 
 async function main() {
-  await messageQueue.connect(config.RABBITMQ_URL);
+  await messageConsumer.connect(config.RABBITMQ_URL);
 
   await dbConnection.connect(config.MONGO_URL);
 
@@ -60,7 +63,7 @@ async function main() {
 
   const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
 
-  messageQueue.consume('task_completed', async (content, msg) => {
+  messageConsumer.consume('task_completed', async (content, msg) => {
     if (!msg || !content) {
       return;
     }
@@ -68,10 +71,45 @@ async function main() {
     try {
       logger.info('Received task completion message:', content);
 
+      const taskRepository = container.resolve<ITaskRepository>(
+        DI_TOKENS.TaskRepository,
+      );
+
+      await taskRepository.updateTaskStatus(
+        content.jobId,
+        content.taskId,
+        'completed',
+        100,
+      );
+      await taskRepository.updateTaskOutput(
+        content.jobId,
+        content.taskId,
+        content.output,
+      );
+
       const nextTask = getNextTask(content.taskType);
 
       if (nextTask) {
-        // Start the next task
+        const job = await taskRepository.findJobById(content.jobId);
+        if (!job) {
+          logger.error(`Job with id ${content.jobId} not found`);
+          return;
+        }
+
+        const nextPendingTask = job.tasks.find(
+          (task) => task.status === 'pending',
+        );
+
+        if (nextPendingTask) {
+          const payload = TaskPayloadFactory.create(
+            job,
+            nextPendingTask,
+            content.taskType,
+            content.output,
+          );
+          const taskDispatcher = container.resolve(TaskDispatcher);
+          await taskDispatcher.dispatch(nextPendingTask, payload);
+        }
       } else {
         // This was the last task, mark the job as completed
         await updateJobStatusUseCase.execute({
@@ -80,13 +118,13 @@ async function main() {
         });
       }
 
-      messageQueue.ack(msg);
+      messageConsumer.ack(msg);
     } catch (error) {
       logger.error('Error processing task completion message:', error);
     }
   });
 
-  messageQueue.consume('task_failed', async (content, msg) => {
+  messageConsumer.consume('task_failed', async (content, msg) => {
     if (!msg || !content) {
       return;
     }
@@ -99,10 +137,10 @@ async function main() {
         status: 'failed',
       });
 
-      messageQueue.ack(msg);
+      messageConsumer.ack(msg);
     } catch (error) {
       logger.error('Error processing task failure message:', error);
-      messageQueue.nack(msg);
+      messageConsumer.nack(msg);
     }
   });
 }
@@ -120,7 +158,7 @@ main()
       server.close(() => {
         logger.info('Server closed.');
 
-        Promise.all([dbConnection.close(), messageQueue.close()])
+        Promise.all([dbConnection.close(), messageConsumer.close()])
           .then(() => {
             logger.info('Disconnected from dependencies.');
             process.exit(0);

@@ -3,12 +3,13 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
 import ffmpeg from 'fluent-ffmpeg';
-import { injectable } from 'tsyringe';
+import { i } from 'genkit/lib/index-D0wVUZ6a';
+import { inject, injectable } from 'tsyringe';
 
 import type { AiSubtitleEntry } from '@ai-worker/models/types';
-import type { TtsService } from '@ai-worker/services/tts.service';
 import type { SubtitleBlock } from '@ai-worker/utils/subtitle.utils';
 
+import { TtsService, TtsServiceToken } from '@ai-worker/services/tts.service';
 import { getAudioDuration } from '@ai-worker/utils/audio.utils';
 import { groupSubtitles } from '@ai-worker/utils/subtitle.utils';
 
@@ -17,11 +18,13 @@ import { AppError, CommandExecutionError, logError } from '../domain/errors';
 
 const execPromise = promisify(exec);
 
+export const AudioServiceToken = Symbol('AudioService');
+
 @injectable()
 export class AudioService {
   private name = 'AudioService';
 
-  constructor(private ttsService: TtsService) {}
+  constructor(@inject(TtsServiceToken) private ttsService: TtsService) {}
 
   private async runCommand(command: string, cwd?: string): Promise<void> {
     logger.info(

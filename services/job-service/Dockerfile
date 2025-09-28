@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm run build --filter=job-service...
 
 # Run turbo dev: job-service and its deps
-CMD ["pnpm", "run", "dev", "--filter=job-service..." , "--env-mode=loose"]
+CMD ["pnpm", "run", "dev", "--filter=job-service" , "--env-mode=loose"]
 
 # ==============================
 # Builder stage (prod build)

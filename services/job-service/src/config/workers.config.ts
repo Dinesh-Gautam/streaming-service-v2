@@ -1,27 +1,22 @@
 import type { WorkerTypes } from '@monorepo/workers';
 
 export const WORKERS: { name: string; type: WorkerTypes }[] = [
-  // {
-  //   name: 'ThumbnailWorker',
-  //   type: 'thumbnail',
-  // },
-
+  {
+    name: 'ThumbnailWorker',
+    type: 'thumbnail',
+  },
   {
     name: 'SubtitleWorker',
     type: 'subtitle',
   },
-
-  // {
-  //   name: 'AIWorker',
-  //   type: 'ai',
-  // },
-
-  // {
-  //   name: 'TranscodingWorker',
-  //   type: 'transcode',
-  // },
-
-  // Add other workers here
+  {
+    name: 'AIWorker',
+    type: 'ai',
+  },
+  {
+    name: 'TranscodingWorker',
+    type: 'transcode',
+  },
 ];
 
 export const getNextTask = (

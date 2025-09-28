@@ -1,9 +1,11 @@
 import { container } from 'tsyringe';
 
+import type { ITaskRepository } from '@monorepo/core';
+
 import { MongoJobRepository } from '@job-service/adapters/mongo-job.adapter';
 import { MockMongoJobAdapter } from '@job-service/adapters/mongo-job.adapter.mock';
 import { config } from '@job-service/config';
-import { DI_TOKENS, IJobRepository } from '@monorepo/core';
+import { DI_TOKENS, IJobRepository, MongoTaskRepository } from '@monorepo/core';
 import {
   IDatabaseConnection,
   MockDatabaseConnection,
@@ -44,6 +46,10 @@ export const setupDI = () => {
   container.registerSingleton<IJobRepository>(
     DI_TOKENS.JobRepository,
     MongoJobRepository,
+  );
+  container.registerSingleton<ITaskRepository>(
+    DI_TOKENS.TaskRepository,
+    MongoTaskRepository,
   );
   container.registerSingleton(RabbitMQAdapter);
   container.register(DI_TOKENS.MessagePublisher, {

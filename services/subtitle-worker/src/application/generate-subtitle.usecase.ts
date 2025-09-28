@@ -166,13 +166,6 @@ export class GenerateSubtitleUseCase {
         }),
       };
 
-      await this.taskRepository.updateTaskOutput(jobId, taskId, output);
-      await this.taskRepository.updateTaskStatus(
-        jobId,
-        taskId,
-        'completed',
-        100,
-      );
       return output;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

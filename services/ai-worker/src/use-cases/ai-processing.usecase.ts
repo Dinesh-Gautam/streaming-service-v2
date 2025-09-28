@@ -2,13 +2,11 @@ import { inject, injectable } from 'tsyringe';
 
 import type {
   IMediaProcessor,
-  ISourceResolver,
   IStorage,
   ITaskRepository,
 } from '@monorepo/core';
 import type { AIEngineOutput, WorkerOutput } from '@monorepo/workers';
 
-import config from '@ai-worker/config';
 import { logger } from '@ai-worker/config/logger';
 import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
 
@@ -24,7 +22,7 @@ export class AIProcessingUseCase {
     @inject(DI_TOKENS.TaskRepository) private taskRepository: ITaskRepository,
     @inject(DI_TOKENS.MediaProcessor)
     private mediaProcessor: IMediaProcessor<AIEngineOutput>,
-    @inject(DI_TOKENS.SourceResolver) private sourceResolver: ISourceResolver,
+
     @inject(DI_TOKENS.Storage) private storage: IStorage,
   ) {}
 
@@ -54,14 +52,6 @@ export class AIProcessingUseCase {
       const result = await this.mediaProcessor.process(
         tempInputPath,
         outputDir,
-      );
-
-      await this.taskRepository.updateTaskOutput(jobId, taskId, result.output);
-      await this.taskRepository.updateTaskStatus(
-        jobId,
-        taskId,
-        'completed',
-        100,
       );
 
       logger.info(`Task ${taskId} completed successfully.`);

@@ -11,7 +11,10 @@ import type {
 import config from '@ai-worker/config';
 import { logger } from '@ai-worker/config/logger';
 import { AppError, logError } from '@ai-worker/domain/errors';
-import { AudioService } from '@ai-worker/services/audio.service';
+import {
+  AudioService,
+  AudioServiceToken,
+} from '@ai-worker/services/audio.service';
 import {
   GenerateMovieImagesFlow,
   VideoAnalysisFlow,
@@ -36,7 +39,7 @@ export class AIMediaProcessor
   private name = 'AIMediaProcessor';
 
   constructor(
-    private audioService: AudioService,
+    @inject(AudioServiceToken) private audioService: AudioService,
     @inject(DI_TOKENS.Storage) private storage: IStorage,
   ) {
     super();

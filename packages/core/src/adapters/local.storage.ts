@@ -54,6 +54,6 @@ export class LocalStorage implements IStorage {
     } else {
       fs.copyFileSync(sourcePath, fullDestinationPath);
     }
-    return fullDestinationPath;
+    return destinationPath;
   }
 }

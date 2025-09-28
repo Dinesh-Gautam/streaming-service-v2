@@ -68,16 +68,6 @@ export class GenerateThumbnailUseCase {
         ),
       };
 
-      await this.taskRepository.updateTaskOutput(jobId, taskId, {
-        paths: finalPaths,
-      });
-      await this.taskRepository.updateTaskStatus(
-        jobId,
-        taskId,
-        'completed',
-        100,
-      );
-
       logger.info(`Task ${taskId} completed successfully.`);
 
       return {
