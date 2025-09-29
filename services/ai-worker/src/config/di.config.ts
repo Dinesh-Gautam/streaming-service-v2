@@ -12,7 +12,8 @@ import {
   GeminiTtsServiceToken,
 } from '@ai-worker/services/gemini-tts.service';
 import { TtsService, TtsServiceToken } from '@ai-worker/services/tts.service';
-import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
+import { DI_TOKENS, LocalStorage } from '@monorepo/core';
+import { MongoTaskRepository } from '@monorepo/core/server-index';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessageConsumer, RabbitMQAdapter } from '@monorepo/message-queue';
 

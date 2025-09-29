@@ -3,7 +3,8 @@ import { container } from 'tsyringe';
 import type { IDatabaseConnection } from '@monorepo/database';
 import type { IMessageConsumer } from '@monorepo/message-queue';
 
-import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
+import { DI_TOKENS, LocalStorage } from '@monorepo/core';
+import { MongoTaskRepository } from '@monorepo/core/server-index';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessagePublisher, RabbitMQAdapter } from '@monorepo/message-queue';
 import { FfmpegTranscodingProcessor } from '@transcoding-worker/adapters/ffmpeg.media-processor';

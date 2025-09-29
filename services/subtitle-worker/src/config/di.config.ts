@@ -2,7 +2,8 @@ import { container } from 'tsyringe';
 
 import type { IMessagePublisher } from '@monorepo/message-queue';
 
-import { DI_TOKENS, LocalStorage, MongoTaskRepository } from '@monorepo/core';
+import { DI_TOKENS, LocalStorage } from '@monorepo/core';
+import { MongoTaskRepository } from '@monorepo/core/server-index';
 import { MongoDbConnection } from '@monorepo/database';
 import { IMessageConsumer, RabbitMQAdapter } from '@monorepo/message-queue';
 import { DeepgramTranscriptionService } from '@subtitle-worker/adapters/deepgram.transcription.service';

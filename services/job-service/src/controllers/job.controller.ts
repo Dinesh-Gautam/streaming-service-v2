@@ -8,6 +8,7 @@ import {
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
 import { CreateJobUseCase } from '@job-service/use-cases/create-job.usecase';
+import { GetJobByIdUseCase } from '@job-service/use-cases/get-job-by-id.usecase';
 import { RetryJobUseCase } from '@job-service/use-cases/retry-job.usecase';
 
 export class JobController {
@@ -47,6 +48,24 @@ export class JobController {
       return res.status(200).send();
     } catch (error) {
       logger.error('Error retrying job:', error);
+
+      if (error instanceof JobNotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+  async getJobById(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+
+      const getJobByIdUseCase = container.resolve(GetJobByIdUseCase);
+      const job = await getJobByIdUseCase.execute(id);
+
+      return res.status(200).json(job);
+    } catch (error) {
+      logger.error('Error getting job by id:', error);
 
       if (error instanceof JobNotFoundError) {
         return res.status(404).json({ error: error.message });

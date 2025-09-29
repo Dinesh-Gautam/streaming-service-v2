@@ -5,7 +5,8 @@ import type { ITaskRepository } from '@monorepo/core';
 import { MongoJobRepository } from '@job-service/adapters/mongo-job.adapter';
 import { MockMongoJobAdapter } from '@job-service/adapters/mongo-job.adapter.mock';
 import { config } from '@job-service/config';
-import { DI_TOKENS, IJobRepository, MongoTaskRepository } from '@monorepo/core';
+import { DI_TOKENS, IJobRepository } from '@monorepo/core';
+import { MongoTaskRepository } from '@monorepo/core/server-index';
 import {
   IDatabaseConnection,
   MockDatabaseConnection,

@@ -56,4 +56,18 @@ export class LocalStorage implements IStorage {
     }
     return destinationPath;
   }
+
+  async writeFile(
+    destinationPath: string,
+    data: Buffer | Uint8Array,
+  ): Promise<string> {
+    const fullDestinationPath = path.join(this.basePath, destinationPath);
+    const destDir = path.dirname(fullDestinationPath);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    fs.writeFileSync(fullDestinationPath, data);
+    return destinationPath;
+  }
 }
