@@ -33,10 +33,11 @@ COPY services/auth-service ./services/auth-service
 # Install all deps using cached store (skip internet)
 RUN pnpm install --frozen-lockfile
 
-# RUN pnpm run --filter=job-service prisma:generate
+RUN pnpm run --filter=auth-service prisma:generate
+RUN pnpm run build:packages
 
 # Run turbo dev: auth-service and its deps
-CMD ["pnpm", "run", "dev", "--filter=auth-service..." , "--env-mode=loose"]
+CMD ["pnpm", "run", "dev", "--filter=auth-service" , "--env-mode=loose"]
 
 # ==============================
 # Builder stage (prod build)

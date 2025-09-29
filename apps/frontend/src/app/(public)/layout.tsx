@@ -1,12 +1,12 @@
-import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
+
+import type { Metadata } from 'next';
 
 import '@/styles/global.scss';
 
-import { AuthProvider } from '@/context/auth-context';
-import { BannerProvider } from '@/context/banner-context';
 import { Toaster } from '@/admin/components/ui/sonner';
-
+import { AuthProvider } from '@/context/auth-provider';
+import { BannerProvider } from '@/context/banner-context';
 
 const inter = Poppins({
   weight: ['400', '500', '600', '700', '800', '900'],

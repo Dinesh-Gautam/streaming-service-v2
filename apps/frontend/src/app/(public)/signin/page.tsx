@@ -1,15 +1,17 @@
 'use client';
 
-import { Suspense, useEffect, useState, type FormEvent } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import styles from '@/styles/modules/auth.module.scss';
 
-import { Info } from '@mui/icons-material';
+import type { FormEvent } from 'react';
 
+import { loginAction } from '@/actions/auth/actions';
 import { PATHS } from '@/constants/paths';
+import { useAuth } from '@/context/auth-provider';
+import { Info } from '@mui/icons-material';
 
 export const dynamic = 'force-static';
 
@@ -20,101 +22,90 @@ export default function SignInPage() {
         <SignInForm />
       </Suspense>
       <div className={styles.box}>
-        Don&apos;t have an account <Link href={PATHS.SIGN_UP}>Sign Up.</Link>
+        {"Don't have an account"} <Link href={PATHS.SIGN_UP}>Sign Up.</Link>
       </div>
     </div>
   );
 }
 
 function SignInForm() {
-  const session = useSession();
-
   const [userInfo, setUserInfo] = useState({ email: '', password: '' });
-
   const [error, setError] = useState<string | null>(null);
-
-  const searchParama = useSearchParams();
-
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
-    // validate your userinfo
     e.preventDefault();
+    setError(null);
 
-    const res = await signIn('credentials', {
-      email: userInfo.email,
-      password: userInfo.password,
-      redirect: false,
-    });
+    try {
+      const result = await loginAction(userInfo);
 
-    console.log(res);
-
-    if (res && res.ok) {
-      router.replace(searchParama.get('callbackUrl') || PATHS.HOME);
-    } else {
-      setError((res && res.error) || 'some error occurred');
+      if (result.accessToken) {
+        login(result.accessToken);
+        router.replace(searchParams.get('callbackUrl') || PATHS.HOME);
+      } else {
+        setError(result.error || 'Login failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again later.');
+      console.error(err);
     }
   };
+
   return (
     <form
       className={styles.box}
       onSubmit={handleSubmit}
     >
-      {session.status === 'authenticated' ?
-        <h1>You are Logged in</h1>
-      : session.status === 'loading' ?
-        <h1>Loading...</h1>
-      : <>
-          <h1>Login</h1>
-          {error && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <Info color="error" />
-              <span>{error}</span>
-            </div>
-          )}
-          <div>
-            <div>
-              <label htmlFor="email">Email</label>
-            </div>
-            <input
-              value={userInfo.email}
-              id="email"
-              onChange={({ target }) =>
-                setUserInfo({ ...userInfo, email: target.value })
-              }
-              // type="email"
-              type="text"
-              placeholder="john@email.com"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="pass">Password</label>
-            <input
-              id="pass"
-              value={userInfo.password}
-              onChange={({ target }) =>
-                setUserInfo({ ...userInfo, password: target.value })
-              }
-              type="password"
-              placeholder="********"
-              required
-            />
-          </div>
-          <input
-            className={styles.submitButton}
-            type="submit"
-            value="Login"
-          />
-        </>
-      }
+      <h1>Login</h1>
+      {error && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <Info color="error" />
+          <span>{error}</span>
+        </div>
+      )}
+      <div>
+        <div>
+          <label htmlFor="email">Email</label>
+        </div>
+        <input
+          value={userInfo.email}
+          id="email"
+          onChange={({ target }) =>
+            setUserInfo({ ...userInfo, email: target.value })
+          }
+          type="email"
+          placeholder="john@email.com"
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="pass">Password</label>
+        <input
+          id="pass"
+          value={userInfo.password}
+          onChange={({ target }) =>
+            setUserInfo({ ...userInfo, password: target.value })
+          }
+          type="password"
+          placeholder="********"
+          required
+        />
+      </div>
+      <input
+        className={styles.submitButton}
+        type="submit"
+        value="Login"
+      />
     </form>
   );
 }

@@ -17,8 +17,10 @@ export class JwtTokenGenerator implements ITokenGenerator {
   generate(
     userId: string,
     role: Role,
+    name: string,
+    email: string,
   ): { accessToken: string; refreshToken: string } {
-    const accessTokenPayload = { userId, role, jti: randomUUID() };
+    const accessTokenPayload = { userId, role, jti: randomUUID(), name, email };
     const refreshTokenPayload = { userId, jti: randomUUID() };
 
     const accessToken = jwt.sign(accessTokenPayload, this.accessTokenSecret, {

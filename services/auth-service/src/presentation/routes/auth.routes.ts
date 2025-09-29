@@ -50,11 +50,11 @@ authRouter.post(
   processRequest({ body: loginUserSchema }),
   authController.login.bind(authController),
 );
-authRouter.post(
+authRouter.get(
   '/refresh-token',
   authController.refreshToken.bind(authController),
 );
-authRouter.post('/logout', auth(), authController.logout.bind(authController));
+authRouter.get('/logout', auth(), authController.logout.bind(authController));
 
 authRouter.get('/admin', auth(), authorize(Role.ADMIN), (req, res) => {
   res.status(200).json({ message: 'Welcome, admin!' });

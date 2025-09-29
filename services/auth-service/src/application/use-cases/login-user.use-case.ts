@@ -52,6 +52,8 @@ export class LoginUserUseCase {
     const { accessToken, refreshToken } = this.tokenGenerator.generate(
       user.id,
       user.role,
+      user.name ?? '',
+      user.email,
     );
 
     const decoded =

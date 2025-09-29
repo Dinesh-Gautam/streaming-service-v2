@@ -45,7 +45,12 @@ export class RefreshTokenUseCase {
     }
 
     const { accessToken, refreshToken: newRefreshToken } =
-      this.tokenGenerator.generate(user.id, user.role);
+      this.tokenGenerator.generate(
+        user.id,
+        user.role,
+        user.name ?? '',
+        user.email,
+      );
 
     const newDecoded =
       await this.tokenValidator.validateRefreshToken(newRefreshToken);

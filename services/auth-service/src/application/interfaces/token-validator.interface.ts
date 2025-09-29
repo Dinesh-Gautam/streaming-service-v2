@@ -5,6 +5,8 @@ export interface ValidatedTokenPayload {
   role: Role;
   jti: string;
   exp: number;
+  name: string;
+  email: string;
 }
 
 export interface ValidRefreshTokenPayload {

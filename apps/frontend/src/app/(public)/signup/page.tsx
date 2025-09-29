@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import styles from '@/styles/modules/auth.module.scss';
 
-import { Info } from '@mui/icons-material';
+import type { FormEvent } from 'react';
 
-import { signUpUser } from '@/app/(public)/signup/_action';
 import { PATHS } from '@/constants/paths';
+import { useAuth } from '@/context/auth-provider';
+import { Info } from '@mui/icons-material';
 
 export const dynamic = 'force-static';
 
@@ -20,25 +21,39 @@ export default function SignupPage() {
 
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-
-    // clearn previous error
-    setError('');
+    setError(null);
 
     if (confirmPassword !== password) {
       setError("Passwords don't match!");
       return;
     }
 
-    const res = await signUpUser({ email, password, name });
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL}/register`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name, email, password }),
+        },
+      );
 
-    if (res.success) {
-      return router.push(PATHS.SIGN_IN);
+      if (res.ok) {
+        router.push(PATHS.SIGN_IN);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.message || 'Registration failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again later.');
+      console.error(err);
     }
-
-    setError(res.message || 'some error occurred');
   };
 
   return (

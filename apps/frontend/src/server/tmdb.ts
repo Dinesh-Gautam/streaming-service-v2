@@ -4,12 +4,12 @@ import { TMDBWebAPI } from 'tmdb-js-web';
 
 import { createCachedFunction } from './utils';
 
-if (process.env.NEXT_PUBLIC_TMDB_API_KEY === undefined) {
+if (process.env.TMDB_API_KEY === undefined) {
   throw new Error('TMDB_API_KEY is not defined');
 }
 
 export const TmdbV3 = new TMDBWebAPI({
-  apiKey: process.env.NEXT_PUBLIC_TMDB_API_KEY
+  apiKey: process.env.TMDB_API_KEY,
 }).v3;
 
 /**

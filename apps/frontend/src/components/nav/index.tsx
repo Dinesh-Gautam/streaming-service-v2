@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 import styles from '@/styles/modules/nav.module.scss';
 
-import { Logout } from '@mui/icons-material';
-import Avatar from '@mui/joy/Avatar';
 import { AnimatePresence, motion } from 'motion/react';
 
 import Search from '@/components/search';
+import { PATHS } from '@/constants/paths';
+import { useAuth } from '@/context/auth-provider';
+import { Logout } from '@mui/icons-material';
+import Avatar from '@mui/joy/Avatar';
 
 type NavProps = {
   searchInitialValue: string;
@@ -19,20 +21,18 @@ type NavProps = {
 export function Nav({ searchInitialValue }: NavProps) {
   const [open, setOpen] = useState(false);
 
-  const session = useSession();
+  const session = useAuth();
 
-  const user = session.data?.user as {
-    name: string;
-    email: string;
-    role: string;
-  };
+  const user = session?.user;
+
+  console.log('user', user);
 
   return (
     <div className={styles.navContainer}>
       <div className={styles.navRightContainer}></div>
       <Search initialValue={searchInitialValue} />
       <div className={styles.navLeftContainer}>
-        {session.status === 'authenticated' ?
+        {user ?
           <>
             <button
               onBlur={() => {
@@ -69,7 +69,7 @@ export function Nav({ searchInitialValue }: NavProps) {
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          signOut();
+                          session.logout();
                         }}
                       >
                         <span>Admin</span>
@@ -80,7 +80,7 @@ export function Nav({ searchInitialValue }: NavProps) {
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        signOut();
+                        session.logout();
                       }}
                     >
                       <span>Sign Out</span>
@@ -91,14 +91,13 @@ export function Nav({ searchInitialValue }: NavProps) {
               )}
             </AnimatePresence>
           </>
-        : session.status === 'unauthenticated' ?
-          <button
+        : <Link
             className={styles.normalButton}
-            onClick={() => signIn()}
+            href={PATHS.SIGN_IN}
           >
             Sign In
-          </button>
-        : null}
+          </Link>
+        }
       </div>
     </div>
   );

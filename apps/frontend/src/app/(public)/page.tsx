@@ -1,5 +1,5 @@
-import PopularMoviesBanner from '@/components/home/Banner';
-import Slider from '@/components/home/Slider';
+import PopularMoviesBanner from '@/components/home/banner';
+import Slider from '@/components/home/slider';
 import { HoverCardProvider } from '@/components/hover-card/provider';
 import { Nav } from '@/components/nav';
 import { SLIDER_TITLES, SLIDERS } from '@/constants/sliders';

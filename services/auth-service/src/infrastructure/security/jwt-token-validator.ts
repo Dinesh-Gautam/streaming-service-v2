@@ -27,6 +27,8 @@ export class JwtTokenValidator implements ITokenValidator {
         role: decoded.role,
         jti: decoded.jti,
         exp: decoded.exp,
+        name: decoded.name,
+        email: decoded.email,
       };
     } catch (error) {
       throw new AppError('Invalid token', 401);
