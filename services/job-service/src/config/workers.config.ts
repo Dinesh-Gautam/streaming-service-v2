@@ -5,18 +5,18 @@ export const WORKERS: { name: string; type: WorkerTypes }[] = [
     name: 'ThumbnailWorker',
     type: 'thumbnail',
   },
-  {
-    name: 'SubtitleWorker',
-    type: 'subtitle',
-  },
-  {
-    name: 'AIWorker',
-    type: 'ai',
-  },
-  {
-    name: 'TranscodingWorker',
-    type: 'transcode',
-  },
+  // {
+  //   name: 'SubtitleWorker',
+  //   type: 'subtitle',
+  // },
+  // {
+  //   name: 'AIWorker',
+  //   type: 'ai',
+  // },
+  // {
+  //   name: 'TranscodingWorker',
+  //   type: 'transcode',
+  // },
 ];
 
 export const getNextTask = (

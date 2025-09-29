@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
+import helmet from 'helmet';
 import { container } from 'tsyringe';
 
 import type { IDatabaseConnection } from '@monorepo/database';
@@ -31,7 +34,15 @@ const dbConnection = container.resolve<IDatabaseConnection>(
 );
 
 const app = express();
+app.use(helmet());
 app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: config.CORS_ORIGIN,
+    credentials: true,
+  }),
+);
 
 // Health check endpoint
 

@@ -2,12 +2,19 @@ import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { join } from 'path';
 import { Readable } from 'stream';
+
 import type { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const pathName = req.nextUrl.pathname.replace('/api/static/', '');
 
-  let dir = 'tmp';
+  if (!process.env.LOCAL_STORAGE_PATH) {
+    throw new Error(
+      'LOCAL_STORAGE_PATH is not defined in environment variables',
+    );
+  }
+
+  let dir = process.env.LOCAL_STORAGE_PATH;
 
   if (pathName.includes('playback')) {
     dir = 'converted';

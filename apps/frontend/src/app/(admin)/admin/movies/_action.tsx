@@ -2,193 +2,21 @@
 
 import 'server-only';
 
-import { createWriteStream, existsSync, mkdirSync } from 'fs';
-import * as path from 'path';
-import { join } from 'path';
-
 import { z } from 'zod';
+
+import type {
+  IMediaProcessingJob,
+  IMediaProcessingTask,
+} from '@/server/db/schemas/media-processing';
 
 import { generateImagePrompt, generateImageWithPrompt } from '@/lib/ai/images';
 import { EngineTaskOutput } from '@/lib/media/engine-outputs'; // Import the output union type
-import { AIEngine } from '@/lib/media/engines/ai-engine'; // Import the new AI Engine
-import { SubtitleEngine } from '@/lib/media/engines/subtitle';
-import { ThumbnailEngine } from '@/lib/media/engines/thumbnail-engine';
-import { TranscodingEngine } from '@/lib/media/engines/transcoding-engine';
-import { MediaManager } from '@/lib/media/media-manager';
 import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
-import {
-  MediaProcessingJob,
-  type IMediaProcessingJob,
-  type IMediaProcessingTask,
-} from '@/server/db/schemas/media-processing';
+import { MediaProcessingJob } from '@/server/db/schemas/media-processing';
 import { Movie } from '@/server/db/schemas/movie';
 
 await dbConnect();
-
-const UPLOAD_TYPES = {
-  VIDEO: 'video',
-  POSTER: 'poster',
-  BACKDROP: 'backdrop',
-} as const;
-
-const tempDir = process.env.TEMP_DIR || 'tmp';
-
-export async function uploadAction(
-  formData: FormData,
-  type: (typeof UPLOAD_TYPES)[keyof typeof UPLOAD_TYPES],
-) {
-  const file = formData.get('file') as File;
-
-  console.log('file', file);
-
-  if (!file) {
-    throw new Error('File is required');
-  }
-
-  // temp random unique file name
-  const objectId = Math.random().toString(36).substring(2, 15);
-
-  const filePath = join(process.cwd(), tempDir, type, objectId);
-  const dirPath = join(process.cwd(), tempDir, type);
-
-  console.log('filePath', filePath);
-
-  if (!existsSync(dirPath)) {
-    console.log('Creating directory:', dirPath);
-    mkdirSync(dirPath, { recursive: true });
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  console.log('buffer', buffer);
-
-  const writeStream = createWriteStream(filePath);
-
-  console.log('writestream path', writeStream.path);
-
-  await new Promise((resolve, reject) => {
-    writeStream.on('open', () => {
-      console.log('Write stream opened');
-    });
-
-    writeStream.on('finish', () => {
-      console.log('Write stream finished');
-      resolve(true);
-    });
-    writeStream.on('error', (err) => {
-      writeStream.destroy();
-      console.error('Error writing file:', err);
-      reject(err);
-    });
-    writeStream.write(buffer);
-    writeStream.end();
-  });
-
-  return { success: true, path: `${type}/${objectId}`, id: objectId };
-}
-
-/**
- * Initiates the media processing pipeline (thumbnails, transcoding) for a video.
- * This function starts the process in the background and returns immediately.
- * The frontend should poll `getMediaProcessingJob` for progress updates.
- * @param videoPath - Relative path of the uploaded video in the temp directory (e.g., 'video/xyz123').
- * @param mediaId - The unique identifier for the media (e.g., Movie ID).
- */
-export async function processVideo(
-  videoPath: string,
-  mediaId: string,
-): Promise<{ success: boolean; message?: string }> {
-  console.log(`[Action] processVideo called for mediaId: ${mediaId}`);
-
-  if (!videoPath || !mediaId) {
-    console.error('[Action] processVideo: Missing videoPath or mediaId.');
-    return { success: false, message: 'Missing video path or media ID.' };
-  }
-
-  const outputDirName = mediaId; // Use mediaId for the output directory name
-  const targetDir = path.resolve(
-    process.cwd(), // Ensure path is absolute from project root
-    'converted/playback',
-    outputDirName,
-  );
-  const sourceFile = path.resolve(process.cwd(), tempDir, videoPath); // Absolute path to temp file
-
-  console.log(`[Action] Source file: ${sourceFile}`);
-  console.log(`[Action] Target directory: ${targetDir}`);
-
-  // Ensure target directory exists
-  try {
-    if (!existsSync(targetDir)) {
-      console.log(`[Action] Creating target directory: ${targetDir}`);
-      mkdirSync(targetDir, { recursive: true });
-    }
-  } catch (err: any) {
-    console.error(
-      `[Action] Error creating target directory ${targetDir}:`,
-      err,
-    );
-    return {
-      success: false,
-      message: `Failed to create output directory: ${err.message}`,
-    };
-  }
-
-  // Ensure source file exists
-  if (!existsSync(sourceFile)) {
-    console.error(`[Action] Source file not found: ${sourceFile}`);
-    return { success: false, message: 'Source video file not found.' };
-  }
-
-  try {
-    await dbConnect(); // Ensure DB connection
-
-    // Instantiate engines
-    const thumbnailEngine = new ThumbnailEngine();
-    const transcodingEngine = new TranscodingEngine();
-    const subtitleEngine = new SubtitleEngine({
-      sourceLanguage: 'en', // Specify source language
-      targetLanguages: ['hi', 'pa'], // Specify target languages
-    }); // Instantiate SubtitleEngine with options
-    const aiEngine = new AIEngine(); // Instantiate the AI Engine
-
-    // Instantiate manager with all engines in desired order
-    // MediaManager will reorder if AI engine is before Subtitle engine
-    const mediaManager = new MediaManager(mediaId, [
-      thumbnailEngine,
-      subtitleEngine,
-      aiEngine, // Add AI Engine to the list
-      transcodingEngine,
-    ]);
-
-    // Run the manager - DO NOT await this here.
-    // Let it run in the background. The manager handles DB updates.
-    mediaManager.run(sourceFile, targetDir).catch((runError) => {
-      // Catch errors during the async run execution (e.g., initial setup errors in run)
-      console.error(
-        `[Action] Error during mediaManager.run() for ${mediaId}:`,
-        runError,
-      );
-      // Note: Specific engine errors are handled within MediaManager and update the DB job status.
-      // This catch is for broader issues in the run() method itself.
-    });
-
-    console.log(`[Action] Media processing initiated for mediaId: ${mediaId}`);
-    return {
-      success: true,
-      message: 'Media processing initiated successfully.',
-    };
-  } catch (error: any) {
-    console.error(
-      `[Action] Failed to initiate media processing for ${mediaId}:`,
-      error,
-    );
-    return {
-      success: false,
-      message: `Failed to initiate processing: ${error.message}`,
-    };
-  }
-}
 
 // Type definition for the progress data returned to the frontend
 export type MediaProcessingStatus = {
@@ -310,7 +138,7 @@ export async function saveMovieData(
               id: validatedData.media.video.id,
               originalPath: validatedData.media.video.originalPath,
             }
-            : undefined,
+          : undefined,
         poster:
           validatedData.media?.poster ?
             {
@@ -318,7 +146,7 @@ export async function saveMovieData(
               originalPath: validatedData.media.poster.originalPath,
               aiGeneratedPath: validatedData.media.poster.aiGeneratedPath,
             }
-            : undefined,
+          : undefined,
         backdrop:
           validatedData.media?.backdrop ?
             {
@@ -326,7 +154,7 @@ export async function saveMovieData(
               originalPath: validatedData.media.backdrop.originalPath,
               aiGeneratedPath: validatedData.media.backdrop.aiGeneratedPath,
             }
-            : undefined,
+          : undefined,
       },
       // Add other fields as necessary
     };
@@ -438,7 +266,7 @@ export async function suggestImagePrompt(
     description: string;
     genres: string[];
     initialPrompt: string;
-  }
+  },
 ) {
   try {
     const prompt = await generateImagePrompt({
@@ -451,7 +279,10 @@ export async function suggestImagePrompt(
     console.error('Error suggesting image prompt:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error generating prompt'
+      error:
+        error instanceof Error ?
+          error.message
+        : 'Unknown error generating prompt',
     };
   }
 }

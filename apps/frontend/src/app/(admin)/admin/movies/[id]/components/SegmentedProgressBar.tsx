@@ -1,19 +1,21 @@
-import type React from 'react';
 import { useMemo } from 'react';
 
-import { type MediaProcessingStatus } from '@/app/(admin)/admin/movies/_action';
+import type { JobStatus, MediaTask } from '@monorepo/core';
+import type { WorkerTypes } from '@monorepo/workers';
+import type React from 'react';
+
 import { TextAnimate } from '@/components/magicui/text-animate';
 
 interface SegmentedProgressBarProps {
-  tasks: MediaProcessingStatus['tasks'];
-  jobStatus: MediaProcessingStatus['jobStatus'];
+  tasks: MediaTask[];
+  jobStatus: JobStatus;
 }
 
-const TaskNames: Record<string, string> = {
-  AIEngine: 'Generating Metadata',
-  SubtitleEngine: 'Generating Subtitles',
-  TranscodingEngine: 'Transcoding',
-  ThumbnailEngine: 'Generating Thumbnails',
+const TaskNames: Record<WorkerTypes, string> = {
+  ai: 'Generating Metadata',
+  subtitle: 'Generating Subtitles',
+  transcode: 'Transcoding',
+  thumbnail: 'Generating Thumbnails',
 };
 
 export const SparkelIcon = () => (
@@ -161,7 +163,7 @@ export const SparkelIcon = () => (
   </svg>
 );
 
-const getTaskInfo = (tasks: MediaProcessingStatus['tasks']) => {
+const getTaskInfo = (tasks: MediaTask[]) => {
   const totalTasks = tasks.length;
   if (totalTasks === 0) {
     return {
@@ -180,10 +182,10 @@ const getTaskInfo = (tasks: MediaProcessingStatus['tasks']) => {
   }
 
   const currentTask = tasks[currentTaskIndex];
-  const taskName = TaskNames[currentTask.engine] || currentTask.engine;
-  const isAiTask = currentTask.engine === 'AIEngine';
+  const taskName = TaskNames[currentTask.worker] || currentTask.worker;
+  const isAiTask = currentTask.worker === 'ai';
   const statusText = currentTask.status;
-  const error = currentTask.error;
+  const error = currentTask.errorMessage;
 
   return {
     currentTaskIndex,
@@ -238,8 +240,7 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
 
   const getProgressFill = (engine: string, status: string) => {
     if (status === 'failed') return 'bg-red-200'; // Indicate failure clearly
-    if (engine === 'AIEngine')
-      return 'bg-gradient-to-r from-pink-500 to-red-500';
+    if (engine === 'ai') return 'bg-gradient-to-r from-pink-500 to-red-500';
     return 'bg-primary';
   };
 
@@ -270,10 +271,10 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
       <div className="flex w-full space-x-1 h-3 rounded-full">
         {tasks.map((task) => {
           const progress = task.status === 'completed' ? 100 : task.progress;
-          const title = `${TaskNames[task.engine] || task.engine}: ${task.status} (${progress.toFixed(0)}%) ${task.error ? `- Error: ${task.error}` : ''}`;
+          const title = `${TaskNames[task.worker] || task.worker}: ${task.status} (${progress.toFixed(0)}%) ${task.errorMessage ? `- Error: ${task.errorMessage}` : ''}`;
           const bgColor = 'bg-secondary'; // Background for the segment container
           const outlineClass = getBorderColor(task.status);
-          const progressColor = getProgressFill(task.engine, task.status);
+          const progressColor = getProgressFill(task.worker, task.status);
 
           return (
             <div
@@ -294,14 +295,14 @@ const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
       {jobStatus === 'failed' && (
         <div className="pt-2 space-y-1">
           {tasks
-            .filter((t) => t.status === 'failed' && t.error)
+            .filter((t) => t.status === 'failed' && t.errorMessage)
             .map((task) => (
               <p
                 key={`${task.taskId}-error`}
                 className="text-xs text-red-400"
               >
-                <strong>{TaskNames[task.engine] || task.engine} Error:</strong>{' '}
-                {task.error}
+                <strong>{TaskNames[task.worker] || task.worker} Error:</strong>{' '}
+                {task.errorMessage}
               </p>
             ))}
         </div>

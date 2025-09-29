@@ -1,24 +1,28 @@
 'use client';
 
-import type React from 'react';
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
   useTransition,
-  type MouseEvent,
 } from 'react';
 // Added useCallback
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, Copy, Loader2, Sparkles, Wand2 } from 'lucide-react'; // Added Loader2
-import { useForm, type UseFormReturn } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import type { MediaProcessingStatus } from '@/app/(admin)/admin/movies/_action';
+import type { MediaTask } from '@monorepo/core';
+import type React from 'react';
+import type { MouseEvent } from 'react';
+import type { UseFormReturn } from 'react-hook-form';
+
+import { upload } from '@/actions/upload';
 import { Button } from '@/admin/components/ui/button'; // Added buttonVariants
 import {
   Card,
@@ -58,17 +62,16 @@ import {
   applyAISuggestions,
   generateAIImagesWithPrompt, // Import the new action
   getMediaProcessingJob, // Removed duplicate
-  processVideo,
   saveMovieData,
   suggestImagePrompt,
-  uploadAction,
-  type MediaProcessingStatus,
 } from '@/app/(admin)/admin/movies/_action';
 import { ShineBorder } from '@/components/magicui/shine-border';
 import { PATHS } from '@/constants/paths';
+import { useJobStatus } from '@/hooks/use-job-status';
 import { AIEngineOutput } from '@/lib/media/engine-outputs';
 import { MovieSchema as formSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 import MediaUploadSection from './components/MediaUploadSection';
 import SegmentedProgressBar, {
@@ -93,6 +96,12 @@ const mediaTypes = ['video', 'poster', 'backdrop'] as const;
 
 type MediaTypeFileType = Record<(typeof mediaTypes)[number], File | null>;
 
+// Define the type for the job creation response
+interface JobCreationResponse {
+  jobId: string;
+  error?: string;
+}
+
 export default function EditMoviePage({
   isNewMovie,
   defaultValues,
@@ -104,13 +113,8 @@ export default function EditMoviePage({
 }) {
   const router = useRouter();
 
-  const [processingStatus, setProcessingStatus] =
-    useState<MediaProcessingStatus>({
-      jobStatus: 'pending',
-      tasks: [],
-      jobExists: false,
-    });
-  const [isPolling, setIsPolling] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const { jobStatus: processingStatus, error: jobError } = useJobStatus(jobId);
   const [isCopied, setIsCopied] = useState(false);
   const [isApplyingAISuggestions, startApplyAISuggestionsTransition] =
     useTransition();
@@ -146,19 +150,18 @@ export default function EditMoviePage({
 
   // Derive AI image paths from initial processing status
   const aiEngineTaskOutput = useMemo(() => {
-    const task = processingStatus.tasks.find((t) => {
+    const task = processingStatus?.tasks.find((t) => {
       // Check engine type and completion status first
-      if (t.engine !== 'AIEngine' || t.status !== 'completed' || !t.output) {
+      if (t.worker !== 'ai' || t.status !== 'completed' /*|| !t.output*/) {
         return false;
       }
       // Type guard: Check if 'data' exists and is an object (basic check for AIEngineOutput structure)
-      return (
-        typeof t.output === 'object' && t.output !== null && 'data' in t.output
-      );
+      return true;
+      // typeof t.output === 'object' && t.output !== null && 'data' in t.output
     });
     // If task found and passes guard, assert the type
     return task?.output as AIEngineOutput | undefined;
-  }, [processingStatus.tasks]);
+  }, [processingStatus?.tasks]);
 
   const initialAiGeneratedPosterPath = useMemo(
     () => aiEngineTaskOutput?.data?.posterImagePath || null,
@@ -197,49 +200,10 @@ export default function EditMoviePage({
   const mediaId = form.watch('media.video.id');
 
   useEffect(() => {
-    if (!mediaId) {
-      // console.error('MediaId missing, cannot poll for status.');
-      return; // Don't proceed if no mediaId
+    if (jobError) {
+      toast.error('Job Status Error', { description: jobError });
     }
-
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const fetchStatus = async () => {
-      if (!mediaId) return;
-
-      try {
-        const { [mediaId]: status } = await getMediaProcessingJob(mediaId);
-        setProcessingStatus(status);
-
-        if (status.jobStatus === 'completed' || status.jobStatus === 'failed') {
-          if (intervalId) clearInterval(intervalId);
-          setIsPolling(false);
-        } else if (
-          !isPolling &&
-          status.jobExists &&
-          status.jobStatus !== 'pending'
-        ) {
-          setIsPolling(true);
-        }
-      } catch (error) {
-        console.error('Error fetching media processing status:', error);
-        if (intervalId) clearInterval(intervalId);
-        setIsPolling(false);
-      }
-    };
-
-    fetchStatus(); // Initial fetch
-
-    if (isPolling) {
-      intervalId = setInterval(fetchStatus, 5000); // Poll every 5 seconds
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [mediaId, isPolling]);
+  }, [jobError]);
 
   useEffect(() => {
     if (defaultValues?.genres) {
@@ -328,6 +292,45 @@ export default function EditMoviePage({
     }
   }
 
+  async function initiateJob(mediaId: string, filePath: string) {
+    const jobServiceUrl = process.env.NEXT_PUBLIC_JOB_SERVICE_URL;
+    if (!jobServiceUrl) {
+      toast.error('Job service URL is not configured.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${jobServiceUrl}/jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+        body: JSON.stringify({
+          mediaId: mediaId,
+          sourceUrl: filePath,
+        }),
+      });
+
+      const result: JobCreationResponse = await response.json();
+
+      if (response.ok && result.jobId) {
+        toast.success(`Job initiated successfully\nJob ID: ${result.jobId}`);
+        setJobId(result.jobId); // Start polling by setting the job ID
+      } else {
+        toast.error(
+          'Failed to initiate job\n' + result.error || 'Unknown error',
+        );
+      }
+    } catch (error) {
+      console.error('Error initiating job:', error);
+      toast.error(
+        'Error initiating job\n' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
+  }
+
   const [videoUploadingPending, startVideoTransition] = useTransition();
   const [posterUploadPending, startPosterTransition] = useTransition();
   const [backdropUploadPending, startBackDropTransition] = useTransition();
@@ -351,25 +354,24 @@ export default function EditMoviePage({
         formData.append('file', file);
 
         try {
-          const res = await uploadAction(formData, type);
-          if (res.success && res.path && res.id) {
-            form.setValue(`media.${type}.originalPath`, res.path);
-            form.setValue(`media.${type}.id`, res.id);
-            // Clear AI path in form only for poster/backdrop
+          // 1. Upload the file
+          const uploadResult = await upload(formData);
+
+          if (uploadResult.success && uploadResult.filePath) {
+            showToast('Upload Successful', `${type} uploaded successfully.`);
+
+            // Set form values
+            const newId = Math.random().toString(36).substring(2, 15); // Create a temporary unique enough ID
+            form.setValue(`media.${type}.originalPath`, uploadResult.filePath);
+            form.setValue(`media.${type}.id`, newId);
             if (type === 'poster' || type === 'backdrop') {
               form.setValue(`media.${type}.aiGeneratedPath`, undefined);
             }
-            showToast('Upload Successful', `${type} uploaded successfully.`);
           } else {
-            console.error(`Upload failed for ${type}:`, res);
-            // Check if res has a message property before accessing it
-            const message =
-              typeof res === 'object' && res !== null && 'message' in res ?
-                res.message
-              : 'Unknown error';
+            console.error(`Upload failed for ${type}:`, uploadResult.error);
             showToast(
               'Upload Failed',
-              `${type} upload failed: ${message}`,
+              `${type} upload failed: ${uploadResult.error}`,
               true,
             );
           }
@@ -384,43 +386,6 @@ export default function EditMoviePage({
       }
     });
   };
-
-  function videoProcessHandler(e: MouseEvent) {
-    e.preventDefault(); // Prevent potential form submission if inside form
-    console.log('Video processing started');
-
-    const videoDetails = form.getValues('media.video');
-
-    if (!videoDetails?.originalPath || !videoDetails?.id) {
-      console.error('No video file selected or ID missing');
-      // Add user feedback (e.g., toast)
-      return;
-    }
-
-    processVideo(videoDetails.originalPath, videoDetails.id)
-      .then((res) => {
-        if (res.success) {
-          console.log('Processing initiated via action.');
-          showToast('Processing Started', 'Video processing initiated.');
-          setIsPolling(true);
-        } else {
-          console.error('Failed to initiate processing:', res.message);
-          showToast(
-            'Processing Error',
-            `Failed to start: ${res.message}`,
-            true,
-          );
-        }
-      })
-      .catch((err) => {
-        console.error('Error calling processVideo action:', err);
-        showToast(
-          'Action Error',
-          `Error starting process: ${err.message}`,
-          true,
-        );
-      });
-  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(window.location.origin + text);
@@ -970,29 +935,33 @@ export default function EditMoviePage({
                         key={OriginalPaths.video} // Add key to force re-render on path change
                       />
 
-                      {(
-                        !processingStatus.jobExists ||
-                        processingStatus.jobStatus === 'pending' ||
-                        processingStatus.jobStatus === 'failed'
-                      ) ?
+                      {(!processingStatus ||
+                        processingStatus.status === 'pending' ||
+                        processingStatus.status === 'failed') && (
                         <Button
-                          onClick={videoProcessHandler}
-                          disabled={processingStatus.jobStatus === 'running'}
+                          type="button"
+                          onClick={() =>
+                            initiateJob(mediaId, OriginalPaths.video!)
+                          }
+                          disabled={
+                            processingStatus?.status &&
+                            processingStatus.status === 'processing'
+                          }
                         >
-                          {processingStatus.jobStatus === 'failed' ?
+                          {processingStatus?.status === 'failed' ?
                             'Retry Processing'
                           : 'Start Processing'}
                         </Button>
-                      : null}
+                      )}
 
-                      {processingStatus.jobExists && (
+                      {processingStatus && (
                         <SegmentedProgressBar
                           tasks={processingStatus.tasks}
-                          jobStatus={processingStatus.jobStatus}
+                          jobStatus={processingStatus.status}
                         />
                       )}
 
-                      {processingStatus.jobStatus === 'completed' && (
+                      {processingStatus?.status === 'completed' && (
                         <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
                           <div className="flex-1 text-sm truncate">
                             {getPlaybackUrl(id) || ''}
@@ -1442,18 +1411,19 @@ export default function EditMoviePage({
                     )}
                   </div>
                 </MediaUploadSection>
-
-                <AiSuggestions
-                  isNewMovie={isNewMovie}
-                  tasks={processingStatus.tasks}
-                  form={form}
-                  movieId={id}
-                  isApplied={aiSuggestionsApplied}
-                  setApplied={setAiSuggestionsApplied}
-                  isApplying={isApplyingAISuggestions}
-                  startTransition={startApplyAISuggestionsTransition}
-                  setGenreItems={setGenreItems}
-                />
+                {processingStatus && (
+                  <AiSuggestions
+                    isNewMovie={isNewMovie}
+                    tasks={processingStatus.tasks}
+                    form={form}
+                    movieId={id}
+                    isApplied={aiSuggestionsApplied}
+                    setApplied={setAiSuggestionsApplied}
+                    isApplying={isApplyingAISuggestions}
+                    startTransition={startApplyAISuggestionsTransition}
+                    setGenreItems={setGenreItems}
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1478,7 +1448,7 @@ export default function EditMoviePage({
 
 interface AiSuggestionsProps {
   isNewMovie: boolean;
-  tasks: MediaProcessingStatus['tasks'];
+  tasks: MediaTask[];
   form: UseFormReturn<z.infer<typeof formSchema>>;
   movieId: string;
   isApplied: boolean;
@@ -1502,7 +1472,7 @@ function AiSuggestions({
   setGenreItems,
 }: AiSuggestionsProps) {
   const aiTask = tasks.find(
-    (t) => t.engine === 'AIEngine' && t.status === 'completed',
+    (t) => t.worker === 'ai' && t.status === 'completed',
   );
 
   // Type guard to ensure output is AIEngineOutput
