@@ -64,7 +64,7 @@ describe('LogoutUserUseCase', () => {
       userId: '1',
       role: Role.USER,
       email: 'test@test.com',
-      sub: '1',
+      name: 'test user',
     };
 
     tokenValidator.validate.mockResolvedValue(decodedToken);

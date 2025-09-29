@@ -28,6 +28,8 @@ describe('JwtTokenGenerator', () => {
     it('should generate an access token and a refresh token', () => {
       const userId = 'user-123';
       const role = Role.USER;
+      const userName = 'John Doe';
+      const userEmail = 'john.doe@example.com';
       const expectedAccessToken = 'access-token';
       const expectedRefreshToken = 'refresh-token';
 
@@ -46,6 +48,8 @@ describe('JwtTokenGenerator', () => {
       const { accessToken, refreshToken } = tokenGenerator.generate(
         userId,
         role,
+        userName,
+        userEmail,
       );
 
       expect(accessToken).toBe(expectedAccessToken);

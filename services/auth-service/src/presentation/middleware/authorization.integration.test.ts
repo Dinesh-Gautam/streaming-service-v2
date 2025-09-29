@@ -25,7 +25,12 @@ describe('Authorization Middleware', () => {
     });
 
     it('should return 403 Forbidden if the user does not have the ADMIN role', async () => {
-      const { accessToken } = tokenGenerator.generate('user-id', Role.USER);
+      const { accessToken } = tokenGenerator.generate(
+        'user-id',
+        Role.USER,
+        'user',
+        'user-emaile',
+      );
       const response = await request(app)
         .get('/api/v1/auth/admin')
         .set('Authorization', `Bearer ${accessToken}`);
@@ -33,7 +38,12 @@ describe('Authorization Middleware', () => {
     });
 
     it('should return 200 OK if the user has the ADMIN role', async () => {
-      const { accessToken } = tokenGenerator.generate('admin-id', Role.ADMIN);
+      const { accessToken } = tokenGenerator.generate(
+        'admin-id',
+        Role.ADMIN,
+        'admin',
+        'admin-email',
+      );
       const response = await request(app)
         .get('/api/v1/auth/admin')
         .set('Authorization', `Bearer ${accessToken}`);

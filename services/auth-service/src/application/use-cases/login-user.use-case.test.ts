@@ -74,7 +74,10 @@ describe('LoginUserUseCase', () => {
       jti: 'jti',
       exp: 12345,
       role: 'USER',
+      name: 'user',
+      email: 'user-email',
     });
+
     tokenValidator.validateRefreshToken.mockResolvedValue({
       userId: '1',
       jti: 'jti',
