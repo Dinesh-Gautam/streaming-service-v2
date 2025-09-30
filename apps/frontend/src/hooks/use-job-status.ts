@@ -6,7 +6,7 @@ import type { JobStatus, MediaJob } from '@monorepo/core';
 
 const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed'];
 
-export function useJobStatus(jobId: string | null) {
+export function useJobStatus(jobId: string | null, pollTrigger: number = 0) {
   const [jobStatus, setJobStatus] = useState<MediaJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -59,7 +59,7 @@ export function useJobStatus(jobId: string | null) {
       }
       setIsPolling(false);
     };
-  }, [jobId]);
+  }, [jobId, pollTrigger]);
 
   return { jobStatus, error, isPolling };
 }

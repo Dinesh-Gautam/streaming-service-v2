@@ -255,7 +255,10 @@ export async function generateAIImagesWithPrompt(
     return { success, path, id };
   } catch (error) {
     console.error('Error generating AI images:', error);
-    return { success: false, error: error };
+    return {
+      success: false,
+      error: (error as Error).message || 'Unkown error message',
+    };
   }
 }
 
@@ -283,6 +286,73 @@ export async function suggestImagePrompt(
         error instanceof Error ?
           error.message
         : 'Unknown error generating prompt',
+    };
+  }
+}
+export async function retryJob(mediaId: string) {
+  const jobServiceUrl = process.env.NEXT_PUBLIC_JOB_SERVICE_URL;
+  if (!jobServiceUrl) {
+    return {
+      success: false,
+      message: 'Job service URL is not configured.',
+    };
+  }
+
+  try {
+    const response = await fetch(`${jobServiceUrl}/jobs/${mediaId}/retry`, {
+      method: 'POST',
+    });
+
+    if (response.ok) {
+      return { success: true, message: 'Job retry initiated successfully.' };
+    } else {
+      const errorData = await response.json();
+      return {
+        success: false,
+        message: `Failed to retry job: ${errorData.error || 'Unknown error'}`,
+      };
+    }
+  } catch (error: any) {
+    console.error('[Action] Error retrying job:', error);
+    return {
+      success: false,
+      message: `Error retrying job: ${error.message}`,
+    };
+  }
+}
+
+export async function getJobByMediaId(mediaId: string) {
+  const jobServiceUrl = process.env.NEXT_PUBLIC_JOB_SERVICE_URL;
+  if (!jobServiceUrl) {
+    return {
+      success: false,
+      message: 'Job service URL is not configured.',
+      job: null,
+    };
+  }
+
+  try {
+    const response = await fetch(`${jobServiceUrl}/jobs/by-media/${mediaId}`);
+
+    if (response.ok) {
+      const job = await response.json();
+      return { success: true, job };
+    } else if (response.status === 404) {
+      return { success: true, job: null }; // No job found is not a failure
+    } else {
+      const errorData = await response.json();
+      return {
+        success: false,
+        message: `Failed to get job: ${errorData.error || 'Unknown error'}`,
+        job: null,
+      };
+    }
+  } catch (error: any) {
+    console.error('[Action] Error getting job by media ID:', error);
+    return {
+      success: false,
+      message: `Error getting job by media ID: ${error.message}`,
+      job: null,
     };
   }
 }

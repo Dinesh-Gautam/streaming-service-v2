@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 
-import EditMoviePage from '@/app/(admin)/admin/movies/[id]/edit-movie';
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
-import { Movie } from '@/server/db/schemas/movie';
+
+import EditMoviePage from '@/app/(admin)/admin/movies/[id]/edit-movie';
+import RefactoredEditMoviePage from '@/app/(admin)/admin/movies/[id]/refactored-edit-movie';
 import dbConnect from '@/server/db/connect';
+import { Movie } from '@/server/db/schemas/movie';
 
 type EditMoviePageProps = {
   params: Promise<{
@@ -16,7 +18,7 @@ export default async function Page({ params }: EditMoviePageProps) {
 
   await dbConnect();
 
-  let data
+  let data;
 
   const isNewMovie = id === 'new';
 
@@ -32,10 +34,10 @@ export default async function Page({ params }: EditMoviePageProps) {
     } as MovieType;
   }
 
-  console.log(data)
+  console.log(data);
 
   return (
-    <EditMoviePage
+    <RefactoredEditMoviePage
       id={id}
       defaultValues={data}
       isNewMovie={isNewMovie}
