@@ -115,6 +115,7 @@ export default function EditMoviePage({
 
   const [jobId, setJobId] = useState<string | null>(null);
   const { jobStatus: processingStatus, error: jobError } = useJobStatus(jobId);
+  console.log(processingStatus);
   const [isCopied, setIsCopied] = useState(false);
   const [isApplyingAISuggestions, startApplyAISuggestionsTransition] =
     useTransition();
