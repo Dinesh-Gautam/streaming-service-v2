@@ -13,10 +13,10 @@ export const WORKERS: { name: string; type: WorkerTypes }[] = [
   //   name: 'AIWorker',
   //   type: 'ai',
   // },
-  // {
-  //   name: 'TranscodingWorker',
-  //   type: 'transcode',
-  // },
+  {
+    name: 'TranscodingWorker',
+    type: 'transcode',
+  },
 ];
 
 export const getNextTask = (

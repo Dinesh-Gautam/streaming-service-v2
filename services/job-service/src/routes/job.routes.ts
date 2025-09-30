@@ -10,5 +10,6 @@ const jobController = container.resolve(JobController);
 jobRouter.post('/jobs', jobController.createJob);
 jobRouter.get('/jobs/:id', jobController.getJobById);
 jobRouter.post('/jobs/:mediaId/retry', jobController.retryJob);
+jobRouter.get('/jobs/by-media/:mediaId', jobController.getJobByMediaId);
 
 export { jobRouter };

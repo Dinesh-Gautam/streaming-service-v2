@@ -29,7 +29,7 @@ describe('Error Handler Middleware', () => {
     await jest.isolateModulesAsync(async () => {
       process.env.NODE_ENV = 'production';
       const { errorHandler: errorHandlerProd } = await import(
-        './error-handler.middleware'
+        './error-handler.middleware.js'
       );
       const appProd = express();
       appProd.get('/error', (req, res, next) => {

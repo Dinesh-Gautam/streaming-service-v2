@@ -9,6 +9,7 @@ import {
 } from '@job-service/entities/errors.entity';
 import { CreateJobUseCase } from '@job-service/use-cases/create-job.usecase';
 import { GetJobByIdUseCase } from '@job-service/use-cases/get-job-by-id.usecase';
+import { GetJobByMediaIdUseCase } from '@job-service/use-cases/get-job-by-media-id.usecase';
 import { RetryJobUseCase } from '@job-service/use-cases/retry-job.usecase';
 
 export class JobController {
@@ -66,6 +67,24 @@ export class JobController {
       return res.status(200).json(job);
     } catch (error) {
       logger.error('Error getting job by id:', error);
+
+      if (error instanceof JobNotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+  async getJobByMediaId(req: Request, res: Response): Promise<Response> {
+    try {
+      const { mediaId } = req.params;
+
+      const getJobByMediaIdUseCase = container.resolve(GetJobByMediaIdUseCase);
+      const job = await getJobByMediaIdUseCase.execute(mediaId);
+
+      return res.status(200).json(job);
+    } catch (error) {
+      logger.error('Error getting job by media id:', error);
 
       if (error instanceof JobNotFoundError) {
         return res.status(404).json({ error: error.message });

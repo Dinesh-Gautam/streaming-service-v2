@@ -1,4 +1,4 @@
-import type { MediaJob, TaskStatus } from '..';
+import type { JobStatus, MediaJob, TaskStatus } from '..';
 
 export interface ITaskRepository {
   findJobById(id: string): Promise<MediaJob | null>;
@@ -16,4 +16,5 @@ export interface IJobRepository {
   save(job: MediaJob): Promise<MediaJob>;
   getJobById(id: string): Promise<MediaJob | null>;
   getJobByMediaId(mediaId: string): Promise<MediaJob | null>;
+  updateJobStatus(jobId: string, status: JobStatus): Promise<void>;
 }

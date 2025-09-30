@@ -19,7 +19,6 @@ import {
 } from '@job-service/entities/errors.entity';
 import { jobRouter } from '@job-service/routes/job.routes';
 import { TaskDispatcher } from '@job-service/services/task-dispatcher.service';
-import { UpdateJobStatusUseCase } from '@job-service/use-cases/update-job-status.usecase';
 import { TaskPayloadFactory } from '@job-service/utils/task-payload.factory';
 import { DI_TOKENS, ITaskRepository } from '@monorepo/core';
 
@@ -72,8 +71,6 @@ async function main() {
     return res.status(500).json({ error: 'Internal Server Error' });
   });
 
-  const updateJobStatusUseCase = container.resolve(UpdateJobStatusUseCase);
-
   messageConsumer.consume('task_completed', async (content, msg) => {
     if (!msg || !content) {
       return;
@@ -82,6 +79,7 @@ async function main() {
     try {
       logger.info('Received task completion message:', content);
 
+      const jobRepository = container.resolve(DI_TOKENS.JobRepository);
       const taskRepository = container.resolve<ITaskRepository>(
         DI_TOKENS.TaskRepository,
       );
@@ -121,16 +119,10 @@ async function main() {
           const taskDispatcher = container.resolve(TaskDispatcher);
           await taskDispatcher.dispatch(nextPendingTask, payload);
         } else {
-          await updateJobStatusUseCase.execute({
-            jobId: content.jobId,
-            status: 'completed',
-          });
+          await jobRepository.updateJobStatus(content.jobId, 'completed');
         }
       } else {
-        await updateJobStatusUseCase.execute({
-          jobId: content.jobId,
-          status: 'completed',
-        });
+        await jobRepository.updateJobStatus(content.jobId, 'completed');
       }
 
       messageConsumer.ack(msg);
@@ -144,13 +136,12 @@ async function main() {
       return;
     }
 
+    const jobRepository = container.resolve(DI_TOKENS.JobRepository);
+
     try {
       logger.info('Received task failure message:', content);
 
-      await updateJobStatusUseCase.execute({
-        jobId: content.jobId,
-        status: 'failed',
-      });
+      await jobRepository.updateJobStatus(content.jobId, 'failed');
 
       messageConsumer.ack(msg);
     } catch (error) {

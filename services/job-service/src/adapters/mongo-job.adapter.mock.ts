@@ -5,6 +5,6 @@ export class MockMongoJobAdapter implements IJobRepository {
   save = jest.fn();
   getJobById = jest.fn();
   getJobByMediaId = jest.fn();
-  update = jest.fn();
+  updateJobStatus = jest.fn();
   findByStatus = jest.fn();
 }

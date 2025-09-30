@@ -1,7 +1,7 @@
 import { Collection, ObjectId } from 'mongodb';
 import { inject, injectable } from 'tsyringe';
 
-import type { IJobRepository } from '@monorepo/core';
+import type { IJobRepository, JobStatus } from '@monorepo/core';
 
 import { DI_TOKENS, MediaJob, TaskStatus } from '@monorepo/core';
 import { IDatabaseConnection } from '@monorepo/database';
@@ -74,26 +74,10 @@ export class MongoJobRepository implements IJobRepository {
     return mediaPresenter;
   }
 
-  async updateTaskStatus(
-    jobId: string,
-    taskId: string,
-    status: TaskStatus,
-    progress?: number,
-    errorMessage?: string,
-  ): Promise<void> {
-    const updateFields: Record<string, any> = {
-      'tasks.$.status': status,
-    };
-    if (progress !== undefined) {
-      updateFields['tasks.$.progress'] = progress;
-    }
-    if (errorMessage !== undefined) {
-      updateFields['tasks.$.errorMessage'] = errorMessage;
-    }
-
+  async updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
     await this.collection.updateOne(
-      { _id: new ObjectId(jobId), 'tasks.taskId': taskId },
-      { $set: updateFields },
+      { _id: new ObjectId(jobId) },
+      { $set: { status } },
     );
   }
 }

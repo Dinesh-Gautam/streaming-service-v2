@@ -61,6 +61,8 @@ export class CreateJobUseCase {
           sourceUrl: input.sourceUrl,
         },
       );
+
+      await this.jobRepository.updateJobStatus(savedJob._id, 'processing');
     } else {
       logger.warn(`No pending tasks found for job ${savedJob._id}`);
     }

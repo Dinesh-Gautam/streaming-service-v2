@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "docker:dev": "docker compose up --build --watch",
+    "docker:dev:workers": "pnpm run docker:dev job-service thumbnail-worker transcoding-worker subtitle-worker ai-worker",
+    "dev:frontend": "pnpm --filter=frontend dev",
     "dev:workers": "docker compose up -d mongo rabbitmq && pnpm run dev:packages && pnpm run dev:jov-service && pnpm run dev:thumbnail-worker",
     "dev": "turbo run dev",
     "build": "turbo run build",
