@@ -3,6 +3,7 @@ import { container } from 'tsyringe';
 import type { IMessagePublisher } from '@monorepo/message-queue';
 
 import { AIMediaProcessor } from '@ai-worker/adapters/ai.media-processor';
+import { MockAIMediaProcessor } from '@ai-worker/adapters/mock-ai.media-processor';
 import {
   AudioService,
   AudioServiceToken,
@@ -36,8 +37,11 @@ export function setupDI(): void {
   container.registerSingleton(GeminiTtsServiceToken, GeminiTtsService);
   container.registerSingleton(AudioServiceToken, AudioService);
 
+  // container.register(DI_TOKENS.MediaProcessor, {
+  //   useClass: AIMediaProcessor,
+  // });
   container.register(DI_TOKENS.MediaProcessor, {
-    useClass: AIMediaProcessor,
+    useClass: MockAIMediaProcessor,
   });
 
   container.register(DI_TOKENS.Storage, {
