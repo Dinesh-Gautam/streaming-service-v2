@@ -21,6 +21,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/admin/components/ui/tabs';
+import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
 import { AIImageGenerationPanel } from '@/app/(admin)/admin/movies/[id]/components/AIImageGenerationPanel';
 import { AiSuggestions } from '@/app/(admin)/admin/movies/[id]/components/AiSuggestions';
 import { MediaProcessingSection } from '@/app/(admin)/admin/movies/[id]/components/MediaProcessingSection';
@@ -126,9 +127,37 @@ export default function RefactoredEditMoviePage({
 
   const onSubmit = (values: z.infer<typeof MovieSchema>) => {
     startSavingTransition(async () => {
-      // ... submission logic from original component
-      toast.success('Movie saved successfully!');
-      router.push(PATHS.ADMIN.MOVIES);
+      try {
+        const finalValues = {
+          ...values,
+          genres: Array.from(new Set(values.genres || [])),
+        };
+
+        const res = await saveMovieData(
+          finalValues,
+          isNewMovie ? undefined : id,
+        );
+
+        if (res.success) {
+          toast.success(
+            isNewMovie ?
+              'Movie created successfully!'
+            : 'Movie updated successfully!',
+          );
+          router.push(PATHS.ADMIN.MOVIES);
+          router.refresh(); // To reflect changes in the movie list
+        } else {
+          toast.error('Failed to save movie', {
+            description:
+              res.message || 'An unexpected error occurred. Please try again.',
+          });
+        }
+      } catch (error) {
+        console.error('An unexpected error occurred during submission:', error);
+        toast.error('An unexpected error occurred', {
+          description: 'Please check the console for more details.',
+        });
+      }
     });
   };
 

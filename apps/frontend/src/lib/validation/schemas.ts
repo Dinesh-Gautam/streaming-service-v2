@@ -62,31 +62,51 @@ const BaseMovieSchema = z.object({
 });
 
 // Add refinement to validate that when status is "Published", all required fields are present
-export const MovieSchema = BaseMovieSchema.refine(
-  (data) => {
-    // If status is Draft, no additional validation needed
-    if (data.status === 'Draft') return true;
+export const MovieSchema = BaseMovieSchema.superRefine((data, ctx) => {
+  // Rule 1: If status is Published, all required fields must be present
+  if (data.status === 'Published') {
+    const missingFields = [
+      !data.title && 'Title',
+      !data.description && 'Description',
+      !data.year && 'Year',
+      (!data.genres || data.genres.length === 0) && 'Genres',
+      !data.media?.video?.originalPath && 'Video',
+      !data.media?.poster?.originalPath &&
+        !data.media?.poster?.aiGeneratedPath &&
+        'Poster',
+      !data.media?.backdrop?.originalPath &&
+        !data.media?.backdrop?.aiGeneratedPath &&
+        'Backdrop',
+    ].filter(Boolean);
 
-    // If status is Published, all these fields must be present
-    return !!(
-      data.title &&
-      data.description &&
-      data.year &&
-      data.genres &&
-      data.genres.length > 0 &&
-      data.media?.video?.originalPath &&
-      (data.media?.poster?.originalPath ||
-        data.media?.poster?.aiGeneratedPath) &&
-      (data.media?.backdrop?.originalPath ||
-        data.media?.backdrop?.aiGeneratedPath)
-    );
-  },
-  {
-    message:
-      'All fields must be filled to publish a movie. Make sure you have title, description, year, at least one genre, video, poster, and backdrop.',
-    path: ['status'], // This shows the error on the status field
-  },
-);
+    if (missingFields.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `The following fields are required to publish: ${missingFields.join(', ')}`,
+        path: ['status'],
+      });
+    }
+  }
+
+  // Rule 2: Ensure the movie is not completely empty
+  const hasContent =
+    !!data.title ||
+    !!data.description ||
+    !!data.year ||
+    (!!data.genres && data.genres.length > 0) ||
+    !!data.media?.video?.originalPath ||
+    !!data.media?.poster?.originalPath ||
+    !!data.media?.backdrop?.originalPath;
+
+  if (!hasContent) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Cannot save a completely empty movie. Please fill in at least one detail or upload a media file.',
+      path: ['title'], // Show error on a primary field
+    });
+  }
+});
 
 export type UserSchemaType = z.infer<typeof UserSchema>;
 export type MovieSchemaType = z.infer<typeof MovieSchema>;
