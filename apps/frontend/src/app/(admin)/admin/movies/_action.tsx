@@ -4,6 +4,8 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import type { MediaJob } from '@monorepo/core';
+
 import { generateImagePrompt, generateImageWithPrompt } from '@/lib/ai/images';
 import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
@@ -313,7 +315,7 @@ export async function getJobByMediaId(mediaId: string) {
     const response = await fetch(`${jobServiceUrl}/jobs/by-media/${mediaId}`);
 
     if (response.ok) {
-      const job = await response.json();
+      const job = (await response.json()) as MediaJob;
       return { success: true, job };
     } else if (response.status === 404) {
       return { success: true, job: null }; // No job found is not a failure

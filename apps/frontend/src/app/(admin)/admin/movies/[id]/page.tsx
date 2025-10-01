@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Movie as MovieType } from '@/app/(admin)/admin/movies/movies-table';
 
 import EditMoviePage from '@/app/(admin)/admin/movies/[id]/edit-movie';
-import RefactoredEditMoviePage from '@/app/(admin)/admin/movies/[id]/refactored-edit-movie';
+import RefactoredEditMoviePage from '@/app/(admin)/admin/movies/[id]/edit-movie';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
 
