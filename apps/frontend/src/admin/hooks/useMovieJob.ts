@@ -10,11 +10,10 @@ interface JobCreationResponse {
   error?: string;
 }
 
-export function useMovieJob(mediaId: string | null) {
-  const [jobId, setJobId] = useState<string | null>(null);
+export function useMovieJobProcessing(mediaId: string | null) {
   const [pollTrigger, setPollTrigger] = useState(0);
   const { jobStatus: processingStatus, error: jobError } = useJobStatus(
-    jobId,
+    mediaId,
     pollTrigger,
   );
 
@@ -26,12 +25,7 @@ export function useMovieJob(mediaId: string | null) {
 
   useEffect(() => {
     async function fetchInitialJob() {
-      if (mediaId) {
-        const result = await getJobByMediaId(mediaId);
-        if (result.success && result.job) {
-          setJobId(result.job._id);
-        }
-      }
+      if (mediaId) await getJobByMediaId(mediaId);
     }
     fetchInitialJob();
   }, [mediaId]);
@@ -54,7 +48,6 @@ export function useMovieJob(mediaId: string | null) {
 
       if (response.ok && result.jobId) {
         toast.success(`Job initiated successfully\nJob ID: ${result.jobId}`);
-        setJobId(result.jobId);
         setPollTrigger((prev) => prev + 1);
       } else {
         toast.error(
@@ -80,7 +73,6 @@ export function useMovieJob(mediaId: string | null) {
   }, []);
 
   return {
-    jobId,
     processingStatus,
     initiateJob,
     handleRetryJob,

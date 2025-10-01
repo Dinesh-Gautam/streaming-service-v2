@@ -1,6 +1,7 @@
-import type React from 'react';
+import { Roboto } from 'next/font/google';
+
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import type React from 'react';
 
 import '@/styles/admin.css';
 
@@ -8,14 +9,14 @@ import { AdminSidebar } from '@/admin/components/admin-sidebar';
 import { ThemeProvider } from '@/admin/components/theme-provider';
 import { SidebarProvider } from '@/admin/components/ui/sidebar';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Roboto({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Admin Panel',
   description: 'Admin panel for managing users and movies',
 };
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export default function RootLayout({
   children,

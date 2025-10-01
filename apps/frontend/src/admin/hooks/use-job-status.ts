@@ -6,13 +6,39 @@ import type { JobStatus, MediaJob } from '@monorepo/core';
 
 const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed'];
 
-export function useJobStatus(jobId: string | null, pollTrigger: number = 0) {
-  const [jobStatus, setJobStatus] = useState<MediaJob | null>(null);
+// Overload signatures
+export function useJobStatus(
+  mediaId: string | null,
+  pollTrigger?: number,
+): {
+  jobStatus: MediaJob | null;
+  error: string | null;
+  isPolling: boolean;
+};
+export function useJobStatus(
+  mediaIds: string[] | null,
+  pollTrigger?: number,
+): {
+  jobStatus: Record<string, MediaJob> | null;
+  error: string | null;
+  isPolling: boolean;
+};
+
+export function useJobStatus(
+  mediaIdorIds: string | string[] | null,
+  pollTrigger: number = 0,
+) {
+  const [jobStatus, setJobStatus] = useState<
+    MediaJob | Record<string, MediaJob> | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
 
   useEffect(() => {
-    if (!jobId) {
+    if (
+      !mediaIdorIds ||
+      (Array.isArray(mediaIdorIds) && !mediaIdorIds.length)
+    ) {
       setJobStatus(null);
       return;
     }
@@ -24,21 +50,74 @@ export function useJobStatus(jobId: string | null, pollTrigger: number = 0) {
     }
 
     let intervalId: NodeJS.Timeout | null = null;
+    let idsToPoll = Array.isArray(mediaIdorIds) ? [...mediaIdorIds] : [];
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`${jobServiceUrl}/jobs/${jobId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch job status: ${response.statusText}`);
-        }
-        const data: MediaJob = await response.json();
-        setJobStatus(data);
+        if (Array.isArray(mediaIdorIds)) {
+          if (idsToPoll.length === 0) {
+            if (intervalId) clearInterval(intervalId);
+            setIsPolling(false);
+            return;
+          }
 
-        if (TERMINAL_STATUSES.includes(data.status)) {
-          if (intervalId) clearInterval(intervalId);
-          setIsPolling(false);
+          const promises = idsToPoll.map((id) =>
+            fetch(`${jobServiceUrl}/jobs/by-media/${id}`).then((res) => {
+              if (res.status === 404) {
+                console.warn(`Job not found for media ID: ${id}`);
+                return null;
+              }
+              if (!res.ok) {
+                throw new Error(
+                  `Failed to fetch job status for ${id}: ${res.statusText}`,
+                );
+              }
+              return res.json();
+            }),
+          );
+
+          const results: (MediaJob | null)[] = await Promise.all(promises);
+          const successfulJobs = results.filter(
+            (job): job is MediaJob => !!job,
+          );
+
+          if (successfulJobs.length > 0) {
+            const statusMap = successfulJobs.reduce(
+              (acc, job) => {
+                acc[job.mediaId] = job;
+                return acc;
+              },
+              {} as Record<string, MediaJob>,
+            );
+
+            setJobStatus((prev) => ({
+              ...((prev as Record<string, MediaJob>) || {}),
+              ...statusMap,
+            }));
+          }
+
+          idsToPoll = successfulJobs
+            .filter((job) => !TERMINAL_STATUSES.includes(job.status))
+            .map((job) => job.mediaId);
+        } else {
+          const response = await fetch(
+            `${jobServiceUrl}/jobs/by-media/${mediaIdorIds}`,
+          );
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch job status: ${response.statusText}`,
+            );
+          }
+          const data: MediaJob = await response.json();
+          setJobStatus(data);
+
+          if (TERMINAL_STATUSES.includes(data.status)) {
+            if (intervalId) clearInterval(intervalId);
+            setIsPolling(false);
+          }
         }
       } catch (err) {
+        console.error('Error fetching job status:', err);
         setError(
           err instanceof Error ? err.message : 'An unknown error occurred.',
         );
@@ -47,19 +126,17 @@ export function useJobStatus(jobId: string | null, pollTrigger: number = 0) {
       }
     };
 
-    // Start polling
     setIsPolling(true);
-    fetchStatus(); // Initial fetch
-    intervalId = setInterval(fetchStatus, 1000); // Poll every 1 seconds
+    fetchStatus();
+    intervalId = setInterval(fetchStatus, 1000);
 
-    // Cleanup
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
       }
       setIsPolling(false);
     };
-  }, [jobId, pollTrigger]);
+  }, [mediaIdorIds, pollTrigger]);
 
   return { jobStatus, error, isPolling };
 }

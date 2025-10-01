@@ -33,7 +33,7 @@ import {
   useAIPromptGeneration,
 } from '@/admin/hooks/useAIFeatures';
 import { useMediaUpload } from '@/admin/hooks/useMediaUpload';
-import { useMovieJob } from '@/admin/hooks/useMovieJob';
+import { useMovieJobProcessing } from '@/admin/hooks/useMovieJob';
 import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema } from '@/lib/validation/schemas';
@@ -68,9 +68,8 @@ export default function RefactoredEditMoviePage({
       } as MovieSchemaType),
   });
 
-  const { jobId, processingStatus, initiateJob, handleRetryJob } = useMovieJob(
-    form.watch('media.video.id'),
-  );
+  const { processingStatus, initiateJob, handleRetryJob } =
+    useMovieJobProcessing(form.watch('media.video.id'));
 
   const [genreItems, setGenreItems] = useState(defaultGenreItems);
 
