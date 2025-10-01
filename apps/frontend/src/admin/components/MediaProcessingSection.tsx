@@ -20,6 +20,7 @@ interface MediaProcessingSectionProps {
   processingStatus: MediaJob | null;
   onInitiateJob: (mediaId: string, filePath: string) => void;
   onRetryJob: (mediaId: string) => void;
+  isRetrying: boolean;
   movieId: string;
 }
 
@@ -29,6 +30,7 @@ export function MediaProcessingSection({
   processingStatus,
   onInitiateJob,
   onRetryJob,
+  isRetrying,
   movieId,
 }: MediaProcessingSectionProps) {
   const [isCopied, setIsCopied] = React.useState(false);
@@ -50,9 +52,7 @@ export function MediaProcessingSection({
             key={originalPath}
           />
 
-          {(!processingStatus ||
-            processingStatus.status === 'pending' ||
-            processingStatus.status === 'failed') && (
+          {(!processingStatus || processingStatus.status === 'failed') && (
             <Button
               type="button"
               onClick={() =>
@@ -60,9 +60,11 @@ export function MediaProcessingSection({
                   onRetryJob(mediaId)
                 : onInitiateJob(mediaId, originalPath)
               }
-              disabled={processingStatus?.status === 'processing'}
+              disabled={processingStatus?.status === 'processing' || isRetrying}
             >
-              {processingStatus?.status === 'failed' ?
+              {isRetrying ?
+                'Retrying...'
+              : processingStatus?.status === 'failed' ?
                 'Retry Processing'
               : 'Start Processing'}
             </Button>

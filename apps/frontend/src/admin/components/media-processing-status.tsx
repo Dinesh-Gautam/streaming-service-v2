@@ -31,6 +31,17 @@ export function MediaProcessingStatus({ job }: MediaProcessingStatusProps) {
     );
   }
 
+  if (job.status === 'failed') {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-red-300/10 text-red-400 border-red-300/20"
+      >
+        Failed
+      </Badge>
+    );
+  }
+
   return (
     <Badge
       variant="outline"

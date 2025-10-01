@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { toast } from 'sonner';
 
+import type { MediaJob } from '@monorepo/core';
+
 import { useJobStatus } from '@/admin/hooks/use-job-status';
 import { getJobByMediaId, retryJob } from '@/app/(admin)/admin/movies/_action';
 
@@ -12,10 +14,28 @@ interface JobCreationResponse {
 
 export function useMovieJobProcessing(mediaId: string | null) {
   const [pollTrigger, setPollTrigger] = useState(0);
-  const { jobStatus: processingStatus, error: jobError } = useJobStatus(
+  const [isRetrying, setIsRetrying] = useState(false);
+  const { jobStatus: polledStatus, error: jobError } = useJobStatus(
     mediaId,
     pollTrigger,
   );
+
+  const [processingStatus, setProcessingStatus] = useState<MediaJob | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setProcessingStatus(null);
+  }, [mediaId]);
+
+  useEffect(() => {
+    if (polledStatus) {
+      setProcessingStatus(polledStatus);
+      if (polledStatus.status !== 'failed') {
+        setIsRetrying(false);
+      }
+    }
+  }, [polledStatus]);
 
   useEffect(() => {
     if (jobError) {
@@ -25,7 +45,12 @@ export function useMovieJobProcessing(mediaId: string | null) {
 
   useEffect(() => {
     async function fetchInitialJob() {
-      if (mediaId) await getJobByMediaId(mediaId);
+      if (mediaId) {
+        const { job } = await getJobByMediaId(mediaId);
+        if (job) {
+          setProcessingStatus(job);
+        }
+      }
     }
     fetchInitialJob();
   }, [mediaId]);
@@ -63,12 +88,14 @@ export function useMovieJobProcessing(mediaId: string | null) {
   }, []);
 
   const handleRetryJob = useCallback(async (mediaId: string) => {
+    setIsRetrying(true);
     const result = await retryJob(mediaId);
     if (result.success) {
       toast.success(result.message);
       setPollTrigger((prev) => prev + 1); // Trigger polling again
     } else {
       toast.error(result.message);
+      setIsRetrying(false);
     }
   }, []);
 
@@ -76,5 +103,6 @@ export function useMovieJobProcessing(mediaId: string | null) {
     processingStatus,
     initiateJob,
     handleRetryJob,
+    isRetrying,
   };
 }
