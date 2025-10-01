@@ -1,11 +1,14 @@
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-
-import { gemini20Flash001, imagen3 } from '@genkit-ai/vertexai';
 import parseDataURL from 'data-urls';
+import { genkit } from 'genkit';
 import { z } from 'zod';
 
-import { ai } from './flow';
+import vertexAI, { gemini20Flash001, imagen3 } from '@genkit-ai/vertexai';
+
+export const ai = genkit({
+  plugins: [vertexAI({ location: 'us-central1', projectId: '' })],
+});
 
 export async function generateImageWithPrompt(
   prompt: string,

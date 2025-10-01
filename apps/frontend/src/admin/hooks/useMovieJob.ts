@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { toast } from 'sonner';
 
+import { useJobStatus } from '@/admin/hooks/use-job-status';
 import { getJobByMediaId, retryJob } from '@/app/(admin)/admin/movies/_action';
-import { useJobStatus } from '@/hooks/use-job-status';
 
 interface JobCreationResponse {
   jobId: string;

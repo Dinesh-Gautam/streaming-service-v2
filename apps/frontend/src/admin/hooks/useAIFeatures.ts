@@ -5,13 +5,13 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import type { MediaTask } from '@monorepo/core';
+import type { AIEngineOutput } from '@monorepo/workers';
 
 import {
   applyAISuggestions,
   generateAIImagesWithPrompt,
   suggestImagePrompt,
 } from '@/app/(admin)/admin/movies/_action';
-import { AIEngineOutput } from '@/lib/media/engine-outputs';
 import { MovieSchema } from '@/lib/validation/schemas';
 
 export function useAIGeneratedContent(

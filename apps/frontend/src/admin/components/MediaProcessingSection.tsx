@@ -6,8 +6,8 @@ import { Check, Copy } from 'lucide-react';
 
 import type { MediaJob } from '@monorepo/core';
 
+import SegmentedProgressBar from '@/admin/components/SegmentedProgressBar';
 import { Button } from '@/admin/components/ui/button';
-import SegmentedProgressBar from '@/app/(admin)/admin/movies/[id]/components/SegmentedProgressBar';
 import { getPlaybackUrl } from '@/utils/url';
 
 // import SegmentedProgressBar, {

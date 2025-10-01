@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { Copy, Edit, MoreHorizontal, Play, Trash } from 'lucide-react';
+
+import type { MovieSchema } from '@/lib/validation/schemas';
 import type { z } from 'zod';
 
 import { Badge } from '@/admin/components/ui/badge';
@@ -30,13 +32,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/admin/components/ui/tooltip';
-import {
-  deleteMovie,
-  getMediaProcessingJob,
-  type MediaProcessingStatus,
-} from '@/app/(admin)/admin/movies/_action';
+import { deleteMovie } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
-import type { MovieSchema } from '@/lib/validation/schemas';
 import { getPlaybackUrl } from '@/utils/url';
 
 import { DeleteMovieDialog } from './delete-movie-dialog';

@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
+import type { MovieSchemaType } from '@/lib/validation/schemas';
+
+import { AIImageGenerationPanel } from '@/admin/components/AIImageGenerationPanel';
+import { AiSuggestions } from '@/admin/components/AiSuggestions';
+import { MediaProcessingSection } from '@/admin/components/MediaProcessingSection';
+import MediaUploadSection from '@/admin/components/MediaUploadSection';
+import { MovieDetailsForm } from '@/admin/components/MovieDetailsForm';
 import { Button } from '@/admin/components/ui/button';
 import {
   Card,
@@ -21,19 +27,14 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/admin/components/ui/tabs';
-import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
-import { AIImageGenerationPanel } from '@/app/(admin)/admin/movies/[id]/components/AIImageGenerationPanel';
-import { AiSuggestions } from '@/app/(admin)/admin/movies/[id]/components/AiSuggestions';
-import { MediaProcessingSection } from '@/app/(admin)/admin/movies/[id]/components/MediaProcessingSection';
-import MediaUploadSection from '@/app/(admin)/admin/movies/[id]/components/MediaUploadSection';
-import { MovieDetailsForm } from '@/app/(admin)/admin/movies/[id]/components/MovieDetailsForm';
 import {
   useAIGeneratedContent,
   useAIImageGeneration,
   useAIPromptGeneration,
-} from '@/app/(admin)/admin/movies/[id]/hooks/useAIFeatures';
-import { useMediaUpload } from '@/app/(admin)/admin/movies/[id]/hooks/useMediaUpload';
-import { useMovieJob } from '@/app/(admin)/admin/movies/[id]/hooks/useMovieJob';
+} from '@/admin/hooks/useAIFeatures';
+import { useMediaUpload } from '@/admin/hooks/useMediaUpload';
+import { useMovieJob } from '@/admin/hooks/useMovieJob';
+import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema } from '@/lib/validation/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,20 +52,20 @@ export default function RefactoredEditMoviePage({
   defaultValues,
   id,
 }: {
-  defaultValues?: z.infer<typeof MovieSchema>;
+  defaultValues?: MovieSchemaType;
   isNewMovie: boolean;
   id: string;
 }) {
   const router = useRouter();
   const [isSaving, startSavingTransition] = useTransition();
 
-  const form = useForm<z.infer<typeof MovieSchema>>({
+  const form = useForm<MovieSchemaType>({
     resolver: zodResolver(MovieSchema),
     defaultValues:
       defaultValues ||
       ({
         /* initial default values */
-      } as z.infer<typeof MovieSchema>),
+      } as MovieSchemaType),
   });
 
   const { jobId, processingStatus, initiateJob, handleRetryJob } = useMovieJob(
@@ -125,7 +126,7 @@ export default function RefactoredEditMoviePage({
     backdropPrompt,
   ]);
 
-  const onSubmit = (values: z.infer<typeof MovieSchema>) => {
+  const onSubmit = (values: MovieSchemaType) => {
     startSavingTransition(async () => {
       try {
         const finalValues = {

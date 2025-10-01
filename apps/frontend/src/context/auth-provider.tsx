@@ -11,25 +11,16 @@ import {
 
 import { jwtDecode } from 'jwt-decode';
 
-import {
-  loginAction,
-  logoutAction,
-  refreshTokenAction,
-} from '@/actions/auth/actions';
+import type { User } from '@/lib/types';
+
+import { logoutAction, refreshTokenAction } from '@/actions/auth/actions';
 
 // Define the shape of the user object decoded from the JWT
-interface UserPayload {
-  id: string;
-  name: string;
-  role: 'user' | 'admin';
-  email: string;
-  // iat and exp are automatically added by jwt
-}
 
 // Define the shape of the AuthContext
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserPayload | null;
+  user: User | null;
   login: (accessToken: string) => void;
   logout: () => Promise<void>;
   accessToken: string | null;
@@ -48,7 +39,7 @@ interface AuthProviderProps {
  * It manages JWTs, user information, and provides login/logout functions.
  */
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<UserPayload | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const logout = useCallback(async () => {
@@ -73,7 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = (newAccessToken: string) => {
     try {
-      const decoded = jwtDecode<UserPayload>(newAccessToken);
+      const decoded = jwtDecode<User>(newAccessToken);
       setUser(decoded);
       setAccessToken(newAccessToken);
     } catch (error) {
