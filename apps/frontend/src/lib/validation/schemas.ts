@@ -33,7 +33,7 @@ const BaseMovieSchema = z.object({
     })
     .optional(),
   genres: z.array(z.string()).optional(),
-  status: z.enum(['Draft', 'Published']),
+  status: z.enum(['Draft', 'Published']).default('Draft'),
   media: z
     .object({
       video: z

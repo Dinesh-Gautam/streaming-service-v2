@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 
 import type { JobStatus, MediaJob } from '@monorepo/core';
 
+import { getJobByMediaId } from '@/admin/api/job-api';
+
 const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed'];
 
 // Overload signatures
@@ -43,12 +45,6 @@ export function useJobStatus(
       return;
     }
 
-    const jobServiceUrl = process.env.NEXT_PUBLIC_JOB_SERVICE_URL;
-    if (!jobServiceUrl) {
-      setError('Job service URL is not configured.');
-      return;
-    }
-
     let intervalId: NodeJS.Timeout | null = null;
     let idsToPoll = Array.isArray(mediaIdorIds) ? [...mediaIdorIds] : [];
 
@@ -61,22 +57,9 @@ export function useJobStatus(
             return;
           }
 
-          const promises = idsToPoll.map((id) =>
-            fetch(`${jobServiceUrl}/jobs/by-media/${id}`).then((res) => {
-              if (res.status === 404) {
-                console.warn(`Job not found for media ID: ${id}`);
-                return null;
-              }
-              if (!res.ok) {
-                throw new Error(
-                  `Failed to fetch job status for ${id}: ${res.statusText}`,
-                );
-              }
-              return res.json();
-            }),
+          const results = await Promise.all(
+            idsToPoll.map((id) => getJobByMediaId(id)),
           );
-
-          const results: (MediaJob | null)[] = await Promise.all(promises);
           const successfulJobs = results.filter(
             (job): job is MediaJob => !!job,
           );
@@ -100,20 +83,14 @@ export function useJobStatus(
             .filter((job) => !TERMINAL_STATUSES.includes(job.status))
             .map((job) => job.mediaId);
         } else {
-          const response = await fetch(
-            `${jobServiceUrl}/jobs/by-media/${mediaIdorIds}`,
-          );
-          if (!response.ok) {
-            throw new Error(
-              `Failed to fetch job status: ${response.statusText}`,
-            );
-          }
-          const data: MediaJob = await response.json();
-          setJobStatus(data);
+          const data = await getJobByMediaId(mediaIdorIds as string);
+          if (data) {
+            setJobStatus(data);
 
-          if (TERMINAL_STATUSES.includes(data.status)) {
-            if (intervalId) clearInterval(intervalId);
-            setIsPolling(false);
+            if (TERMINAL_STATUSES.includes(data.status)) {
+              if (intervalId) clearInterval(intervalId);
+              setIsPolling(false);
+            }
           }
         }
       } catch (err) {

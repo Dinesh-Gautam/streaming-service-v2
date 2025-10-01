@@ -27,13 +27,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/admin/components/ui/tabs';
+import { useMovieJobProcessing } from '@/admin/hooks/use-movie-job-processing';
 import {
   useAIGeneratedContent,
   useAIImageGeneration,
   useAIPromptGeneration,
 } from '@/admin/hooks/useAIFeatures';
 import { useMediaUpload } from '@/admin/hooks/useMediaUpload';
-import { useMovieJobProcessing } from '@/admin/hooks/useMovieJob';
 import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema } from '@/lib/validation/schemas';
@@ -47,7 +47,7 @@ const defaultGenreItems = [
   { id: 'sci-fi', label: 'Sci-Fi' },
 ];
 
-export default function RefactoredEditMoviePage({
+export default function EditMoviePage({
   isNewMovie,
   defaultValues,
   id,
