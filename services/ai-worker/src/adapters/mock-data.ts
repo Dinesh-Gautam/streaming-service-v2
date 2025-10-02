@@ -347,8 +347,143 @@ export const mockAianalysisData = {
   geminiTtsPrompts: {
     style:
       'A calm, narrative, slightly melancholic voice, like a powerful documentary narrator, conveying wisdom and ancient perspective.',
-    hi: "Start: 00:00:04.280 ('neutral, calm') say: कुछ लोग मुझे प्रकृति कहते हैं।\\nStart: 00:00:13.880 ('neutral, calm') say: दूसरे मुझे माँ प्रकृति कहते हैं।\\nStart: 00:00:16.800 ('neutral, wise') say: मैं यहाँ साढ़े चार अरब से भी अधिक वर्षों से हूँ।\\nStart: 00:00:24.400 ('neutral, wise') say: आपसे 22,500 गुना अधिक समय तक।\\nStart: 00:00:32.400 ('neutral, firm') say: मुझे वास्तव में इंसानों की ज़रूरत नहीं है।\\nStart: 00:00:36.000 ('neutral, firm') say: लेकिन इंसानों को मेरी ज़रूरत है।\\nStart: 00:00:37.840 ('neutral, serious') say: हाँ, आपका भविष्य मुझ पर निर्भर करता है।\\nStart: 00:00:41.900 ('neutral, calm') say: जब मैं फलती-फूलती हूँ, तो आप भी फलते-फूलते हैं।\\nStart: 00:00:46.400 ('neutral, concerned') say: जब मैं लड़खड़ाती हूँ, तो आप भी लड़खड़ाते हैं।\\nStart: 00:00:51.630 ('neutral, ominous') say: या इससे भी बुरा।\\nStart: 00:00:53.940 ('neutral, wise') say: लेकिन मैं युगों से यहाँ हूँ।\\nStart: 00:00:58.750 ('neutral, firm') say: मैंने आपसे बड़ी प्रजातियों को पाला है, और मैंने आपसे बड़ी प्रजातियों को भूखा भी रखा है।\\nStart: 00:01:05.000 ('neutral, proud') say: मेरे महासागर।\\nStart: 00:01:07.460 ('neutral, proud') say: मेरी मिट्टी।\\nStart: 00:01:09.680 ('neutral, proud') say: मेरी बहती धाराएँ, मेरे जंगल।\\nStart: 00:01:16.030 ('neutral, firm') say: वे सब तुम्हें ले जा सकते हैं, या तुम्हें छोड़ सकते हैं।\\nStart: 00:01:21.500 ('neutral, detached') say: आप हर दिन कैसे जीना चुनते हैं, चाहे आप मेरा सम्मान करें या अनादर, इससे मुझे कोई फर्क नहीं पड़ता।\\nStart: 00:01:29.800 ('neutral, firm') say: किसी न किसी तरह।\\nStart: 00:01:32.450 ('neutral, authoritative') say: आपके कार्य आपका भाग्य तय करेंगे, मेरा नहीं।\\nStart: 00:01:36.720 ('neutral, strong') say: मैं प्रकृति हूँ।\\nStart: 00:01:38.000 ('neutral, resolute') say: मैं चलती रहूँगी।\\nStart: 00:01:39.500 ('neutral, confident') say: मैं विकसित होने के लिए तैयार हूँ।\\nStart: 00:01:44.820 ('neutral, questioning') say: क्या तुम हो?",
-    pa: "Start: 00:00:04.280 ('neutral, calm') say: ਕੁਝ ਲੋਕ ਮੈਨੂੰ ਕੁਦਰਤ ਕਹਿੰਦੇ ਹਨ।\\nStart: 00:00:13.880 ('neutral, calm') say: ਦੂਸਰੇ ਮੈਨੂੰ ਮਾਂ ਕੁਦਰਤ ਕਹਿੰਦੇ ਹਨ।\\nStart: 00:00:16.800 ('neutral, wise') say: ਮੈਂ ਇੱਥੇ ਸਾਢੇ ਚਾਰ ਅਰਬ ਸਾਲਾਂ ਤੋਂ ਵੱਧ ਸਮੇਂ ਤੋਂ ਹਾਂ।\\nStart: 00:00:24.400 ('neutral, wise') say: ਤੁਹਾਡੇ ਨਾਲੋਂ 22,500 ਗੁਣਾ ਵੱਧ ਸਮੇਂ ਲਈ।\\nStart: 00:00:32.400 ('neutral, firm') say: ਮੈਨੂੰ ਅਸਲ ਵਿੱਚ ਲੋਕਾਂ ਦੀ ਲੋੜ ਨਹੀਂ ਹੈ।\\nStart: 00:00:36.000 ('neutral, firm') say: ਪਰ ਲੋਕਾਂ ਨੂੰ ਮੇਰੀ ਲੋੜ ਹੈ।\\nStart: 00:00:37.840 ('neutral, serious') say: ਹਾਂ, ਤੁਹਾਡਾ ਭਵਿੱਖ ਮੇਰੇ 'ਤੇ ਨਿਰਭਰ ਕਰਦਾ ਹੈ।\\nStart: 00:00:41.900 ('neutral, calm') say: ਜਦੋਂ ਮੈਂ ਵਧਦੀ-ਫੁੱਲਦੀ ਹਾਂ, ਤਾਂ ਤੁਸੀਂ ਵੀ ਵਧਦੇ-ਫੁੱਲਦੇ ਹੋ।\\nStart: 00:00:46.400 ('neutral, concerned') say: ਜਦੋਂ ਮੈਂ ਡੋਲਦੀ ਹਾਂ, ਤਾਂ ਤੁਸੀਂ ਵੀ ਡੋਲਦੇ ਹੋ।\\nStart: 00:00:51.630 ('neutral, ominous') say: ਜਾਂ ਇਸ ਤੋਂ ਵੀ ਬੁਰਾ।\\nStart: 00:00:53.940 ('neutral, wise') say: ਪਰ ਮੈਂ ਕਈ ਯੁੱਗਾਂ ਤੋਂ ਇੱਥੇ ਹਾਂ।\\nStart: 00:00:58.750 ('neutral, firm') say: ਮੈਂ ਤੁਹਾਡੇ ਨਾਲੋਂ ਵੱਡੀਆਂ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਪਾਲਿਆ ਹੈ, ਅਤੇ ਮੈਂ ਤੁਹਾਡੇ ਨਾਲੋਂ ਵੱਡੀਆਂ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਭੁੱਖਾ ਵੀ ਰੱਖਿਆ ਹੈ।\\nStart: 00:01:05.000 ('neutral, proud') say: ਮੇਰੇ ਸਮੁੰਦਰ।\\nStart: 00:01:07.460 ('neutral, proud') say: ਮੇਰੀ ਮਿੱਟੀ।\\nStart: 00:01:09.680 ('neutral, proud') say: ਮੇਰੀਆਂ ਵਗਦੀਆਂ ਨਦੀਆਂ, ਮੇਰੇ ਜੰਗਲ।\\nStart: 00:01:16.030 ('neutral, firm') say: ਉਹ ਸਭ ਤੁਹਾਨੂੰ ਲੈ ਜਾ ਸਕਦੇ ਹਨ, ਜਾਂ ਤੁਹਾਨੂੰ ਛੱਡ ਸਕਦੇ ਹਨ।\\nStart: 00:01:21.500 ('neutral, detached') say: ਤੁਸੀਂ ਹਰ ਰੋਜ਼ ਕਿਵੇਂ ਜੀਣਾ ਚੁਣਦੇ ਹੋ, ਭਾਵੇਂ ਤੁਸੀਂ ਮੇਰਾ ਸਤਿਕਾਰ ਕਰੋ ਜਾਂ ਅਪਮਾਨ, ਇਸ ਨਾਲ ਮੈਨੂੰ ਕੋਈ ਫਰਕ ਨਹੀਂ ਪੈਂਦਾ।\\nStart: 00:01:29.800 ('neutral, firm') say: ਇੱਕ ਨਾ ਇੱਕ ਤਰੀਕੇ ਨਾਲ।\\nStart: 00:01:32.450 ('neutral, authoritative') say: ਤੁਹਾਡੇ ਕੰਮ ਤੁਹਾਡੀ ਕਿਸਮਤ ਨਿਰਧਾਰਤ ਕਰਨਗੇ, ਮੇਰੀ ਨਹੀਂ।\\nStart: 00:01:36.720 ('neutral, strong') say: ਮੈਂ ਕੁਦਰਤ ਹਾਂ।\\nStart: 00:01:38.000 ('neutral, resolute') say: ਮੈਂ ਚਲਦੀ ਰਹਾਂਗੀ।\\nStart: 00:01:39.500 ('neutral, confident') say: ਮੈਂ ਵਿਕਸਤ ਹੋਣ ਲਈ ਤਿਆਰ ਹਾਂ।\\nStart: 00:01:44.820 ('neutral, questioning') say: ਕੀ ਤੁਸੀਂ ਹੋ?",
+    hi: `Start: 00:00:04.280 ('neutral, calm') say: कुछ लोग मुझे प्रकृति कहते हैं।
+SILENCE: 8.6
+Start: 00:00:13.880 ('neutral, calm') say: दूसरे मुझे माँ प्रकृति कहते हैं।
+Start: 00:00:16.800 ('neutral, wise') say: मैं यहाँ साढ़े चार अरब से भी अधिक वर्षों से हूँ।
+SILENCE: 0.64
+Start: 00:00:24.400 ('neutral, wise') say: आपसे 22,500 गुना अधिक समय तक।
+SILENCE: 1.42
+Start: 00:00:32.400 ('neutral, firm') say: मुझे वास्तव में इंसानों की ज़रूरत नहीं है।
+Start: 00:00:36.000 ('neutral, firm') say: लेकिन इंसानों को मेरी ज़रूरत है।
+Start: 00:00:37.840 ('neutral, serious') say: हाँ, आपका भविष्य मुझ पर निर्भर करता है।
+Start: 00:00:41.900 ('neutral, calm') say: जब मैं फलती-फूलती हूँ, तो आप भी फलते-फूलते हैं।
+Start: 00:00:46.400 ('neutral, concerned') say: जब मैं लड़खड़ाती हूँ, तो आप भी लड़खड़ाते हैं।
+Start: 00:00:51.630 ('neutral, ominous') say: या इससे भी बुरा।
+SILENCE: 0.56
+Start: 00:00:53.940 ('neutral, wise') say: लेकिन मैं युगों से यहाँ हूँ।
+Start: 00:00:58.750 ('neutral, firm') say: मैंने आपसे बड़ी प्रजातियों को पाला है, और मैंने आपसे बड़ी प्रजातियों को भूखा भी रखा है।
+SILENCE: 0.72
+Start: 00:01:05.000 ('neutral, proud') say: मेरे महासागर।
+SILENCE: 1.46
+Start: 00:01:07.460 ('neutral, proud') say: मेरी मिट्टी।
+SILENCE: 1.12
+Start: 00:01:09.680 ('neutral, proud') say: मेरी बहती धाराएँ, मेरे जंगल।
+SILENCE: 1.1
+Start: 00:01:16.030 ('neutral, firm') say: वे सब तुम्हें ले जा सकते हैं, या तुम्हें छोड़ सकते हैं।
+SILENCE: 0.37
+Start: 00:01:21.500 ('neutral, detached') say: आप हर दिन कैसे जीना चुनते हैं, चाहे आप मेरा सम्मान करें या अनादर, इससे मुझे कोई फर्क नहीं पड़ता।
+SILENCE: 0.82
+Start: 00:01:29.800 ('neutral, firm') say: किसी न किसी तरह।
+SILENCE: 0.55
+Start: 00:01:32.450 ('neutral, authoritative') say: आपके कार्य आपका भाग्य तय करेंगे, मेरा नहीं।
+Start: 00:01:36.720 ('neutral, strong') say: मैं प्रकृति हूँ।
+Start: 00:01:38.000 ('neutral, resolute') say: मैं चलती रहूँगी।
+Start: 00:01:39.500 ('neutral, confident') say: मैं विकसित होने के लिए तैयार हूँ।
+SILENCE: 2.68
+Start: 00:01:44.820 ('neutral, questioning') say: क्या तुम हो?`,
+    pa: `Start: 00:00:04.280 ('neutral, calm') say: ਕੁਝ ਲੋਕ ਮੈਨੂੰ ਕੁਦਰਤ ਕਹਿੰਦੇ ਹਨ।
+SILENCE: 8.6
+Start: 00:00:13.880 ('neutral, calm') say: ਦੂਸਰੇ ਮੈਨੂੰ ਮਾਂ ਕੁਦਰਤ ਕਹਿੰਦੇ ਹਨ।
+Start: 00:00:16.800 ('neutral, wise') say: ਮੈਂ ਇੱਥੇ ਸਾਢੇ ਚਾਰ ਅਰਬ ਸਾਲਾਂ ਤੋਂ ਵੱਧ ਸਮੇਂ ਤੋਂ ਹਾਂ।
+SILENCE: 0.64
+Start: 00:00:24.400 ('neutral, wise') say: ਤੁਹਾਡੇ ਨਾਲੋਂ 22,500 ਗੁਣਾ ਵੱਧ ਸਮੇਂ ਲਈ।
+SILENCE: 1.42
+Start: 00:00:32.400 ('neutral, firm') say: ਮੈਨੂੰ ਅਸਲ ਵਿੱਚ ਲੋਕਾਂ ਦੀ ਲੋੜ ਨਹੀਂ ਹੈ।
+Start: 00:00:36.000 ('neutral, firm') say: ਪਰ ਲੋਕਾਂ ਨੂੰ ਮੇਰੀ ਲੋੜ ਹੈ।
+Start: 00:00:37.840 ('neutral, serious') say: ਹਾਂ, ਤੁਹਾਡਾ ਭਵਿੱਖ ਮੇਰੇ 'ਤੇ ਨਿਰਭਰ ਕਰਦਾ ਹੈ।
+Start: 00:00:41.900 ('neutral, calm') say: ਜਦੋਂ ਮੈਂ ਵਧਦੀ-ਫੁੱਲਦੀ ਹਾਂ, ਤਾਂ ਤੁਸੀਂ ਵੀ ਵਧਦੇ-ਫੁੱਲਦੇ ਹੋ।
+Start: 00:00:46.400 ('neutral, concerned') say: ਜਦੋਂ ਮੈਂ ਡੋਲਦੀ ਹਾਂ, ਤਾਂ ਤੁਸੀਂ ਵੀ ਡੋਲਦੇ ਹੋ।
+Start: 00:00:51.630 ('neutral, ominous') say: ਜਾਂ ਇਸ ਤੋਂ ਵੀ ਬੁਰਾ।
+SILENCE: 0.56
+Start: 00:00:53.940 ('neutral, wise') say: ਪਰ ਮੈਂ ਕਈ ਯੁੱਗਾਂ ਤੋਂ ਇੱਥੇ ਹਾਂ।
+Start: 00:00:58.750 ('neutral, firm') say: ਮੈਂ ਤੁਹਾਡੇ ਨਾਲੋਂ ਵੱਡੀਆਂ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਪਾਲਿਆ ਹੈ, ਅਤੇ ਮੈਂ ਤੁਹਾਡੇ ਨਾਲੋਂ ਵੱਡੀਆਂ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਭੁੱਖਾ ਵੀ ਰੱਖਿਆ ਹੈ।
+SILENCE: 0.72
+Start: 00:01:05.000 ('neutral, proud') say: ਮੇਰੇ ਸਮੁੰਦਰ।
+SILENCE: 1.46
+Start: 00:01:07.460 ('neutral, proud') say: ਮੇਰੀ ਮਿੱਟੀ।
+SILENCE: 1.12
+Start: 00:01:09.680 ('neutral, proud') say: ਮੇਰੀਆਂ ਵਗਦੀਆਂ ਨਦੀਆਂ, ਮੇਰੇ ਜੰਗਲ।
+SILENCE: 1.1
+Start: 00:01:16.030 ('neutral, firm') say: ਉਹ ਸਭ ਤੁਹਾਨੂੰ ਲੈ ਜਾ ਸਕਦੇ ਹਨ, ਜਾਂ ਤੁਹਾਨੂੰ ਛੱਡ ਸਕਦੇ ਹਨ।
+SILENCE: 0.37
+Start: 00:01:21.500 ('neutral, detached') say: ਤੁਸੀਂ ਹਰ ਰੋਜ਼ ਕਿਵੇਂ ਜੀਣਾ ਚੁਣਦੇ ਹੋ, ਭਾਵੇਂ ਤੁਸੀਂ ਮੇਰਾ ਸਤਿਕਾਰ ਕਰੋ ਜਾਂ ਅਪਮਾਨ, ਇਸ ਨਾਲ ਮੈਨੂੰ ਕੋਈ ਫਰਕ ਨਹੀਂ ਪੈਂਦਾ।
+SILENCE: 0.82
+Start: 00:01:29.800 ('neutral, firm') say: ਇੱਕ ਨਾ ਇੱਕ ਤਰੀਕੇ ਨਾਲ।
+SILENCE: 0.55
+Start: 00:01:32.450 ('neutral, authoritative') say: ਤੁਹਾਡੇ ਕੰਮ ਤੁਹਾਡੀ ਕਿਸਮਤ ਨਿਰਧਾਰਤ ਕਰਨਗੇ, ਮੇਰੀ ਨਹੀਂ।
+Start: 00:01:36.720 ('neutral, strong') say: ਮੈਂ ਕੁਦਰਤ ਹਾਂ।
+Start: 00:01:38.000 ('neutral, resolute') say: ਮੈਂ ਚਲਦੀ ਰਹਾਂਗੀ।
+Start: 00:01:39.500 ('neutral, confident') say: ਮੈਂ ਵਿਕਸਤ ਹੋਣ ਲਈ ਤਿਆਰ ਹਾਂ।
+SILENCE: 2.68
+Start: 00:01:44.820 ('neutral, questioning') say: ਕੀ ਤੁਸੀਂ ਹੋ?`,
+  },
+};
+
+export const mockAianalysisData2 = {
+  title: "Nature's Voice",
+  description:
+    "“Nature's Voice” is a powerful and visually stunning short film that personifies nature as an ancient, omniscient entity speaking directly to humanity. With breathtaking visuals of diverse landscapes—from towering mountains and majestic glaciers to lush rainforests and vast oceans—the film underscores nature's profound resilience and enduring power. The narrative voice, calm yet authoritative, reminds us that while some call her 'Nature' and others 'Mother Nature,' she has existed for billions of years, far predating human existence. She asserts her independence, stating she doesn't need people, but highlights the undeniable truth that people desperately need her for their future. The film starkly illustrates this interdependence, showing how humanity thrives when nature thrives and falters when nature falters. Through scenes of cascading waterfalls, shifting sands, and vibrant ecosystems, Nature's voice warns of consequences but ultimately declares her eternal presence and readiness to evolve, regardless of human actions. The film concludes with a poignant question, challenging viewers to consider their own readiness to adapt and respect the delicate balance of the planet. It's a profound reflection on our place in the natural world and a stark reminder of our responsibility.",
+  genres: [
+    'Documentary',
+    'Environmental',
+    'Nature',
+    'Short Film',
+    'Inspirational',
+  ],
+  imageGenerationPrompt:
+    "A majestic and serene Earth from space, with soft sunlight highlighting swirling clouds and deep blue oceans. The perspective should evoke a sense of ancient power and calm resilience. Subtle touches of lush green forests, snow-capped mountains, and vast deserts should be visible on the planet's surface, without any specific focus on human structures. High detail, realistic, cinematic lighting, wide shot.",
+  chaptersVtt: [
+    { timecode: '00:00:02.932', chapterTitle: 'Nature Speaks' },
+    { timecode: '00:00:10.512', chapterTitle: 'Mother Nature' },
+    { timecode: '00:00:17.382', chapterTitle: 'Ancient Existence' },
+    { timecode: '00:00:29.282', chapterTitle: 'People Need Me' },
+    { timecode: '00:00:36.172', chapterTitle: 'Thriving or Faltering' },
+    { timecode: '00:00:53.332', chapterTitle: 'Eons of Life' },
+    { timecode: '00:01:04.282', chapterTitle: 'My Domains' },
+    { timecode: '00:01:21.822', chapterTitle: 'Your Choice' },
+    { timecode: '00:01:32.222', chapterTitle: 'Your Fate, Not Mine' },
+    { timecode: '00:01:35.402', chapterTitle: 'I Will Go On' },
+    { timecode: '00:01:38.832', chapterTitle: 'Prepared to Evolve' },
+    { timecode: '00:01:44.202', chapterTitle: 'Are You?' },
+  ],
+  geminiTtsPrompts: {
+    style:
+      'A calm, deep, authoritative female voice, like an ancient being or a wise narrator. The tone should be slightly somber but ultimately resilient and powerful.',
+    hi: `Start: 00:00:02.932 ('calm, authoritative') say: कुछ मुझे प्रकृति कहते हैं।
+SILENCE: 6.23
+Start: 00:00:10.512 ('calm, authoritative') say: अन्य मुझे धरती माँ कहते हैं।
+SILENCE: 4.23
+Start: 00:00:17.382 ('calm, authoritative') say: मैं यहाँ साढ़े चार अरब से भी ज़्यादा सालों से हूँ, तुमसे 22,500 गुना ज़्यादा समय से।
+SILENCE: 2.74
+Start: 00:00:29.282 ('calm, authoritative') say: मुझे सच में लोगों की ज़रूरत नहीं है, लेकिन लोगों को मेरी ज़रूरत है।
+SILENCE: 3.73
+Start: 00:00:36.172 ('calm, authoritative') say: हाँ, तुम्हारा भविष्य मुझ पर निर्भर करता है।
+Start: 00:00:38.282 ('calm, authoritative') say: जब मैं पनपती हूँ, तुम पनपते हो।
+Start: 00:00:41.742 ('calm, authoritative') say: जब मैं लड़खड़ाती हूँ, तुम लड़खड़ाते हो। या इससे भी बुरा।
+SILENCE: 1.52
+Start: 00:00:53.332 ('calm, authoritative') say: लेकिन मैं यहाँ युगों से हूँ। मैंने तुमसे भी बड़ी प्रजातियों को पाला है, और मैंने तुमसे भी बड़ी प्रजातियों को भूखा भी मारा है।
+SILENCE: 0.82
+Start: 00:01:04.282 ('calm, authoritative') say: मेरे महासागर।
+SILENCE: 1.16
+Start: 00:01:07.132 ('calm, authoritative') say: मेरी मिट्टी।
+SILENCE: 1.48
+Start: 00:01:09.682 ('calm, authoritative') say: मेरी बहती धाराएँ, मेरे जंगल। वे सब तुम्हें ले सकते हैं या छोड़ सकते हैं।
+SILENCE: 4.34
+Start: 00:01:21.822 ('calm, authoritative') say: तुम हर दिन कैसे जीना चुनते हो, चाहे तुम मेरा सम्मान करो या अनादर, इससे मुझे ज़्यादा फ़र्क नहीं पड़ता।
+SILENCE: 1.28
+Start: 00:01:29.742 ('calm, authoritative') say: किसी न किसी तरह।
+SILENCE: 1.16
+Start: 00:01:32.222 ('calm, authoritative') say: तुम्हारे कार्य तुम्हारे भाग्य का निर्धारण करेंगे, मेरे नहीं।
+SILENCE: 0.47
+Start: 00:01:35.402 ('calm, authoritative') say: मैं प्रकृति हूँ।
+SILENCE: 0.82
+Start: 00:01:37.032 ('calm, authoritative') say: मैं बनी रहूँगी।
+SILENCE: 0.75
+Start: 00:01:38.832 ('calm, authoritative') say: मैं विकसित होने के लिए तैयार हूँ।
+SILENCE: 2.07
+Start: 00:01:44.202 ('calm, authoritative') say: क्या तुम हो?`,
+    // pa: "Start: 00:02:932 ('calm, authoritative') say: ਕੁਝ ਮੈਨੂੰ ਕੁਦਰਤ ਕਹਿੰਦੇ ਹਨ।SILENCE: 6.23Start: 00:10:512 ('calm, authoritative') say: ਦੂਸਰੇ ਮੈਨੂੰ ਧਰਤੀ ਮਾਤਾ ਕਹਿੰਦੇ ਹਨ।SILENCE: 4.23Start: 00:17:382 ('calm, authoritative') say: ਮੈਂ ਇੱਥੇ ਸਾਢੇ ਚਾਰ ਅਰਬ ਸਾਲਾਂ ਤੋਂ ਵੱਧ ਸਮੇਂ ਤੋਂ ਹਾਂ, ਤੁਹਾਡੇ ਨਾਲੋਂ 22,500 ਗੁਣਾ ਵੱਧ ਸਮੇਂ ਤੋਂ।SILENCE: 2.74Start: 00:29:282 ('calm, authoritative') say: ਮੈਨੂੰ ਅਸਲ ਵਿੱਚ ਲੋਕਾਂ ਦੀ ਲੋੜ ਨਹੀਂ ਹੈ, ਪਰ ਲੋਕਾਂ ਨੂੰ ਮੇਰੀ ਲੋੜ ਹੈ।SILENCE: 3.73Start: 00:36:172 ('calm, authoritative') say: ਹਾਂ, ਤੁਹਾਡਾ ਭਵਿੱਖ ਮੇਰੇ 'ਤੇ ਨਿਰਭਰ ਕਰਦਾ ਹੈ।Start: 00:38:282 ('calm, authoritative') say: ਜਦੋਂ ਮੈਂ ਵਧਦੀ ਹਾਂ, ਤੁਸੀਂ ਵਧਦੇ ਹੋ।Start: 00:41:742 ('calm, authoritative') say: ਜਦੋਂ ਮੈਂ ਡਗਮਗਾਉਂਦੀ ਹਾਂ, ਤੁਸੀਂ ਡਗਮਗਾਉਂਦੇ ਹੋ। ਜਾਂ ਇਸ ਤੋਂ ਵੀ ਬੁਰਾ।SILENCE: 1.52Start: 00:53:332 ('calm, authoritative') say: ਪਰ ਮੈਂ ਇੱਥੇ ਯੁਗਾਂ ਤੋਂ ਹਾਂ। ਮੈਂ ਤੁਹਾਡੇ ਤੋਂ ਮਹਾਨ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਪਾਲਿਆ ਹੈ, ਅਤੇ ਮੈਂ ਤੁਹਾਡੇ ਤੋਂ ਮਹਾਨ ਪ੍ਰਜਾਤੀਆਂ ਨੂੰ ਭੁੱਖਾ ਵੀ ਰੱਖਿਆ ਹੈ।SILENCE: 0.82Start: 01:04:282 ('calm, authoritative') say: ਮੇਰੇ ਸਮੁੰਦਰ।SILENCE: 1.16Start: 01:07:132 ('calm, authoritative') say: ਮੇਰੀ ਮਿੱਟੀ।SILENCE: 1.48Start: 01:09:682 ('calm, authoritative') say: ਮੇਰੀਆਂ ਵਗਦੀਆਂ ਨਦੀਆਂ, ਮੇਰੇ ਜੰਗਲ। ਉਹ ਸਭ ਤੁਹਾਨੂੰ ਲੈ ਸਕਦੇ ਹਨ ਜਾਂ ਛੱਡ ਸਕਦੇ ਹਨ।SILENCE: 4.34Start: 01:21:822 ('calm, authoritative') say: ਤੁਸੀਂ ਹਰ ਰੋਜ਼ ਕਿਵੇਂ ਜੀਣਾ ਚੁਣਦੇ ਹੋ, ਭਾਵੇਂ ਤੁਸੀਂ ਮੇਰਾ ਸਤਿਕਾਰ ਕਰੋ ਜਾਂ ਅਣਦੇਖੀ ਕਰੋ, ਮੈਨੂੰ ਅਸਲ ਵਿੱਚ ਕੋਈ ਫ਼ਰਕ ਨਹੀਂ ਪੈਂਦਾ।SILENCE: 1.28Start: 01:29:742 ('calm, authoritative') say: ਕਿਸੇ ਨਾ ਕਿਸੇ ਤਰੀਕੇ ਨਾਲ।SILENCE: 1.16Start: 01:32:222 ('calm, authoritative') say: ਤੁਹਾਡੇ ਕਾਰਜ ਤੁਹਾਡੀ ਕਿਸਮਤ ਦਾ ਫੈਸਲਾ ਕਰਨਗੇ, ਮੇਰੀ ਨਹੀਂ।SILENCE: 0.47Start: 01:35:402 ('calm, authoritative') say: ਮੈਂ ਕੁਦਰਤ ਹਾਂ।SILENCE: 0.82Start: 01:37:032 ('calm, authoritative') say: ਮੈਂ ਚਲਦੀ ਰਹਾਂਗੀ।SILENCE: 0.75Start: 01:38:832 ('calm, authoritative') say: ਮੈਂ ਵਿਕਸਤ ਹੋਣ ਲਈ ਤਿਆਰ ਹਾਂ।SILENCE: 2.07Start: 01:44:202 ('calm, authoritative') say: ਕੀ ਤੁਸੀਂ ਹੋ?",
   },
 };
 

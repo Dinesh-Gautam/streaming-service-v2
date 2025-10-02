@@ -143,18 +143,20 @@ export class AudioService {
       const baseName = path.parse(instrumentalAudioPath).name;
       const finalOutputPath = path.join(
         tempDir,
-        `${baseName.replace('_original_Instruments', '')}.${langCode}.dubbed.mp3`,
+        `${baseName.replace(
+          '_original_Instruments',
+          '',
+        )}.${langCode}.dubbed.mp3`,
       );
 
       if (geminiPrompt && typeof geminiPrompt === 'string') {
         logger.info(
           `[${this.name}] Generating dubbed audio for language ${langCode} using Gemini TTS...`,
         );
-
-        const fullPrompt = style ? `${style}\n\n${geminiPrompt}` : geminiPrompt;
-        await this._generateDubbedAudioBatch(
+        await this._generateDubbedAudioGemini(
           instrumentalAudioPath,
-          fullPrompt,
+          geminiPrompt,
+          style,
           langCode,
           tempDir,
           finalOutputPath,
@@ -183,37 +185,132 @@ export class AudioService {
     }
     return dubbedAudioPaths;
   }
-
-  private async _generateDubbedAudioBatch(
+  private async _generateDubbedAudioGemini(
     instrumentalAudioPath: string,
     prompt: string,
+    style: string | undefined,
     langCode: string,
     tempDir: string,
     finalOutputPath: string,
     onProgress: (progress: number) => void,
   ): Promise<void> {
     logger.info(
-      `[${this.name}] Generating dubbed audio for language ${langCode} using batch mode.`,
+      `[${this.name}] Generating dubbed audio for language ${langCode} using Gemini TTS with chunking.`,
     );
     onProgress(0);
 
-    const ttsAudioPath = path.join(tempDir, `tts_batch_${langCode}`);
+    const lines = prompt.split('\n').filter((line) => line.trim() !== '');
 
-    const generatedTtsPath = await this.geminiTtsService.generateTTSAudio(
-      prompt,
-      ttsAudioPath,
-    );
+    console.log('lines:', lines);
+
+    if (lines.length === 0) {
+      logger.warn(
+        `[${this.name}] No content in Gemini prompt for language ${langCode}.`,
+      );
+      return;
+    }
+
+    const processedSegmentPaths: string[] = [];
+    let currentChunk: string[] = [];
+    let timelineCursor = 0;
+
+    const speechRegex = /Start: (\d{2}:\d{2}:\d{2}\.\d{3})/;
+    const silenceRegex = /^SILENCE: (\d+(\.\d+)?)$/;
+    const GEMINI_SILENCE_THRESHOLD = 5; // seconds
+
+    const processChunk = async (chunkLines: string[]) => {
+      console.log('chunkLines:', chunkLines);
+      if (chunkLines.length === 0) return;
+
+      const chunkPrompt = chunkLines.join('\n');
+      const firstLineMatch = chunkLines[0].match(speechRegex);
+      const startTime =
+        firstLineMatch ?
+          this.timecodeToSeconds(firstLineMatch[1])
+        : timelineCursor;
+
+      const preSilenceDuration = startTime - timelineCursor;
+      if (preSilenceDuration > 0.1) {
+        const silencePath = path.join(
+          tempDir,
+          `silence_${langCode}_${processedSegmentPaths.length}.mp3`,
+        );
+        await this.createSilentAudio(preSilenceDuration, silencePath);
+        processedSegmentPaths.push(silencePath);
+      }
+
+      const ttsAudioPath = path.join(
+        tempDir,
+        `tts_chunk_${langCode}_${processedSegmentPaths.length}.mp3`,
+      );
+      const fullPrompt = style ? `${style}\n\n${chunkPrompt}` : chunkPrompt;
+      console.log('sending to gemini:', fullPrompt);
+      const generatedTtsPath = await this.geminiTtsService.generateTTSAudio(
+        fullPrompt,
+        ttsAudioPath,
+      );
+      processedSegmentPaths.push(generatedTtsPath);
+
+      const ttsDuration = await getAudioDuration(generatedTtsPath);
+      timelineCursor = startTime + ttsDuration;
+    };
+
+    for (const line of lines) {
+      const silenceMatch = line.match(silenceRegex);
+      if (
+        silenceMatch &&
+        parseFloat(silenceMatch[1]) > GEMINI_SILENCE_THRESHOLD
+      ) {
+        await processChunk(currentChunk);
+        currentChunk = [];
+
+        const silenceDuration = parseFloat(silenceMatch[1]);
+        const silencePath = path.join(
+          tempDir,
+          `silence_long_${langCode}_${processedSegmentPaths.length}.mp3`,
+        );
+        await this.createSilentAudio(silenceDuration, silencePath);
+        processedSegmentPaths.push(silencePath);
+        timelineCursor += silenceDuration;
+      } else {
+        currentChunk.push(line);
+      }
+    }
+
+    await processChunk(currentChunk);
+
     onProgress(80);
+
+    if (processedSegmentPaths.length === 0) {
+      logger.warn(
+        `[${this.name}] No audio segments were generated for ${langCode}.`,
+      );
+      return;
+    }
+
+    const assembledTTSPath = path.join(
+      tempDir,
+      `assembled_gemini_${langCode}.mp3`,
+    );
+    await this.concatenateAudioFiles(processedSegmentPaths, assembledTTSPath);
+    onProgress(90);
 
     await this.mergeAudio(
       instrumentalAudioPath,
-      generatedTtsPath,
+      assembledTTSPath,
       finalOutputPath,
     );
-    logger.info(
-      `[${this.name}] Merged instrumental and batch TTS audio for ${langCode} to ${finalOutputPath}`,
-    );
     onProgress(100);
+  }
+
+  private timecodeToSeconds(timecode: string): number {
+    const parts = timecode.split(':');
+    const secondsAndMs = parts[2].split('.');
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    const seconds = parseInt(secondsAndMs[0], 10);
+    const milliseconds = parseInt(secondsAndMs[1], 10);
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
   }
 
   private async _generateDubbedAudioLegacy(

@@ -128,7 +128,7 @@ export class AIMediaProcessor
       this.emit(MediaPrcessorEvent.Error, appError.message);
       throw appError;
     } finally {
-      await this.cleanup(tempDir);
+      // await this.cleanup(tempDir);
     }
   }
 
@@ -142,6 +142,9 @@ export class AIMediaProcessor
     const analysisResult = await VideoAnalysisFlow({
       videoFilePath: inputFile,
     });
+
+    // const analysisResult = mockAianalysisData2 as any;
+
     logger.info(
       `[${this.name}] Received and parsed AI video analysis response.`,
     );
@@ -271,7 +274,7 @@ export class AIMediaProcessor
       );
 
       // const instrumentalAudioPath =
-      //   '/temp/output/sample_original_Instruments.wav';
+      //   '/temp/output/sample2_original_Instruments.wav';
 
       this.updateProgress(93);
       logger.info(

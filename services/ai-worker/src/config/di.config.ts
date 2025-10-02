@@ -37,12 +37,12 @@ export function setupDI(): void {
   container.registerSingleton(GeminiTtsServiceToken, GeminiTtsService);
   container.registerSingleton(AudioServiceToken, AudioService);
 
-  // container.register(DI_TOKENS.MediaProcessor, {
-  //   useClass: AIMediaProcessor,
-  // });
   container.register(DI_TOKENS.MediaProcessor, {
-    useClass: MockAIMediaProcessor,
+    useClass: AIMediaProcessor,
   });
+  // container.register(DI_TOKENS.MediaProcessor, {
+  //   useClass: MockAIMediaProcessor,
+  // });
 
   container.register(DI_TOKENS.Storage, {
     useClass: LocalStorage,

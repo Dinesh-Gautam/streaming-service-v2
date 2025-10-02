@@ -48,60 +48,60 @@ export const AiVideoAnalysisResponseSchema = z.object({
         'and focused on major transitions or highlights. Do not invent chapters if unsure.',
     ),
 
-  subtitles: z
-    .object({
-      hi: z.array(
-        z.object({
-          startTimecode: z
-            .string()
-            .describe(
-              'Start time in strict HH : MM : SS . mmm format (e.g., "00:00:13.200").',
-            ),
-          endTimecode: z
-            .string()
-            .describe(
-              'End time in strict HH : MM : SS . mmm format. Must be greater than start time.',
-            ),
-          text: z
-            .string()
-            .describe(
-              'Write **full, continuous Hindi sentences** instead of splitting them into multiple short lines. ' +
-                'Merge consecutive speech fragments into one block if they are part of the same idea. ' +
-                'Ensure each subtitle block is long enough (at least 4–5 words) so TTS reads naturally. ' +
-                'Do NOT break sentences unnaturally; prefer a single block per full sentence.',
-            ),
-          voiceGender: z
-            .enum(['male', 'female'])
-            .describe('Preferred voice gender for text-to-speech.'),
-          voiceType: z
-            .enum(['neutral', 'angry', 'happy'])
-            .describe('Emotion or tone of voice for delivery.'),
-        }),
-      ),
-      pa: z.array(
-        z.object({
-          startTimecode: z
-            .string()
-            .describe('Start time in strict HH : MM : SS . mmm  format.'),
-          endTimecode: z
-            .string()
-            .describe('End time in strict HH : MM : SS . mmm  format.'),
-          text: z
-            .string()
-            .describe(
-              'Write **full, continuous Punjabi sentences** instead of breaking them into multiple short lines. ' +
-                'Merge consecutive fragments if part of the same idea. Minimum length: 4–5 words for TTS friendliness.',
-            ),
-          voiceGender: z.enum(['male', 'female']),
-          voiceType: z.enum(['neutral', 'angry', 'happy']),
-        }),
-      ),
-    })
-    .describe(
-      'Subtitles must be TTS-friendly: each block should be a complete sentence or meaningful phrase. ' +
-        'Avoid overly short subtitles like "wow" or "hi" alone. ' +
-        'Prefer combining adjacent lines so TTS reads them smoothly.',
-    ),
+  // subtitles: z
+  //   .object({
+  //     hi: z.array(
+  //       z.object({
+  //         startTimecode: z
+  //           .string()
+  //           .describe(
+  //             'Start time in strict HH : MM : SS . mmm format (e.g., "00:00:13.200").',
+  //           ),
+  //         endTimecode: z
+  //           .string()
+  //           .describe(
+  //             'End time in strict HH : MM : SS . mmm format. Must be greater than start time.',
+  //           ),
+  //         text: z
+  //           .string()
+  //           .describe(
+  //             'Write **full, continuous Hindi sentences** instead of splitting them into multiple short lines. ' +
+  //               'Merge consecutive speech fragments into one block if they are part of the same idea. ' +
+  //               'Ensure each subtitle block is long enough (at least 4–5 words) so TTS reads naturally. ' +
+  //               'Do NOT break sentences unnaturally; prefer a single block per full sentence.',
+  //           ),
+  //         voiceGender: z
+  //           .enum(['male', 'female'])
+  //           .describe('Preferred voice gender for text-to-speech.'),
+  //         voiceType: z
+  //           .enum(['neutral', 'angry', 'happy'])
+  //           .describe('Emotion or tone of voice for delivery.'),
+  //       }),
+  //     ),
+  //     pa: z.array(
+  //       z.object({
+  //         startTimecode: z
+  //           .string()
+  //           .describe('Start time in strict HH : MM : SS . mmm  format.'),
+  //         endTimecode: z
+  //           .string()
+  //           .describe('End time in strict HH : MM : SS . mmm  format.'),
+  //         text: z
+  //           .string()
+  //           .describe(
+  //             'Write **full, continuous Punjabi sentences** instead of breaking them into multiple short lines. ' +
+  //               'Merge consecutive fragments if part of the same idea. Minimum length: 4–5 words for TTS friendliness.',
+  //           ),
+  //         voiceGender: z.enum(['male', 'female']),
+  //         voiceType: z.enum(['neutral', 'angry', 'happy']),
+  //       }),
+  //     ),
+  //   })
+  //   .describe(
+  //     'Subtitles must be TTS-friendly: each block should be a complete sentence or meaningful phrase. ' +
+  //       'Avoid overly short subtitles like "wow" or "hi" alone. ' +
+  //       'Prefer combining adjacent lines so TTS reads them smoothly.',
+  //   ),
 
   geminiTtsPrompts: z
     .object({
@@ -116,23 +116,32 @@ export const AiVideoAnalysisResponseSchema = z.object({
         .string()
         .describe(
           'A single string for the full Hindi transcript, formatted for Gemini TTS. ' +
-            'Each entry must follow the format: "Start: HH : MM : SS . mmm (\'emotion ,  style\')say: Text\\n". ' +
-            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting', 'curious, thoughtful'). " +
-            'Ensure text is a complete, natural-sounding sentence or phrase. ' +
-            'Inline style changes are also supported for dynamic delivery, e.g., "...some text... (whispering , crying / laughing) ...more text...". ' +
-            "For example: \"Start: 00:00:02.000 ( ' joyful, celebratory ' ) say: वाह, क्या शानदार दिन है!\\n" +
-            "Start: 00:00:12.000 ( ' suspicious, quiet ' ) say: मुझे यकीन है कि (whispering) कुछ गड़बड़ है।\\n\"",
+            'Each entry must follow either the format: "Start: HH:MM:SS.mmm (\'emotion, style\') say: Text\\n" for speech, ' +
+            'or "SILENCE: <duration_in_seconds>\\n" for pauses. ' +
+            'The TTS can generate silences up to 3 seconds from text prompts; for longer durations, the system will create silence manually. ' +
+            "Do not use timestamps for SILENCE entries. The duration should be a number representing seconds (e.g., 'SILENCE: 10.5'). " +
+            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting'). " +
+            'Inline style changes are also supported, e.g., "...some text... (whispering) ...more text...". ' +
+            'Example:\\n' +
+            "Start: 00:00:02.000 ('joyful, celebratory') say: वाह, क्या शानदार दिन है!\\n" +
+            'SILENCE: 10\\n' +
+            "Start: 00:00:12.000 ('suspicious, quiet') say: मुझे यकीन है कि (whispering) कुछ गड़बड़ है।\\n\"",
         ),
-      pa: z
-        .string()
-        .describe(
-          'A single string for the full Punjabi transcript, formatted for Gemini TTS. ' +
-            'Follow the same format as Hindi: "Start: HH : MM : SS . mmm (\'emotion , style\')\\nText\\n". ' +
-            'Use expressive emotion and style tags. ' +
-            'Inline style changes are also supported for dynamic delivery, e.g., "...some text... (loudly) ...more text...". ' +
-            "For example: \"Start: 00:00:05.000 ( ' excited, loud ' ) say: ਵਾਹ! ਕੀ ਸੋਹਣਾ ਮੌਸਮ ਹੈ!\\n" +
-            "Start: 00:00:15.000 ('serious, firm') say: ਇਹ ਮਜ਼ਾਕ ਕਰਨ ਦਾ (firmly) ਸਮਾਂ ਨਹੀਂ ਹੈ। (laugh)\\n\"",
-        ),
+      // pa: z
+      //   .string()
+      //   .describe(
+      //     'A single string for the full Punjabi transcript, formatted for Gemini TTS. ' +
+      //       'Each entry must follow either the format: "Start: HH:MM:SS.mmm (\'emotion, style\') say: Text\\n" for speech, ' +
+      //       'or "SILENCE: <duration_in_seconds>\\n" for pauses. ' +
+      //       'The TTS can generate silences up to 3 seconds from text prompts; for longer durations, the system will create silence manually. ' +
+      //       "Do not use timestamps for SILENCE entries. The duration should be a number representing seconds (e.g., 'SILENCE: 10.5'). " +
+      //       "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting'). " +
+      //       'Inline style changes are also supported, e.g., "...some text... (whispering) ...more text...". ' +
+      //       'Example:\\n' +
+      //       "Start: 00:00:05.000 ('excited, loud') say: ਵਾਹ! ਕੀ ਸੋਹਣਾ ਮੌਸਮ ਹੈ!\\n" +
+      //       'SILENCE: 10\\n' +
+      //       "Start: 00:00:15.000 ('serious, firm') say: ਇਹ ਮਜ਼ਾਕ ਕਰਨ ਦਾ (firmly) ਸਮਾਂ ਨਹੀਂ ਹੈ।\\n\"",
+      //   ),
     })
     .optional()
     .describe(
@@ -140,7 +149,7 @@ export const AiVideoAnalysisResponseSchema = z.object({
         'This allows for highly expressive and accurately timed audio generation. ' +
         'The AI should generate one continuous string per language, with each line correctly formatted.',
     ),
-});
+}) as any;
 
 export const AiImageResponseSchema = z.object({
   posterImagePath: z
