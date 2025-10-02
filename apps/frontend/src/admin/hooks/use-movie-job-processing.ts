@@ -42,12 +42,28 @@ export function useMovieJobProcessing(mediaId: string | null) {
     }
   }, [jobError]);
 
+  // useEffect(() => {
+  //   async function fetchInitialJob() {
+  //     if (mediaId) {
+  //       const job = await getJobByMediaId(mediaId);
+  //       if (job) {
+  //         setProcessingStatus(job);
+  //       }
+  //     }
+  //   }
+  //   fetchInitialJob();
+  // }, [mediaId]);
+
   useEffect(() => {
     async function fetchInitialJob() {
       if (mediaId) {
         const job = await getJobByMediaId(mediaId);
         if (job) {
           setProcessingStatus(job);
+          // If the job is not in a terminal state, start polling
+          if (!['completed', 'failed'].includes(job.status)) {
+            setPollTrigger((prev) => prev + 1);
+          }
         }
       }
     }

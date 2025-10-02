@@ -39,9 +39,11 @@ export function useJobStatus(
   useEffect(() => {
     if (
       !mediaIdorIds ||
-      (Array.isArray(mediaIdorIds) && !mediaIdorIds.length)
+      (Array.isArray(mediaIdorIds) && mediaIdorIds.length === 0) ||
+      (!Array.isArray(mediaIdorIds) && pollTrigger === 0)
     ) {
       setJobStatus(null);
+      setIsPolling(false);
       return;
     }
 
@@ -86,11 +88,14 @@ export function useJobStatus(
           const data = await getJobByMediaId(mediaIdorIds as string);
           if (data) {
             setJobStatus(data);
-
             if (TERMINAL_STATUSES.includes(data.status)) {
               if (intervalId) clearInterval(intervalId);
               setIsPolling(false);
             }
+          } else {
+            // If no job is found, stop polling
+            if (intervalId) clearInterval(intervalId);
+            setIsPolling(false);
           }
         }
       } catch (err) {
@@ -104,8 +109,8 @@ export function useJobStatus(
     };
 
     setIsPolling(true);
-    fetchStatus();
-    intervalId = setInterval(fetchStatus, 1000);
+    fetchStatus(); // Initial fetch
+    intervalId = setInterval(fetchStatus, 1000); // Poll every 1 seconds
 
     return () => {
       if (intervalId) {
