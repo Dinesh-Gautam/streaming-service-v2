@@ -108,9 +108,9 @@ export const AiVideoAnalysisResponseSchema = z.object({
       style: z
         .string()
         .describe(
-          'A concise, overarching instruction for the TTS voice style. ' +
-            'This should guide the overall tone, pacing, and emotional delivery. ' +
-            'For example: "A calm, narrative voice, like a documentary narrator" or "An energetic, youthful voice, excited and fast-paced."',
+          'Style Prompt (Primary Control): A concise, overarching instruction for the TTS voice style. and the speed of the speech ' +
+            'This is the primary driver of emotional tone and delivery. Be specific and detailed. ' +
+            'For example: "Narrate this in the calm, authoritative tone of a nature documentary narrator." or "You are an AI assistant speaking in a friendly and helpful tone."',
         ),
       hi: z
         .string()
@@ -120,14 +120,15 @@ export const AiVideoAnalysisResponseSchema = z.object({
             'or "SILENCE: <duration_in_seconds> seconds\\n" for pauses. ' +
             'The TTS can generate silences up to 3 seconds from text prompts; for longer durations, the system will create silence manually. ' +
             "Do not use timestamps for SILENCE entries. The duration should be a number representing seconds (e.g., 'SILENCE: 10.5 seconds'). " +
-            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting'). " +
+            'You should also include markup tags within the text for non-speech sounds and pacing, such as [laughing], [whispering], [fast], [slow], etc. and other markup tags for style changes. ' +
+            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting' , etc). " +
             "voiceGender should be either 'male' or 'female'. " +
             'The emotion and style should be dynamic and reflect the content of the video, including non-speech sounds like (laughs), (cries), etc. ' +
-            'Inline style changes are also supported, e.g., "...some text... (whispering) ...more text...". ' +
+            'Inline style changes are also supported, e.g., "...some text... [whispering] ...more text...". ' +
             'Example:\\n' +
-            "Start: 00:00:02.000 ('joyful, celebratory', 'female') say: वाह, क्या शानदार दिन है! (laughs)\\n" +
-            'SILENCE: 10 seconds\\n' +
-            "Start: 00:00:12.000 ('suspicious, quiet', 'male') say: मुझे यकीन है कि (whispering) कुछ गड़बड़ है।\\n\"",
+            "Start: 00:00:02.000 ('joyful, celebratory', 'female') say: वाह, क्या शानदार दिन है! [laughing]\\n" +
+            'SILENCE: 5 seconds\\n' +
+            "Start: 00:00:08.000 ('suspicious, quiet', 'male') say:[fast] मुझे यकीन है कि [whispering] कुछ गड़बड़ है। [short pause] देखो।\\n\"",
         ),
       pa: z
         .string()
@@ -137,21 +138,21 @@ export const AiVideoAnalysisResponseSchema = z.object({
             'or "SILENCE: <duration_in_seconds> seconds\\n" for pauses. ' +
             'The TTS can generate silences up to 3 seconds from text prompts; for longer durations, the system will create silence manually. ' +
             "Do not use timestamps for SILENCE entries. The duration should be a number representing seconds (e.g., 'SILENCE: 10.5 seconds'). " +
-            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting'). " +
+            'You should also include markup tags within the text for non-speech sounds and pacing, such as [laughing], [whispering], [fast], [slow], etc. and other markup tags for style changes. ' +
+            "Emotions and styles should be specific and descriptive (e.g., 'sad, whispering', 'angry, shouting' , etc). " +
             "voiceGender should be either 'male' or 'female'. " +
             'The emotion and style should be dynamic and reflect the content of the video, including non-speech sounds like (laughs), (cries), etc. ' +
-            'Inline style changes are also supported, e.g., "...some text... (whispering) ...more text...". ' +
+            'Inline style changes are also supported, e.g., "...some text... [whispering] ...more text...". ' +
             'Example:\\n' +
-            "Start: 00:00:02.000 ('joyful, celebratory', 'female') say: ਵਾਹ, ਕੀ ਸ਼ਾਨਦਾਰ ਦਿਨ ਹੈ! (laughs)\\n" +
-            'SILENCE: 10 seconds\\n' +
-            "Start: 00:00:12.000 ('suspicious, quiet', 'male') say: ਮੈਨੂੰ ਯਕੀਨ ਹੈ ਕਿ (whispering) ਕੁਝ ਗੜਬੜ ਹੈ।\\n\"",
+            "Start: 00:00:02.000 ('joyful, celebratory', 'female') say: ਵਾਹ, ਕੀ ਸ਼ਾਨਦਾਰ ਦਿਨ ਹੈ! [laughing]\\n" +
+            'SILENCE: 5 seconds\\n' +
+            "Start: 00:00:08.000 ('suspicious, quiet', 'male') say:[fast] ਮੈਨੂੰ ਯਕੀਨ ਹੈ ਕਿ [whispering] ਕੁਝ ਗੜਬੜ ਹੈ। [short pause] ਦੇਖੋ।\\n\"",
         ),
     })
     .optional()
     .describe(
-      'TTS-friendly prompts for Gemini, combining timestamp, emotion, and style of dialogue into a single string for each language. ' +
-        'This allows for highly expressive and accurately timed audio generation. ' +
-        'The AI should generate one continuous string per language, with each line correctly formatted.',
+      'TTS-friendly prompts for Gemini, combining a style prompt, text content, and markup tags for highly expressive and accurately timed audio generation. ' +
+        'The AI should generate one continuous string per language, with each line correctly formatted according to the specified rules.',
     ),
 });
 

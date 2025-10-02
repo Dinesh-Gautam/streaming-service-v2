@@ -296,6 +296,15 @@ export class AudioService {
         await this.createSilentAudio(silenceDuration, silencePath);
         processedSegmentPaths.push(silencePath);
         timelineCursor += silenceDuration;
+      } else if (silenceMatch) {
+        const duration = parseFloat(silenceMatch[1]);
+        if (duration > 1) {
+          currentChunk.push('[medium pause]');
+        } else if (duration > 0.5) {
+          currentChunk.push('[short pause]');
+        } else {
+          currentChunk.push(line);
+        }
       } else {
         currentChunk.push(line);
       }

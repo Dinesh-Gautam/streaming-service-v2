@@ -62,6 +62,8 @@ export class RetryJobUseCase {
           sourceUrl: savedJob.sourceUrl,
         },
       );
+
+      await this.jobRepository.updateJobStatus(savedJob._id, 'processing');
     } else {
       logger.warn(`No pending tasks found for job ${savedJob._id}`);
     }
