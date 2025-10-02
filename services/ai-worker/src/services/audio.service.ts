@@ -213,13 +213,17 @@ export class AudioService {
     const processedSegmentPaths: string[] = [];
     let currentChunk: string[] = [];
     let timelineCursor = 0;
+    let currentVoiceGender: AiSubtitleEntry['voiceGender'] | undefined;
 
     const speechRegex = /Start: (\d{2}:\d{2}:\d{2}\.\d{3})/;
-    const silenceRegex = /^SILENCE: (\d+(\.\d+)?)$/;
+    const genderRegex = /'(male|female)'/i;
+    const silenceRegex = /^SILENCE: (\d+(\.\d+)?)\s*seconds$/i;
     const GEMINI_SILENCE_THRESHOLD = 5; // seconds
 
-    const processChunk = async (chunkLines: string[]) => {
-      console.log('chunkLines:', chunkLines);
+    const processChunk = async (
+      chunkLines: string[],
+      voiceGender?: AiSubtitleEntry['voiceGender'],
+    ) => {
       if (chunkLines.length === 0) return;
 
       const chunkPrompt = chunkLines.join('\n');
@@ -248,6 +252,7 @@ export class AudioService {
       const generatedTtsPath = await this.geminiTtsService.generateTTSAudio(
         fullPrompt,
         ttsAudioPath,
+        voiceGender,
       );
       processedSegmentPaths.push(generatedTtsPath);
 
@@ -257,11 +262,30 @@ export class AudioService {
 
     for (const line of lines) {
       const silenceMatch = line.match(silenceRegex);
+      const genderMatch = line.match(genderRegex);
+      const lineVoiceGender =
+        genderMatch ?
+          (genderMatch[1].toLowerCase() as AiSubtitleEntry['voiceGender'])
+        : undefined;
+
+      if (
+        currentChunk.length > 0 &&
+        lineVoiceGender !== undefined &&
+        lineVoiceGender !== currentVoiceGender
+      ) {
+        await processChunk(currentChunk, currentVoiceGender);
+        currentChunk = [];
+      }
+
+      if (lineVoiceGender !== undefined) {
+        currentVoiceGender = lineVoiceGender;
+      }
+
       if (
         silenceMatch &&
         parseFloat(silenceMatch[1]) > GEMINI_SILENCE_THRESHOLD
       ) {
-        await processChunk(currentChunk);
+        await processChunk(currentChunk, currentVoiceGender);
         currentChunk = [];
 
         const silenceDuration = parseFloat(silenceMatch[1]);
@@ -277,7 +301,7 @@ export class AudioService {
       }
     }
 
-    await processChunk(currentChunk);
+    await processChunk(currentChunk, currentVoiceGender);
 
     onProgress(80);
 

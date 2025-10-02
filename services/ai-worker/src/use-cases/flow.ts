@@ -26,53 +26,53 @@ async function generateAndSaveImage(
 ): Promise<string | undefined> {
   try {
     logger.info(`[GenerateMovieImagesFlow] Generating ${imageType} image...`);
+    throw new Error('test error');
+    // const generationConfig = {
+    //   model: googleAI.model('gemini-2.5-flash-image-preview'),
+    //   prompt: `${prompt} - ${
+    //     imageType === 'poster' ?
+    //       'movie poster style, cinematic, high quality'
+    //     : 'cinematic wide aspect ratio movie backdrop style, high quality'
+    //   }`,
+    //   config: { temperature: 1 },
+    //   output: { format: 'media' as const },
+    // };
 
-    const generationConfig = {
-      model: googleAI.model('gemini-2.5-flash-image-preview'),
-      prompt: `${prompt} - ${
-        imageType === 'poster' ?
-          'movie poster style, cinematic, high quality'
-        : 'cinematic wide aspect ratio movie backdrop style, high quality'
-      }`,
-      config: { temperature: 1 },
-      output: { format: 'media' as const },
-    };
+    // const { media: image } = await ai.generate(generationConfig);
 
-    const { media: image } = await ai.generate(generationConfig);
+    // if (!image) {
+    //   throw new Error(`Failed to generate ${imageType} image.`);
+    // }
 
-    if (!image) {
-      throw new Error(`Failed to generate ${imageType} image.`);
-    }
+    // const imageData = parseDataURL(image.url);
+    // if (!imageData) {
+    //   logger.warn(
+    //     `[GenerateMovieImagesFlow] ${imageType} image generation did not return expected data.`,
+    //     image,
+    //   );
+    //   return undefined;
+    // }
 
-    const imageData = parseDataURL(image.url);
-    if (!imageData) {
-      logger.warn(
-        `[GenerateMovieImagesFlow] ${imageType} image generation did not return expected data.`,
-        image,
-      );
-      return undefined;
-    }
+    // const extension = imageData.mimeType.subtype;
+    // const filename = `${imageType}-${uuidv4()}.${extension}`;
+    // const tempPath = path.join(outputDir, filename);
 
-    const extension = imageData.mimeType.subtype;
-    const filename = `${imageType}-${uuidv4()}.${extension}`;
-    const tempPath = path.join(outputDir, filename);
+    // await fs.writeFile(tempPath, imageData.body);
 
-    await fs.writeFile(tempPath, imageData.body);
+    // const savedPath = await storage.saveFile(
+    //   tempPath,
+    //   path.join('ai-generated', filename),
+    // );
 
-    const savedPath = await storage.saveFile(
-      tempPath,
-      path.join('ai-generated', filename),
-    );
+    // await fs.unlink(tempPath);
 
-    await fs.unlink(tempPath);
+    // const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
+    // logger.info(
+    //   `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
+    //   relativePath,
+    // );
 
-    const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
-    logger.info(
-      `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
-      relativePath,
-    );
-
-    return relativePath;
+    // return relativePath;
   } catch (error) {
     logger.error(
       `[GenerateMovieImagesFlow] Error generating ${imageType} image:`,
@@ -145,7 +145,22 @@ export const VideoAnalysisFlow = ai.defineFlow(
 
     const { output } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash'),
-      prompt: `Generate translated subtitles (Hindi and Punjabi), chapters (English), title, description, and genres for the provided video. The translation should be natural and human-like.`,
+      prompt: `
+Analyze the provided video and generate the following information in JSON format:
+
+1.  **Title, Description, Genres, and Image Prompt**: As specified in the schema.
+2.  **Chapters**: Identify key chapters and provide timestamps and titles.
+3.  **Gemini TTS Prompts**:
+    *   Create a single, continuous string for each language (Hindi and Punjabi).
+    *   Each line must be in the format: \`Start: HH:MM:SS.mmm ('emotion, style', 'voiceGender') say: Text\n\`
+    *   **Crucially, you must also identify periods of silence between speech.**
+    *   Insert \`SILENCE: <duration> seconds\n\` for any pause longer than 0.5 seconds.
+    *   Calculate the duration accurately. For example, if one line ends at 00:00:05.200 and the next starts at 00:00:08.500, you must insert \`SILENCE: 3.3 seconds\n\`.
+    *   Determine the \`voiceGender\` ('male' or 'female') from the original audio for each speech segment.
+    *   **Identify non-speech sounds** like (laughs), (cries), (sighs), etc., and include them in the text. The emotion and style should be dynamic and reflect the content of the video.
+
+Your output must strictly adhere to the \`AiVideoAnalysisResponseSchema\`.
+`,
       messages: [
         {
           role: 'user',
