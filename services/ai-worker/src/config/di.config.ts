@@ -2,7 +2,6 @@ import { container } from 'tsyringe';
 
 import type { IMessagePublisher } from '@monorepo/message-queue';
 
-import { AIMediaProcessor } from '@ai-worker/adapters/ai.media-processor';
 import { MockAIMediaProcessor } from '@ai-worker/adapters/mock-ai.media-processor';
 import {
   AudioService,

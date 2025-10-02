@@ -7,11 +7,8 @@ import { z } from 'zod';
 import type { MediaTask } from '@monorepo/core';
 import type { AIEngineOutput } from '@monorepo/workers';
 
-import {
-  applyAISuggestions,
-  generateAIImagesWithPrompt,
-  suggestImagePrompt,
-} from '@/app/(admin)/admin/movies/_action';
+import { generateImage, generateImagePrompt } from '@/admin/api/ai-api';
+import { applyAISuggestions } from '@/app/(admin)/admin/movies/_action';
 import { MovieSchema } from '@/lib/validation/schemas';
 
 export function useAIGeneratedContent(
@@ -144,9 +141,9 @@ export function useAIImageGeneration(
 
       transition(async () => {
         toast.info(`Generating ${type}...`);
-        const result = await generateAIImagesWithPrompt(prompt, type);
+        const result = await generateImage(prompt, type);
 
-        if (result.success && result.path) {
+        if (result && result.success && result.path) {
           if (type === 'poster') {
             setGeneratedPosterPath(result.path);
             toast.success('AI poster generated successfully.');
@@ -155,12 +152,10 @@ export function useAIImageGeneration(
             toast.success('AI backdrop generated successfully.');
           }
         } else {
-          const errorMsg =
-            result.error ||
-            `Failed to generate ${type} due to an unknown error`;
+          const errorMsg = `Failed to generate ${type} due to an unknown error`;
           if (type === 'poster') setPosterError(errorMsg);
           else setBackdropError(errorMsg);
-          toast.error(errorMsg);
+          // Toast is handled inside generateImage
         }
       });
     },
@@ -228,23 +223,23 @@ export function useAIPromptGeneration(
 
       transition(async () => {
         toast.info(`Generating ${type} prompt suggestion...`);
-        const result = await suggestImagePrompt(type, {
+        const prompt = await generateImagePrompt({
           title: title || '',
           description: description || '',
           genres: genres || [],
           initialPrompt,
+          type,
         });
 
-        if (result.success && result.prompt) {
+        if (prompt) {
           if (type === 'poster') {
-            setPosterPrompt(result.prompt);
+            setPosterPrompt(prompt);
           } else {
-            setBackdropPrompt(result.prompt);
+            setBackdropPrompt(prompt);
           }
           toast.success(`Generated prompt for ${type}.`);
-        } else {
-          toast.error(result.error || 'Failed to generate prompt');
         }
+        // No specific error from the API function, toast is handled inside
       });
     },
     [

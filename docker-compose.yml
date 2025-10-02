@@ -200,6 +200,8 @@ services:
             ignore: [node_modules/]
           - action: rebuild
             path: ./services/ai-worker/package.json
+      ports:
+         - "3005:3005"
       environment:
        PORT: 3005
       volumes:

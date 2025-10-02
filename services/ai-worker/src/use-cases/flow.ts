@@ -18,7 +18,7 @@ import {
 import { googleAI } from '@genkit-ai/google-genai';
 import { DI_TOKENS } from '@monorepo/core';
 
-async function generateAndSaveImage(
+export async function generateAndSaveImage(
   storage: IStorage,
   prompt: string,
   imageType: 'poster' | 'backdrop',
@@ -37,7 +37,7 @@ async function generateAndSaveImage(
       config: {
         temperature: 1,
       },
-      aspectRatio: imageType === 'poster' ? '3:4' : '16:9',
+      aspectRatio: imageType === 'poster' ? '9:16' : '16:9',
       output: { format: 'media' as const },
     };
 
@@ -71,8 +71,7 @@ async function generateAndSaveImage(
 
     const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
     logger.info(
-      `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
-      relativePath,
+      `[GenerateMovieImagesFlow] ${imageType} image saved to: ${relativePath}`,
     );
 
     return relativePath;
@@ -102,7 +101,7 @@ export const GenerateMovieImagesFlow = ai.defineFlow(
     );
 
     const promptGenerator = await ai.generate({
-      model: googleAI.model('gemma-3-27b-it'),
+      model: googleAI.model('gemini-2.0-flash-lite'),
       prompt: generateImagePrompt(input),
       config: { temperature: 1 },
     });

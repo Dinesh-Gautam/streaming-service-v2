@@ -1,3 +1,11 @@
+import 'reflect-metadata';
+
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express, { NextFunction, Request, Response } from 'express';
+import helmet from 'helmet';
+import { container } from 'tsyringe';
+
 import type { IDatabaseConnection } from '@monorepo/database';
 import type {
   IMessageConsumer,
@@ -11,11 +19,20 @@ import { AIProcessingUseCase } from '@ai-worker/use-cases/ai-processing.usecase'
 import { DI_TOKENS } from '@monorepo/core';
 import { MessageQueueChannels } from '@monorepo/message-queue';
 
-import 'reflect-metadata';
-
-import { container } from 'tsyringe';
+import { aiRouter } from './routes/ai.routes';
 
 setupDI();
+
+const app = express();
+app.use(helmet());
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: config.CORS_ORIGIN,
+    credentials: true,
+  }),
+);
 
 const dbConnection = container.resolve<IDatabaseConnection>(
   DI_TOKENS.DatabaseConnection,
@@ -41,6 +58,19 @@ async function main() {
     process.exit(1);
   });
   logger.info('Successfully connected to RabbitMQ');
+
+  // Health check endpoint
+  app.get('/health', (req: Request, res: Response) => {
+    res.status(200).send('OK');
+  });
+
+  app.use('/api', aiRouter);
+
+  // Error handling middleware
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error(err.message, err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  });
 
   await messageConsumer.consume(
     MessageQueueChannels.ai,
@@ -108,12 +138,20 @@ async function main() {
 
   logger.info(`Waiting for messages in queue: ${MessageQueueChannels.ai}`);
 
-  const shutdown = async (signal: string) => {
+  const port = config.PORT || 3003;
+  const server = app.listen(port, () => {
+    logger.info(`AI worker service listening on port ${port}`);
+  });
+
+  const shutdown = (signal: string) => {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
-    await messageConsumer.close();
-    await dbConnection.close();
-    logger.info('Shutdown complete.');
-    process.exit(0);
+    server.close(async () => {
+      logger.info('Server closed.');
+      await messageConsumer.close();
+      await dbConnection.close();
+      logger.info('Shutdown complete.');
+      process.exit(0);
+    });
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));

@@ -16,6 +16,7 @@ export const configSchema = z.object({
   GOOGLE_APPLICATION_CREDENTIALS: z.string(),
   GOOGLE_PROJECT_ID: z.string(),
   GOOGLE_API_KEY: z.string(),
+  CORS_ORIGIN: z.string(),
 });
 
 export type Config = z.infer<typeof configSchema>;

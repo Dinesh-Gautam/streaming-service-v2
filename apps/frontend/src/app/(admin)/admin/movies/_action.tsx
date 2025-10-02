@@ -4,7 +4,6 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { generateImagePrompt, generateImageWithPrompt } from '@/lib/ai/images';
 import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
@@ -136,59 +135,6 @@ export async function applyAISuggestions(
     return {
       success: false,
       message: `Error applying AI suggestions: ${error.message}`,
-    };
-  }
-}
-
-export async function generateAIImagesWithPrompt(
-  prompt: string,
-  type: 'poster' | 'backdrop',
-) {
-  try {
-    console.log(
-      '[Action] Generating AI images with prompt:',
-      prompt,
-      'of type:',
-      type,
-    );
-    const { success, path, id } = await generateImageWithPrompt(prompt, {
-      type,
-    });
-
-    return { success, path, id };
-  } catch (error) {
-    console.error('Error generating AI images:', error);
-    return {
-      success: false,
-      error: (error as Error).message || 'Unkown error message',
-    };
-  }
-}
-
-export async function suggestImagePrompt(
-  type: 'poster' | 'backdrop',
-  movieData: {
-    title: string;
-    description: string;
-    genres: string[];
-    initialPrompt: string;
-  },
-) {
-  try {
-    const prompt = await generateImagePrompt({
-      input: movieData,
-      type,
-    });
-
-    return { success: true, prompt };
-  } catch (error) {
-    console.error('Error suggesting image prompt:', error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ?
-          error.message
-        : 'Unknown error generating prompt',
     };
   }
 }
