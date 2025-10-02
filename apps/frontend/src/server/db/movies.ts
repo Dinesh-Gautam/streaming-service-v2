@@ -22,7 +22,11 @@ export type OriginalMovieResult = Omit<
 
 export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
   await dbConnect();
-  const movies = await Movie.find({}).sort({ createdAt: -1 }).limit(20);
+  const movies = await Movie.find({
+    status: 'Published',
+  })
+    .sort({ createdAt: -1 })
+    .limit(20);
 
   return movies.map((movie: any) => {
     const { _id, ...plainMovie } = movie.toObject() as MovieType & {
@@ -157,4 +161,5 @@ export async function getOriginalMovieDetail(
   //   }
   // }
   // return endResult;
+  return null;
 }

@@ -26,53 +26,56 @@ async function generateAndSaveImage(
 ): Promise<string | undefined> {
   try {
     logger.info(`[GenerateMovieImagesFlow] Generating ${imageType} image...`);
-    throw new Error('test error');
-    // const generationConfig = {
-    //   model: googleAI.model('gemini-2.5-flash-image-preview'),
-    //   prompt: `${prompt} - ${
-    //     imageType === 'poster' ?
-    //       'movie poster style, cinematic, high quality'
-    //     : 'cinematic wide aspect ratio movie backdrop style, high quality'
-    //   }`,
-    //   config: { temperature: 1 },
-    //   output: { format: 'media' as const },
-    // };
 
-    // const { media: image } = await ai.generate(generationConfig);
+    const generationConfig = {
+      model: googleAI.model('imagen-4.0-generate-preview-06-06'),
+      prompt: `${prompt} - ${
+        imageType === 'poster' ?
+          'movie poster style, cinematic, high quality'
+        : 'cinematic wide aspect ratio movie backdrop style, high quality'
+      }`,
+      config: {
+        temperature: 1,
+      },
+      aspectRatio: imageType === 'poster' ? '3:4' : '16:9',
+      output: { format: 'media' as const },
+    };
 
-    // if (!image) {
-    //   throw new Error(`Failed to generate ${imageType} image.`);
-    // }
+    const { media: image } = await ai.generate(generationConfig);
 
-    // const imageData = parseDataURL(image.url);
-    // if (!imageData) {
-    //   logger.warn(
-    //     `[GenerateMovieImagesFlow] ${imageType} image generation did not return expected data.`,
-    //     image,
-    //   );
-    //   return undefined;
-    // }
+    if (!image) {
+      throw new Error(`Failed to generate ${imageType} image.`);
+    }
 
-    // const extension = imageData.mimeType.subtype;
-    // const filename = `${imageType}-${uuidv4()}.${extension}`;
-    // const tempPath = path.join(outputDir, filename);
+    const imageData = parseDataURL(image.url);
+    if (!imageData) {
+      logger.warn(
+        `[GenerateMovieImagesFlow] ${imageType} image generation did not return expected data.`,
+        image,
+      );
+      return undefined;
+    }
 
-    // await fs.writeFile(tempPath, imageData.body);
+    const extension = imageData.mimeType.subtype;
+    const filename = `${imageType}-${uuidv4()}.${extension}`;
+    const tempPath = path.join(outputDir, filename);
 
-    // const savedPath = await storage.saveFile(
-    //   tempPath,
-    //   path.join('ai-generated', filename),
-    // );
+    await fs.writeFile(tempPath, imageData.body);
 
-    // await fs.unlink(tempPath);
+    const savedPath = await storage.saveFile(
+      tempPath,
+      path.join('ai-generated', filename),
+    );
 
-    // const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
-    // logger.info(
-    //   `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
-    //   relativePath,
-    // );
+    await fs.unlink(tempPath);
 
-    // return relativePath;
+    const relativePath = savedPath.substring(savedPath.indexOf('ai-generated'));
+    logger.info(
+      `[GenerateMovieImagesFlow] ${imageType} image saved to:`,
+      relativePath,
+    );
+
+    return relativePath;
   } catch (error) {
     logger.error(
       `[GenerateMovieImagesFlow] Error generating ${imageType} image:`,

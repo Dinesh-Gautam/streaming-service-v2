@@ -108,7 +108,8 @@ export function MovieDetailsForm({
               <FormLabel>Status</FormLabel>
               <Select
                 onValueChange={field.onChange}
-                defaultValue="Draft"
+                value={field.value}
+                defaultValue={field.value}
               >
                 <FormControl>
                   <SelectTrigger>

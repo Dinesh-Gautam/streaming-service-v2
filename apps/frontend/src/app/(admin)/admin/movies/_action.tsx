@@ -4,89 +4,12 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { MediaJob } from '@monorepo/core';
-
 import { generateImagePrompt, generateImageWithPrompt } from '@/lib/ai/images';
 import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
 
 await dbConnect();
-
-/**
- * Fetches the current status and progress of one or more media processing jobs.
- * @param mediaIds - Single media ID or array of media IDs
- * @returns Object containing status for each requested media ID
- */
-// export async function getMediaProcessingJob(
-//   mediaIds: string | string[],
-// ): Promise<{ [key: string]: MediaProcessingStatus }> {
-//   // Normalize input to array
-//   const ids = Array.isArray(mediaIds) ? mediaIds : [mediaIds];
-
-//   if (!ids.length) {
-//     console.warn(
-//       '[Action] getMediaProcessingJob called without valid mediaIds.',
-//     );
-//     return {};
-//   }
-
-//   try {
-//     await dbConnect();
-//     // Find all jobs matching the provided IDs
-//     const jobs = await MediaProcessingJob.find({
-//       mediaId: { $in: ids },
-//     }).lean<IMediaProcessingJob[]>();
-
-//     // Create result object
-//     const result: { [key: string]: MediaProcessingStatus } = {};
-
-//     // Initialize default status for all requested IDs
-//     ids.forEach((id) => {
-//       result[id] = {
-//         jobStatus: 'pending',
-//         tasks: [],
-//         jobExists: false,
-//       };
-//     });
-
-//     // Update with actual job data where available
-//     jobs.forEach((job) => {
-//       if (!job.mediaId) return;
-
-//       const formattedTasks = job.tasks.map((task: IMediaProcessingTask) => ({
-//         taskId: task.taskId,
-//         engine: task.engine,
-//         status: task.status,
-//         progress: task.progress || 0,
-//         error: task.errorMessage || undefined,
-//         // Ensure output is included and is serializable
-//         output:
-//           task.output ? JSON.parse(JSON.stringify(task.output)) : undefined,
-//       }));
-
-//       result[job.mediaId] = {
-//         jobStatus: job.jobStatus,
-//         tasks: formattedTasks,
-//         jobExists: true,
-//       };
-//     });
-
-//     return result;
-//   } catch (error: any) {
-//     console.error('[Action] Error fetching media processing jobs:', ids, error);
-//     // Return default pending status on error
-//     const errorResult: { [key: string]: MediaProcessingStatus } = {};
-//     ids.forEach((id) => {
-//       errorResult[id] = {
-//         jobStatus: 'pending',
-//         tasks: [],
-//         jobExists: false,
-//       };
-//     });
-//     return errorResult;
-//   }
-// }
 
 /**
  * Saves movie data to the database (create or update).
