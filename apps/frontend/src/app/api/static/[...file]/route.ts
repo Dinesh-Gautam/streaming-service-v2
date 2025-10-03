@@ -16,11 +16,7 @@ export async function GET(req: NextRequest) {
 
   let dir = process.env.LOCAL_STORAGE_PATH;
 
-  if (pathName.includes('playback')) {
-    dir = 'converted';
-  }
-
-  const filePath = join(dir, pathName.replace('tmp/', '').replace('tmp', ''));
+  const filePath = join(dir, pathName);
 
   try {
     const stats = await stat(filePath);
