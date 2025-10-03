@@ -5,16 +5,17 @@ import Link from 'next/link';
 
 import styles from '@/styles/modules/slider.module.scss';
 
-import { StarRounded } from '@mui/icons-material';
 import { AnimatePresence, motion } from 'motion/react';
 
-import Separator from '@/components/elements/separator';
 import type { hoverCardContext } from '@/components/hover-card/types';
+
+import Separator from '@/components/elements/separator';
 import {
   YoutubeControlButtons,
   YoutubeVideoPlayer,
 } from '@/components/youtube';
 import { getImageUrl } from '@/utils/tmdb';
+import { StarRounded } from '@mui/icons-material';
 
 export const HoverCard = ({ context }: { context: hoverCardContext }) => {
   const {
@@ -94,7 +95,7 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
                 <Image
                   src={
                     hoverCardPosition.original ?
-                      '/api/static/' + getHoverCardMovie()?.backdrop_path || ''
+                      getHoverCardMovie()?.backdrop_path || ''
                     : getImageUrl(getHoverCardMovie()?.backdrop_path || '')
                   }
                   style={{
@@ -204,7 +205,7 @@ export const HoverCard = ({ context }: { context: hoverCardContext }) => {
               <Image
                 src={
                   hoverCardPosition.original ?
-                    '/api/static/' + getHoverCardMovie()?.backdrop_path || ''
+                    getHoverCardMovie()?.backdrop_path || ''
                   : getImageUrl(getHoverCardMovie()?.backdrop_path || '')
                 }
                 className={styles.backgroundImage}

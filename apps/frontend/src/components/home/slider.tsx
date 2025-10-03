@@ -4,16 +4,16 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import styles from '@/styles/modules/slider.module.scss';
 
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import classNames from 'classnames';
 
+import type { OriginalMovieResult } from '@/server/db/movies';
 import type {
   MoviesGetPopularResult,
   TrendingGetTrendingResult,
 } from 'tmdb-js-web';
 
 import FadeImageOnLoad from '@/components/fade-image-on-load';
-import type { OriginalMovieResult } from '@/server/db/movies';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 interface SliderProps {
   /**
@@ -45,7 +45,7 @@ function Slider({ title, data, id }: SliderProps) {
   the value of the transform percent for the slider
   this value represents the current scroll of the slider
   */
-  const [transformPercent, setTransformPercent] = useState(0);
+  const [transformPercent, setTransformPercent] = useState(-20000);
 
   /*
   whether the slider is scrolling or not
@@ -129,21 +129,21 @@ function Slider({ title, data, id }: SliderProps) {
                     (index + 1) % MAX_ITEMS === 0 || index % MAX_ITEMS === 0 ?
                       50 +
                       100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
-                      : 100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
-                    : 0;
+                    : 100 * Math.floor((index - (MAX_ITEMS + 1)) / MAX_ITEMS)
+                  : 0;
 
                 const increment = baseIncrement + additionalIncrement;
 
                 const roundedTransformPercent = Math.round(
                   Math.abs(transformPercent + increment) /
-                  100 /
-                  (data.length / MAX_ITEMS),
+                    100 /
+                    (data.length / MAX_ITEMS),
                 );
 
                 const styleValue =
                   data.length < MAX_ITEMS ?
                     index
-                    : data.length * roundedTransformPercent + index;
+                  : data.length * roundedTransformPercent + index;
 
                 return (
                   <div
@@ -154,7 +154,7 @@ function Slider({ title, data, id }: SliderProps) {
                     {'isOriginal' in e ?
                       <FadeImageOnLoad
                         loadingBackground
-                        rawImageSrc={'/api/static/' + e.backdrop_path}
+                        rawImageSrc={e.backdrop_path}
                         imageContainer={{
                           className: styles.imageContainer,
                           id: 'imageContainer',
@@ -169,7 +169,7 @@ function Slider({ title, data, id }: SliderProps) {
                           width: 400,
                         }}
                       />
-                      : <FadeImageOnLoad
+                    : <FadeImageOnLoad
                         loadingBackground
                         imageSrc={e.backdrop_path}
                         imageContainer={{

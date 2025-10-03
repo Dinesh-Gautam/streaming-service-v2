@@ -1,24 +1,26 @@
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ComponentProps,
-  type Dispatch,
-  type PropsWithChildren,
-  type SetStateAction,
-} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import styles from '@/styles/modules/title.module.scss';
 
-import { ArrowLeft, ArrowRight, PlayArrowRounded } from '@mui/icons-material';
-import ArrowDownward from '@mui/icons-material/ArrowDownward';
-import Close from '@mui/icons-material/Close';
-import Star from '@mui/icons-material/Star';
 import { AnimatePresence, motion } from 'motion/react';
+
+import type { MediaType } from '@/lib/types';
+import type { OriginalMovieResult } from '@/server/db/movies';
+import type {
+  cachedGeMovietDetails,
+  cachedTvDetails,
+  cachedTvSeasonInfo,
+} from '@/server/tmdb';
+import type {
+  ComponentProps,
+  Dispatch,
+  PropsWithChildren,
+  SetStateAction,
+} from 'react';
 
 import Select from '@/components/elements/custom-select';
 import Separator from '@/components/elements/separator';
@@ -30,15 +32,12 @@ import {
   YoutubeVideoPlayer,
 } from '@/components/youtube';
 import { useYoutubePlayer } from '@/components/youtube/context';
-import type { MediaType } from '@/lib/types';
-import type { OriginalMovieResult } from '@/server/db/movies';
-import type {
-  cachedGeMovietDetails,
-  cachedTvDetails,
-  cachedTvSeasonInfo,
-} from '@/server/tmdb';
 import { getImageUrl } from '@/utils/tmdb';
 import { getPlaybackUrl } from '@/utils/url';
+import { ArrowLeft, ArrowRight, PlayArrowRounded } from '@mui/icons-material';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import Close from '@mui/icons-material/Close';
+import Star from '@mui/icons-material/Star';
 
 const otherElementsAnimation = {
   initial: {
@@ -455,7 +454,7 @@ function Poster({ result, original }: { result: Result; original: boolean }) {
             }}
           />
         : <FadeImageOnLoad
-            rawImageSrc={'/api/static/' + result.poster_path}
+            rawImageSrc={result.poster_path}
             duration={2}
             imageContainer={{
               className: styles.backdropImage,
@@ -511,7 +510,7 @@ function Backdrop({
         : <Image
             src={
               original ?
-                '/api/static/' + result.backdrop_path
+                (result.backdrop_path ?? '')
               : getImageUrl(result.backdrop_path ?? '')
             }
             alt="image"

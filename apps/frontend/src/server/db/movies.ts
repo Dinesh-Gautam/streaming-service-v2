@@ -45,7 +45,7 @@ export async function getOriginalMovies(): Promise<OriginalMovieResult[]> {
       overview: plainMovie.description,
       release_date: new Date(plainMovie.year + '-01-01').toISOString(),
       genres: plainMovie.genres?.map((g, i) => ({ id: i, name: g })) || [],
-      backdrop_path: plainMovie.media?.backdrop?.originalPath,
+      backdrop_path: getStaticUrl(plainMovie.media?.backdrop?.originalPath),
       isOriginal: true,
       id: _id.toString(),
       media_type: 'movie',
