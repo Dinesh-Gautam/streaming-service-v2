@@ -7,6 +7,7 @@ import { injectable } from 'tsyringe';
 import type { IMediaProcessor } from '@monorepo/core';
 import type { ThumbnailOutput, WorkerOutput } from '@monorepo/workers';
 
+import { config } from '@thumbnail-worker/config';
 import { logger } from '@thumbnail-worker/config/logger';
 import { MediaProcessorError } from '@thumbnail-worker/entities/errors.entity';
 
@@ -137,7 +138,7 @@ export class FfmpegProcessor
   ): Promise<void> {
     let vttContent = 'WEBVTT\n\n';
     const relativeThumbnailsPath = path
-      .relative(outputDir, thumbnailsDir)
+      .relative(config.TEMP_OUT_DIR, thumbnailsDir)
       .replace(/\\/g, '/');
 
     for (let i = 0; i < thumbnailCount; i++) {

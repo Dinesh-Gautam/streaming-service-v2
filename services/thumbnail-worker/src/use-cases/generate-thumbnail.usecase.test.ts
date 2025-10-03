@@ -4,15 +4,19 @@ import { container } from 'tsyringe';
 
 import type {
   IMediaProcessor,
-  ISourceResolver,
+  IStorage,
   ITaskRepository,
 } from '@monorepo/core';
-import type { IMessagePublisher } from '@monorepo/message-queue';
 import type { ThumbnailOutput, WorkerOutput } from '@monorepo/workers';
 
 import { DI_TOKENS, MediaPrcessorEvent } from '@monorepo/core';
-import { MessageQueueChannels } from '@monorepo/message-queue';
 import { GenerateThumbnailUseCase } from '@thumbnail-worker/use-cases/generate-thumbnail.usecase';
+
+jest.mock('@thumbnail-worker/config', () => ({
+  config: {
+    TEMP_OUT_DIR: '/tmp/output',
+  },
+}));
 
 // Mock implementations
 const mockTaskRepository: jest.Mocked<ITaskRepository> = {
@@ -41,30 +45,23 @@ const mockMediaProcessor: jest.Mocked<IMediaProcessor<ThumbnailOutput>> = {
   addListener: jest.fn(),
 };
 
-const mockSourceResolver: jest.Mocked<ISourceResolver> = {
-  resolveSource: jest.fn(),
-};
-
-const mockMessagePublisher: jest.Mocked<IMessagePublisher> = {
-  publish: jest.fn(),
-  connect: jest.fn(),
-  ack: jest.fn(),
-  nack: jest.fn(),
-  close: jest.fn(),
-  getChannel: jest.fn(),
+const mockStorage: jest.Mocked<IStorage> = {
+  downloadFile: jest.fn(),
+  saveFile: jest.fn(),
+  writeFile: jest.fn(),
 };
 
 // DI container setup
 container.registerInstance(DI_TOKENS.TaskRepository, mockTaskRepository);
 container.registerInstance(DI_TOKENS.MediaProcessor, mockMediaProcessor);
-container.registerInstance(DI_TOKENS.SourceResolver, mockSourceResolver);
-container.registerInstance(DI_TOKENS.MessagePublisher, mockMessagePublisher);
+container.registerInstance(DI_TOKENS.Storage, mockStorage);
 
 describe('GenerateThumbnailUseCase', () => {
   let generateThumbnailUseCase: GenerateThumbnailUseCase;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
     generateThumbnailUseCase = container.resolve(GenerateThumbnailUseCase);
   });
 
@@ -74,7 +71,7 @@ describe('GenerateThumbnailUseCase', () => {
     sourceUrl: 'services/thumbnail-worker/__test__/sample.mp4',
   };
 
-  const resolvedSource = '/resolved/path/to/video.mp4';
+  const tempInputPath = '/tmp/sample.mp4';
   const workerOutput: WorkerOutput<ThumbnailOutput> = {
     success: true,
     output: {
@@ -87,11 +84,12 @@ describe('GenerateThumbnailUseCase', () => {
 
   it('should successfully generate thumbnails and complete the task', async () => {
     // Arrange
-    mockSourceResolver.resolveSource.mockResolvedValue(resolvedSource);
+    mockStorage.downloadFile.mockResolvedValue(tempInputPath);
     mockMediaProcessor.process.mockResolvedValue(workerOutput);
+    mockStorage.saveFile.mockImplementation(async (sourcePath) => sourcePath);
 
     // Act
-    await generateThumbnailUseCase.execute(input);
+    const result = await generateThumbnailUseCase.execute(input);
 
     // Assert
     expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
@@ -100,40 +98,32 @@ describe('GenerateThumbnailUseCase', () => {
       'running',
       0,
     );
-    expect(mockSourceResolver.resolveSource).toHaveBeenCalledWith(
-      input.sourceUrl,
-    );
+    expect(mockStorage.downloadFile).toHaveBeenCalledWith(input.sourceUrl);
     expect(mockMediaProcessor.process).toHaveBeenCalledWith(
-      resolvedSource,
+      tempInputPath,
       `/tmp/output/${input.jobId}`,
     );
-    expect(mockTaskRepository.updateTaskOutput).toHaveBeenCalledWith(
-      input.jobId,
-      input.taskId,
-      workerOutput.output,
+    expect(mockStorage.saveFile).toHaveBeenCalledWith(
+      workerOutput.output.paths.vtt,
+      `${input.jobId}/thumbnails.vtt`,
     );
-    expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
-      input.jobId,
-      input.taskId,
-      'completed',
-      100,
+    expect(mockStorage.saveFile).toHaveBeenCalledWith(
+      workerOutput.output.paths.thumbnailsDir,
+      `${input.jobId}/thumbnails`,
     );
-    expect(mockMessagePublisher.publish).toHaveBeenCalledWith(
-      MessageQueueChannels.completed,
-      {
-        jobId: input.jobId,
-        taskId: input.taskId,
-        status: 'completed',
-        output: workerOutput.output,
-      },
+
+    expect(result.output.paths.vtt).toEqual(workerOutput.output.paths.vtt);
+    expect(result.output.paths.thumbnailsDir).toEqual(
+      workerOutput.output.paths.thumbnailsDir,
     );
+
     expect(mockTaskRepository.failTask).not.toHaveBeenCalled();
   });
 
   it('should handle media processing errors and fail the task', async () => {
     // Arrange
     const mediaProcessorError = new Error('Media processing failed');
-    mockSourceResolver.resolveSource.mockResolvedValue(resolvedSource);
+    mockStorage.downloadFile.mockResolvedValue(tempInputPath);
     mockMediaProcessor.process.mockRejectedValue(mediaProcessorError);
 
     // Act & Assert
@@ -145,14 +135,11 @@ describe('GenerateThumbnailUseCase', () => {
       input.taskId,
       mediaProcessorError.message,
     );
-    expect(mockTaskRepository.updateTaskOutput).not.toHaveBeenCalled();
-    expect(mockMessagePublisher.publish).not.toHaveBeenCalled();
   });
 
   it('should handle progress updates from the media processor', async () => {
     // Arrange
-    mockSourceResolver.resolveSource.mockResolvedValue(resolvedSource);
-
+    mockStorage.downloadFile.mockResolvedValue(tempInputPath);
     mockMediaProcessor.process.mockImplementation(async () => {
       const progressCallback = mockMediaProcessor.on.mock.calls.find(
         (call) => call[0] === MediaPrcessorEvent.Progress,
@@ -164,6 +151,7 @@ describe('GenerateThumbnailUseCase', () => {
 
       return workerOutput;
     });
+    mockStorage.saveFile.mockImplementation(async (sourcePath) => sourcePath);
 
     // Act
     await generateThumbnailUseCase.execute(input);
@@ -186,29 +174,22 @@ describe('GenerateThumbnailUseCase', () => {
       'running',
       50,
     );
-    expect(mockTaskRepository.updateTaskStatus).toHaveBeenCalledWith(
-      input.jobId,
-      input.taskId,
-      'completed',
-      100,
-    );
   });
 
-  it('should mark task as failed if source resolution fails', async () => {
+  it('should mark task as failed if source download fails', async () => {
     // Arrange
-    const resolutionError = new Error('Failed to resolve source');
-    mockSourceResolver.resolveSource.mockRejectedValue(resolutionError);
+    const downloadError = new Error('Failed to download source');
+    mockStorage.downloadFile.mockRejectedValue(downloadError);
 
     // Act & Assert
     await expect(generateThumbnailUseCase.execute(input)).rejects.toThrow(
-      resolutionError,
+      downloadError,
     );
     expect(mockTaskRepository.failTask).toHaveBeenCalledWith(
       input.jobId,
       input.taskId,
-      resolutionError.message,
+      downloadError.message,
     );
     expect(mockMediaProcessor.process).not.toHaveBeenCalled();
-    expect(mockMessagePublisher.publish).not.toHaveBeenCalled();
   });
 });
