@@ -5,8 +5,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from '@/styles/modules/slider.module.scss';
 
 import classNames from 'classnames';
+import { AnimatePresence, easeIn, motion } from 'motion/react';
+import { flushSync } from 'react-dom';
 
 import type { OriginalMovieResult } from '@/server/db/movies';
+import type { TransitionEvent } from 'react';
 import type {
   MoviesGetPopularResult,
   TrendingGetTrendingResult,
@@ -45,7 +48,7 @@ function Slider({ title, data, id }: SliderProps) {
   the value of the transform percent for the slider
   this value represents the current scroll of the slider
   */
-  const [transformPercent, setTransformPercent] = useState(-20000);
+  const [transformPercent, setTransformPercent] = useState(0);
 
   /*
   whether the slider is scrolling or not
@@ -58,7 +61,7 @@ function Slider({ title, data, id }: SliderProps) {
    * otherwise hide the arrows
    */
   const showArrows = data.length > MAX_ITEMS;
-
+  const minSlider = data.length < MAX_ITEMS * 4;
   /**
    * Handle the button (next/prev) click event
    * @param type - type of button clicked
@@ -96,8 +99,6 @@ function Slider({ title, data, id }: SliderProps) {
     return () => window.removeEventListener('resize', handler);
   }, [containerRef.current]);
 
-  console.log(title, data);
-
   return (
     data && (
       <div className={styles.sliderContainer}>
@@ -108,7 +109,18 @@ function Slider({ title, data, id }: SliderProps) {
             className={styles.container}
           >
             <div
-              onTransitionEnd={() => disable && setDisable(false)}
+              onTransitionEnd={(e: TransitionEvent<HTMLDivElement>) => {
+                (e.target as any).style.transition = 'none';
+
+                if (transformPercent === -100 && !minSlider) {
+                  setTransformPercent(-4000 - 100);
+                }
+
+                setTimeout(() => {
+                  (e.target as any).style.transition = 'all 1s ease-in-out';
+                  disable && setDisable(false);
+                }, 100);
+              }}
               style={{
                 willChange: 'transform',
                 transition: 'all 1s ease-in-out',
@@ -141,9 +153,9 @@ function Slider({ title, data, id }: SliderProps) {
                 );
 
                 const styleValue =
-                  data.length < MAX_ITEMS ?
-                    index
-                  : data.length * roundedTransformPercent + index;
+                  minSlider ? index : (
+                    data.length * roundedTransformPercent + index
+                  );
 
                 return (
                   <div
@@ -195,26 +207,41 @@ function Slider({ title, data, id }: SliderProps) {
             </div>
             {showArrows && (
               <>
-                {Math.abs(transformPercent) > 0 && (
-                  <button
-                    disabled={disable}
-                    className={styles.leftButton + ' ' + styles.btn}
-                    onClick={() => buttonClick('prev')}
-                  >
-                    <ArrowForwardIosIcon
-                      style={{ transform: 'rotate(-180deg)' }}
-                    />
-                  </button>
-                )}
-                {
-                  <button
-                    disabled={disable}
-                    className={styles.rightButton + ' ' + styles.btn}
-                    onClick={() => buttonClick('next')}
-                  >
-                    <ArrowForwardIosIcon />
-                  </button>
-                }
+                <AnimatePresence>
+                  {Math.abs(transformPercent) > 0 && (
+                    <motion.button
+                      initial={{ x: '-100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '-100%' }}
+                      transition={{ ease: 'easeOut' }}
+                      disabled={disable}
+                      className={styles.leftButton + ' ' + styles.btn}
+                      onClick={() => buttonClick('prev')}
+                    >
+                      <ArrowForwardIosIcon
+                        style={{ transform: 'rotate(-180deg)' }}
+                      />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {(!minSlider ||
+                    (!disable &&
+                      transformPercent >
+                        -100 * (data.length / MAX_ITEMS - 1))) && (
+                    <motion.button
+                      initial={{ x: '100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '100%' }}
+                      transition={{ ease: 'easeOut' }}
+                      disabled={disable}
+                      className={styles.rightButton + ' ' + styles.btn}
+                      onClick={() => buttonClick('next')}
+                    >
+                      <ArrowForwardIosIcon />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </>
             )}
           </div>
