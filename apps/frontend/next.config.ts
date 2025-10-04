@@ -1,6 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   experimental: {
+    inlineCss: true,
     serverActions: {
       bodySizeLimit: '1000mb',
     },
@@ -21,6 +23,7 @@ const nextConfig = {
       },
     ],
   },
+  compiler: {},
 };
 
 export default nextConfig;

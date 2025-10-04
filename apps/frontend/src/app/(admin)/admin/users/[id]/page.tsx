@@ -1,5 +1,6 @@
 import EditUser from '@/app/(admin)/admin/users/[id]/edit-user';
-import { getUserById } from '@/server/db/users';
+
+// import { getUserById } from '@/server/db/users';
 
 export default async function EditUserPage({
   params,
@@ -10,14 +11,15 @@ export default async function EditUserPage({
 
   let user = null;
 
-  if (id !== 'new') {
-    user = await getUserById(id);
-  }
+  return user;
+  // if (id !== 'new') {
+  //   user = await getUserById(id);
+  // }
 
-  return (
-    <EditUser
-      user={user}
-      userId={id}
-    />
-  );
+  // return (
+  // <EditUser
+  //   user={user}
+  //   userId={id}
+  // />
+  // );
 }

@@ -5,6 +5,8 @@ import Link from 'next/link';
 
 import { Edit, MoreHorizontal, Trash } from 'lucide-react';
 
+import type { User } from '@/lib/types';
+
 import { Button } from '@/admin/components/ui/button';
 import {
   DropdownMenu,
@@ -22,9 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/admin/components/ui/table';
-import { userAction } from '@/app/(admin)/admin/users/_actions';
+// import { userAction } from '@/app/(admin)/admin/users/_actions';
 import { PATHS } from '@/constants/paths';
-import type { User } from '@/lib/types';
 
 import { DeleteUserDialog } from './delete-user-dialog';
 
@@ -48,11 +49,10 @@ export function UsersTable({ users: _users }: { users: User[] }) {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   const handleDeleteUser = async (id: string) => {
-    const res = await userAction(null, id, 'delete');
-
-    if (res.success) {
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id));
-    }
+    // const res = await userAction(null, id, 'delete');
+    // if (res.success) {
+    //   setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id));
+    // }
   };
 
   return (

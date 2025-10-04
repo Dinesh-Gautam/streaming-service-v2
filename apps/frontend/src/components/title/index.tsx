@@ -93,12 +93,8 @@ function TitleView({
       className={styles.container}
     >
       <HideUntilMouseInactive
+        data-isplaying={playerState.playing}
         hideAll={hideAll}
-        style={{
-          position: 'relative',
-          zIndex: 100000,
-          backdropFilter: playerState.playing ? 'blur(0px)' : 'blur(64px)',
-        }}
         className={styles.leftContainer}
       >
         <Title result={result} />
@@ -523,7 +519,7 @@ function Backdrop({
 }
 
 const useHideUntilMouseInactivity = () => {
-  const [hideAll, setHideAll] = useState(true);
+  const [hideAll, setHideAll] = useState(false);
 
   const hideTimeOutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
