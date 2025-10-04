@@ -6,7 +6,7 @@ import Link from 'next/link';
 import styles from '@/styles/modules/banner.module.scss';
 
 import classNames from 'classnames';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 
 import { MoviesGetPopularResult } from 'tmdb-js-web';
 
@@ -112,32 +112,40 @@ const PopularMoviesBanner = ({
                   ),
                 )}
               >
-                <Link href={getTitlePathForBanner(movie.id)}>
-                  <BackgroundImage
-                    id={movie.id}
-                    imgSrc={popularMovies[index].backdrop_path}
-                    priority={
-                      index === currentIndex ||
-                      index === nextIndex ||
-                      index === prevIndex
-                    }
-                  />
-                </Link>
-                <AnimatePresence>
-                  {!disable && currentIndex === index && (
-                    <FadeInOnMount>
-                      <div className={styles.bottom}>
-                        <h1>{movie.title}</h1>
-                        <div className={styles.videoControls}>
-                          <YoutubeControlButtons />
+                <motion.div
+                  style={{
+                    height: '100%',
+                    width: '100%',
+                  }}
+                  layoutId={'banner' + movie.id}
+                >
+                  <Link href={getTitlePathForBanner(movie.id)}>
+                    <BackgroundImage
+                      id={movie.id}
+                      imgSrc={popularMovies[index].backdrop_path}
+                      priority={
+                        index === currentIndex ||
+                        index === nextIndex ||
+                        index === prevIndex
+                      }
+                    />
+                  </Link>
+                  <AnimatePresence>
+                    {!disable && currentIndex === index && (
+                      <FadeInOnMount>
+                        <div className={styles.bottom}>
+                          <h1>{movie.title}</h1>
+                          <div className={styles.videoControls}>
+                            <YoutubeControlButtons />
+                          </div>
                         </div>
-                      </div>
-                      {index === currentIndex && (
-                        <YoutubeVideoPlayer roundedBorder />
-                      )}
-                    </FadeInOnMount>
-                  )}
-                </AnimatePresence>
+                        {index === currentIndex && (
+                          <YoutubeVideoPlayer roundedBorder />
+                        )}
+                      </FadeInOnMount>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             );
           })}
@@ -185,7 +193,7 @@ function BackgroundImage({
       blur={124}
       scale={1}
       imageContainer={{
-        layoutId: 'banner' + id,
+        // layoutId: 'banner' + id,
         className: styles.bannerImageContainer,
       }}
       image={{

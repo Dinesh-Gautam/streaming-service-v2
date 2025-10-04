@@ -75,7 +75,9 @@
   color: white;
   gap: 1rem;
   max-width: 65%;
-  animation: transformAnimation forwards cubic-bezier(0.16, 1, 0.3, 1);
+
+  animation: transformAnimation forwards cubic-bezier(0.02, 1, 0.22, 1);
+  // animation: transformAnimation forwards cubic-bezier(0.16, 1, 0.3, 1);
   animation-duration: 2.5s;
   animation-delay: 1s;
   // opacity: 0;
