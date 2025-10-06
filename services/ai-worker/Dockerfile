@@ -79,6 +79,6 @@ WORKDIR /usr/src/app
 
 # Copy the entire pruned application from the builder stage
 COPY --from=builder /usr/src/app .
-COPY services/ai-worker/bin ./services/ai-worker/bin
+COPY bin ./services/ai-worker/bin
 
 CMD ["node", "services/ai-worker/dist/main.js"]

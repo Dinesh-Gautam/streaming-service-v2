@@ -62,7 +62,7 @@ RUN pnpm prune --prod
 # ==============================
 # Production image
 # ==============================
-FROM node:20-alpine AS prod
+FROM base AS prod
 
 WORKDIR /usr/src/app
 

@@ -4,16 +4,18 @@
   "scripts": {
     "docker:dev": "docker compose up --build --watch",
     "docker:dev:workers": "pnpm run docker:dev job-service thumbnail-worker transcoding-worker subtitle-worker ai-worker",
-    "dev:frontend": "pnpm --filter=frontend dev",
-    "dev:workers": "docker compose up -d mongo rabbitmq && pnpm run dev:packages && pnpm run dev:jov-service && pnpm run dev:thumbnail-worker",
+    "docker:dev:all": "pnpm run docker:dev job-service thumbnail-worker transcoding-worker subtitle-worker ai-worker auth-service",
+    "dev:frontend": "pnpm --filter=frontend dev:",
+    "dev:all": "npm-run-all --parallel dev:frontend docker:dev:all",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "dev:packages": "pnpm run dev --filter=\"./packages/**\"",
     "dev:job-service": "pnpm run dev --filter=job-service",
-    "dev:thumbnail-worker": "pnpm run dev --filter=thumbnail-worker",
     "build:packages": "turbo build --filter=\"./packages/**\"",
-    "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
+    "docker:build:prod": "docker compose -f docker-compose.prod.yml build",
+    "docker:up:prod": "docker compose -f docker-compose.prod.yml up -d",
     "docker:down": "docker compose down",
+    "docker:down:prod": "docker compose -f docker-compose.prod.yml down",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
@@ -24,6 +26,7 @@
   ],
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.3.0",
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.3.2",
     "turbo": "^2.5.6"
   },
