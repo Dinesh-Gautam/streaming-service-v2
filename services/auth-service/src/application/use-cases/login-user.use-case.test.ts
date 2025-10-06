@@ -26,6 +26,9 @@ describe('LoginUserUseCase', () => {
       save: jest.fn(),
       findCredentialByUserId: jest.fn(),
       findById: jest.fn(),
+      findAll: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     };
     passwordHasher = {
       hash: jest.fn(),

@@ -22,8 +22,10 @@ const mockUserRepository: IUserRepository = {
   save: jest.fn(),
   findCredentialByUserId: jest.fn(),
   findById: jest.fn(),
+  findAll: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
 };
-
 const mockPasswordHasher: IPasswordHasher = {
   hash: jest.fn(),
   compare: jest.fn(),

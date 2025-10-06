@@ -10,6 +10,7 @@ import { config } from '@auth-service/infrastructure/config';
 import { logger } from '@auth-service/infrastructure/logger';
 import { errorHandler } from '@auth-service/presentation/middleware/error-handler.middleware';
 import { authRouter } from '@auth-service/presentation/routes/auth.routes';
+import { userRouter } from '@auth-service/presentation/routes/user.routes';
 
 const app: Application = express();
 
@@ -31,6 +32,7 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api/v1/auth', authLimiter, authRouter);
+app.use('/api/v1/users', authLimiter, userRouter);
 
 app.use(
   (req: express.Request, res: express.Response, next: express.NextFunction) => {

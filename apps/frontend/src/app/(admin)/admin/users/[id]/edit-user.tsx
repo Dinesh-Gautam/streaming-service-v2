@@ -2,10 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import type { UserSchemaType } from '@/lib/validation/schemas';
+
+import { createUser, updateUser } from '@/admin/api/user-api';
 import { Button } from '@/admin/components/ui/button';
 import {
   Card,
@@ -30,13 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/admin/components/ui/select';
-import { userAction } from '@/app/(admin)/admin/users/_actions';
 import { PATHS } from '@/constants/paths';
 import { USER_ROLES } from '@/lib/types';
-import {
-  UserSchema as formSchema,
-  type UserSchemaType,
-} from '@/lib/validation/schemas';
+import { UserSchema as formSchema } from '@/lib/validation/schemas';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 export default function EditUser({
   user,
@@ -48,7 +47,7 @@ export default function EditUser({
   const router = useRouter();
   const isNewUser = userId === 'new';
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<UserSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: user || {
       name: '',
@@ -58,18 +57,12 @@ export default function EditUser({
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const res = await userAction(
-      values,
-      userId,
-      isNewUser ? 'create' : 'update',
-    );
-
-    if (!res.success && 'message' in res) {
-      console.error(res.message);
-      return;
+  async function onSubmit(values: UserSchemaType) {
+    if (isNewUser) {
+      await createUser(values);
+    } else {
+      await updateUser(userId, values);
     }
-
     router.push(PATHS.ADMIN.USERS);
   }
 

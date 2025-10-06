@@ -88,4 +88,45 @@ export class PrismaUserRepository implements IUserRepository {
       user.updatedAt,
     );
   }
+
+  async findAll(): Promise<User[]> {
+    const users = await this.prisma.user.findMany();
+    return users.map(
+      (user) =>
+        new User(
+          user.id,
+          user.name,
+          user.email,
+          user.role,
+          user.createdAt,
+          user.updatedAt,
+        ),
+    );
+  }
+
+  async update(id: string, user: Partial<User>): Promise<User | null> {
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: user,
+    });
+
+    if (!updatedUser) {
+      return null;
+    }
+
+    return new User(
+      updatedUser.id,
+      updatedUser.name,
+      updatedUser.email,
+      updatedUser.role,
+      updatedUser.createdAt,
+      updatedUser.updatedAt,
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.user.delete({
+      where: { id },
+    });
+  }
 }

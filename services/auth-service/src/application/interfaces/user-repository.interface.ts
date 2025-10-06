@@ -5,4 +5,7 @@ export interface IUserRepository {
   save(user: User, credential: UserCredential): Promise<User>;
   findCredentialByUserId(userId: string): Promise<UserCredential | null>;
   findById(id: string): Promise<User | null>;
+  findAll(): Promise<User[]>;
+  update(id: string, user: Partial<User>): Promise<User | null>;
+  delete(id: string): Promise<void>;
 }

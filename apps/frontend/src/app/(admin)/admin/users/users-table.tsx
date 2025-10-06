@@ -7,6 +7,7 @@ import { Edit, MoreHorizontal, Trash } from 'lucide-react';
 
 import type { User } from '@/lib/types';
 
+import { deleteUser } from '@/admin/api/user-api';
 import { Button } from '@/admin/components/ui/button';
 import {
   DropdownMenu,
@@ -24,35 +25,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/admin/components/ui/table';
-// import { userAction } from '@/app/(admin)/admin/users/_actions';
 import { PATHS } from '@/constants/paths';
 
 import { DeleteUserDialog } from './delete-user-dialog';
 
-// Mock data for users
-const initialUsers = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'Editor' },
-  { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'Viewer' },
-  { id: '4', name: 'Alice Brown', email: 'alice@example.com', role: 'Editor' },
-  {
-    id: '5',
-    name: 'Charlie Wilson',
-    email: 'charlie@example.com',
-    role: 'Viewer',
-  },
-];
-
-export function UsersTable({ users: _users }: { users: User[] }) {
-  const [users, setUsers] = useState(_users);
-
+export function UsersTable({
+  users,
+  refetch,
+}: {
+  users: User[];
+  refetch: () => void;
+}) {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   const handleDeleteUser = async (id: string) => {
-    // const res = await userAction(null, id, 'delete');
-    // if (res.success) {
-    //   setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id));
-    // }
+    const success = await deleteUser(id);
+    if (success) {
+      refetch();
+    }
+    setUserToDelete(null);
   };
 
   return (
@@ -76,7 +67,9 @@ export function UsersTable({ users: _users }: { users: User[] }) {
               >
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{user.creationDate.toDateString()}</TableCell>
+                <TableCell>
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </TableCell>
                 <TableCell>{user.role}</TableCell>
                 <TableCell>
                   <DropdownMenu>
