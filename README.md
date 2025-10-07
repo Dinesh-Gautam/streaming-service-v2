@@ -208,19 +208,17 @@ This monorepo contains the following primary applications and services:
 
 ## 🚀 Getting Started
 
-Follow these steps to set up and run the project locally for development.
-
-### Prerequisites
+#### Prerequisites
 
 - **Node.js** (v20 or later)
 - **pnpm**: `npm install -g pnpm`
 - **Docker** & **Docker Compose**
 
-### 1. Clone the Repository
+#### 1. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
-cd <repository-name>
+git clone https://github.com/Dinesh-Gautam/streaming-service-v2 
+cd streaming-service-v2 
 ```
 
 ### 2. Install Dependencies
@@ -231,39 +229,72 @@ Install all dependencies for the monorepo from the root directory.
 pnpm install
 ```
 
-### 3. Set Up Environment Variables
+### 3. Set Up Environment Variables & API Keys
 
-Each service and application in the monorepo has its own `.env.example` file. Copy these to `.env` files and populate them with your local configuration (database URLs, API keys, etc.).
+You need to add `.env` to the `apps/frotend/.env`
 
 - `apps/frontend/.env.example`
-- `services/auth-service/.env.example`
-- `services/job-service/.env.example`
 - etc.
 
-### 4. Run Supporting Infrastructure
+A root `.env.example` is also provided, which you should copy to `.env` in the project root. This file contains shared credentials for external services like Google Cloud and Deepgram.
 
-Start the required backing services (databases, message queue) using Docker Compose.
+#### a. Google Cloud & Gemini API Setup
+
+The AI worker relies on Google Cloud services, including the Gemini API for generative tasks and Google Translate for subtitles.
+
+1.  **Create a Google Cloud Project**:
+    - Go to the [Google Cloud Console](https://console.cloud.google.com/).
+    - Create a new project and note down the **Project ID**.
+
+2.  **Enable Required APIs**:
+    - In your new project, navigate to the "APIs & Services" dashboard.
+    - Enable the following APIs:
+      - **Vertex AI API** (which includes Gemini models)
+      - **Cloud Text-to-Speech API**
+      - **Cloud Translation API**
+
+3.  **Get Google AI Studio API Key (for Gemini)**:
+    - Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
+    - Click "Create API key in new project" or "Get API key" from an existing project.
+    - Copy the generated API key. This key is specifically for accessing the Gemini models.
+
+4.  **Set Up Application Default Credentials (ADC)**:
+    - For local development, the services authenticate using ADC.
+    - Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install).
+    - Run the following command to log in and create your local credential file:
+      ```bash
+      gcloud auth application-default login
+      ```
+    - This command will create a JSON file at a path similar to `C:\Users\<username>\AppData\Roaming\gcloud\application_default_credentials.json` on Windows or `~/.config/gcloud/application_default_credentials.json` on macOS/Linux.
+
+5.  **Update `.env` file**:
+    - Open the root `.env` file and set the following variables:
+      - `GOOGLE_PROJECT_ID`: Your Google Cloud Project ID.
+      - `GOOGLE_API_KEY`: The API key you created from Google AI Studio (for Gemini) or Google Cloud (for other services).
+      - `LOCAL_GOOGLE_APPLICATION_CREDS_PATH`: The absolute path to your `application_default_credentials.json` file. This is used to mount the credentials into the Docker containers for the worker services.
+
+#### b. Deepgram API Key
+
+The subtitle worker uses Deepgram for high-accuracy speech-to-text transcription.
+
+1.  **Create a Deepgram Account**:
+    - Sign up at [Deepgram](https://deepgram.com/).
+    - You'll get a free credit to start.
+
+2.  **Get an API Key**:
+    - Navigate to the "API Keys" section in your Deepgram dashboard.
+    - Create a new API key and copy it.
+
+3.  **Update `.env` file**:
+    - Add the key to your root `.env` file:
+      ```
+      DEEPGRAM_API_KEY="your-deepgram-api-key"
+      ```
+
+You can run all services and the frontend application in development mode from the root directory.
 
 ```bash
-docker-compose up -d
-```
-
-This will start containers for PostgreSQL, MongoDB, and RabbitMQ as defined in `docker-compose.yml`.
-
-### 5. Run Database Migrations
-
-The `auth-service` uses Prisma for database management. Run the migrations to set up the schema.
-
-```bash
-pnpm --filter auth-service prisma:migrate
-```
-
-### 6. Run the Entire Stack
-
-You can run all services and the frontend application in development mode using Turborepo from the root directory.
-
-```bash
-pnpm run dev
+pnpm run dev:all
 ```
 
 This command will start each service and the frontend, typically with hot-reloading enabled. You can then access the frontend at `http://localhost:3000`.
