@@ -1,9 +1,11 @@
-import { toast } from 'sonner';
+'use server';
+
+import { cookies } from 'next/headers';
 
 const getAIServiceUrl = (): string | null => {
   const aiServiceUrl = process.env.NEXT_PUBLIC_AI_WORKER_URL;
   if (!aiServiceUrl) {
-    toast.error('AI service URL is not configured.');
+    console.error('AI service URL is not configured.');
     return null;
   }
   return aiServiceUrl;
@@ -16,10 +18,21 @@ export const generateImage = async (
   const aiServiceUrl = getAIServiceUrl();
   if (!aiServiceUrl) return null;
 
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  if (!accessToken) {
+    console.error('Authentication token not found.');
+    return null;
+  }
+
   try {
     const response = await fetch(`${aiServiceUrl}/images/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({ prompt, type }),
     });
 
@@ -30,7 +43,7 @@ export const generateImage = async (
 
     return await response.json();
   } catch (error) {
-    toast.error(
+    console.error(
       'Error generating image: ' +
         (error instanceof Error ? error.message : 'Unknown error'),
     );
@@ -48,10 +61,21 @@ export const generateImagePrompt = async (input: {
   const aiServiceUrl = getAIServiceUrl();
   if (!aiServiceUrl) return null;
 
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  if (!accessToken) {
+    console.error('Authentication token not found.');
+    return null;
+  }
+
   try {
     const response = await fetch(`${aiServiceUrl}/images/prompt`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: JSON.stringify(input),
     });
 
@@ -63,7 +87,7 @@ export const generateImagePrompt = async (input: {
     const result = await response.json();
     return result.prompt;
   } catch (error) {
-    toast.error(
+    console.error(
       'Error generating image prompt: ' +
         (error instanceof Error ? error.message : 'Unknown error'),
     );

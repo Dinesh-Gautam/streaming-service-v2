@@ -50,6 +50,7 @@
     "@monorepo/logger": "workspace:*",
     "@monorepo/message-queue": "workspace:*",
     "@monorepo/workers": "workspace:*",
+    "@monorepo/token": "workspace:*",
     "amqplib": "^0.10.3",
     "data-urls": "^4.0.0",
     "dotenv": "^16.6.1",

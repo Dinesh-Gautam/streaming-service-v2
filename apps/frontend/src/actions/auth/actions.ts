@@ -25,7 +25,22 @@ export async function loginAction(credentials: any) {
     cookieStore.set(
       'refreshToken',
       refreshTokenCookie.split(';')[0].split('=')[1],
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+      },
     );
+  }
+
+  if (data.accessToken) {
+    cookieStore.set('accessToken', data.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
   }
 
   return { accessToken: data.accessToken };
@@ -42,6 +57,7 @@ export async function logoutAction() {
       },
     });
     cookieStore.delete('refreshToken');
+    cookieStore.delete('accessToken');
   }
   revalidatePath('/');
 }
@@ -74,7 +90,22 @@ export async function refreshTokenAction() {
     cookieStore.set(
       'refreshToken',
       newRefreshTokenCookie.split(';')[0].split('=')[1],
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+      },
     );
+  }
+
+  if (data.accessToken) {
+    cookieStore.set('accessToken', data.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
   }
 
   return { accessToken: data.accessToken };

@@ -17,6 +17,7 @@ import {
   InvalidArgumentError,
   JobNotFoundError,
 } from '@job-service/entities/errors.entity';
+import { authMiddleware } from '@job-service/middleware/auth.middleware';
 import { jobRouter } from '@job-service/routes/job.routes';
 import { TaskDispatcher } from '@job-service/services/task-dispatcher.service';
 import { TaskPayloadFactory } from '@job-service/utils/task-payload.factory';
@@ -54,7 +55,7 @@ async function main() {
     res.status(200).send('OK');
   });
 
-  app.use('/api', jobRouter);
+  app.use('/api', authMiddleware, jobRouter);
 
   // Error handling middleware
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -63,6 +63,6 @@ export class WinstonLogger implements ILogger {
   }
 
   close(): void {
-    this.logger.end();
+    this.logger.close();
   }
 }

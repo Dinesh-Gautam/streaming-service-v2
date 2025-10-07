@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: {
+    authInterrupts: true,
     inlineCss: true,
     serverActions: {
       bodySizeLimit: '1000mb',
@@ -23,6 +24,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  logging: false,
   compiler: {},
 };
 

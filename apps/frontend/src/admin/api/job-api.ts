@@ -1,11 +1,13 @@
-import { toast } from 'sonner';
+'use server';
+
+import { cookies } from 'next/headers';
 
 import type { MediaJob } from '@monorepo/core';
 
 const getJobServiceUrl = (): string | null => {
   const jobServiceUrl = process.env.NEXT_PUBLIC_JOB_SERVICE_URL;
   if (!jobServiceUrl) {
-    toast.error('Job service URL is not configured.');
+    console.error('Job service URL is not configured.');
     return null;
   }
   return jobServiceUrl;
@@ -18,10 +20,21 @@ export const initiateJob = async (
   const jobServiceUrl = getJobServiceUrl();
   if (!jobServiceUrl) return null;
 
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  if (!accessToken) {
+    console.error('Authentication token not found.');
+    return null;
+  }
+
   try {
     const response = await fetch(`${jobServiceUrl}/jobs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({ mediaId, sourceUrl: filePath }),
     });
 
@@ -32,7 +45,7 @@ export const initiateJob = async (
 
     return await response.json();
   } catch (error) {
-    toast.error(
+    console.error(
       'Error initiating job: ' +
         (error instanceof Error ? error.message : 'Unknown error'),
     );
@@ -46,8 +59,20 @@ export const getJobByMediaId = async (
   const jobServiceUrl = getJobServiceUrl();
   if (!jobServiceUrl) return null;
 
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  if (!accessToken) {
+    console.error('Authentication token not found.');
+    return null;
+  }
+
   try {
-    const response = await fetch(`${jobServiceUrl}/jobs/by-media/${mediaId}`);
+    const response = await fetch(`${jobServiceUrl}/jobs/by-media/${mediaId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
     if (response.status === 404) {
       return null;
     }
@@ -57,7 +82,7 @@ export const getJobByMediaId = async (
     }
     return (await response.json()) as MediaJob;
   } catch (error) {
-    toast.error(
+    console.error(
       'Error fetching job by media ID: ' +
         (error instanceof Error ? error.message : 'Unknown error'),
     );
@@ -73,9 +98,19 @@ export const retryJob = async (
     return { success: false, message: 'Job service URL is not configured.' };
   }
 
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('accessToken')?.value;
+
+  if (!accessToken) {
+    return { success: false, message: 'Authentication token not found.' };
+  }
+
   try {
     const response = await fetch(`${jobServiceUrl}/jobs/${mediaId}/retry`, {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (response.ok) {

@@ -1,0 +1,28 @@
+{
+  "name": "@monorepo/token",
+  "version": "1.0.0",
+  "description": "A reusable token verification package.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "tsc -w --preserveWatchOutput",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": [
+    "token",
+    "jwt",
+    "verification",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.11.24"
+  }
+}

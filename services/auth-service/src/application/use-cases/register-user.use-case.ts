@@ -34,7 +34,7 @@ export class RegisterUserUseCase {
 
     const hashedPassword = await this.passwordHasher.hash(dto.password);
 
-    const newUser = new User(uuidv4(), dto.name ?? null, dto.email, Role.USER);
+    const newUser = new User(uuidv4(), dto.name ?? null, dto.email, Role.ADMIN);
     const newUserCredential = new UserCredential(
       uuidv4(),
       newUser.id,

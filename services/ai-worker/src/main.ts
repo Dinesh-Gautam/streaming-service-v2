@@ -19,6 +19,7 @@ import { AIProcessingUseCase } from '@ai-worker/use-cases/ai-processing.usecase'
 import { DI_TOKENS } from '@monorepo/core';
 import { MessageQueueChannels } from '@monorepo/message-queue';
 
+import { authMiddleware } from './middleware/auth.middleware';
 import { aiRouter } from './routes/ai.routes';
 
 setupDI();
@@ -64,7 +65,7 @@ async function main() {
     res.status(200).send('OK');
   });
 
-  app.use('/api', aiRouter);
+  app.use('/api', authMiddleware, aiRouter);
 
   // Error handling middleware
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
