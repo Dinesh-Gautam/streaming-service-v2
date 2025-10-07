@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import type { JobStatus, MediaJob } from '@monorepo/core';
 
-import { getJobByMediaId } from '@/admin/api/job-api';
+import { getJobByMediaId } from '@/actions/admin/job';
 
 const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed'];
 

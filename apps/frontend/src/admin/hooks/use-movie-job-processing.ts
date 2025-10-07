@@ -8,7 +8,7 @@ import {
   getJobByMediaId,
   initiateJob as initiateJobApi,
   retryJob,
-} from '@/admin/api/job-api';
+} from '@/actions/admin/job';
 import { useJobStatus } from '@/admin/hooks/use-job-status';
 
 export function useMovieJobProcessing(mediaId: string | null) {

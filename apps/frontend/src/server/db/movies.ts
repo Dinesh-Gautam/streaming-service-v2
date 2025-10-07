@@ -11,7 +11,7 @@ import type {
   MoviesGetPopularResult,
 } from 'tmdb-js-web';
 
-import { getJobByMediaId } from '@/admin/api/job-api';
+import { getJobByMediaId } from '@/actions/admin/job';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
 

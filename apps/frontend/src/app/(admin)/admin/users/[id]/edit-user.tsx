@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import type { UserSchemaType } from '@/lib/validation/schemas';
 
-import { createUser, updateUser } from '@/admin/api/user-api';
+import { createUser, updateUser } from '@/actions/admin/user';
 import { Button } from '@/admin/components/ui/button';
 import {
   Card,

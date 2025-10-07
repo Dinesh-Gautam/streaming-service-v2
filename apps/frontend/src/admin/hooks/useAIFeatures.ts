@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { MediaTask } from '@monorepo/core';
 import type { AIEngineOutput } from '@monorepo/workers';
 
-import { generateImage, generateImagePrompt } from '@/admin/api/ai-api';
+import { generateImage, generateImagePrompt } from '@/actions/admin/ai';
 import { applyAISuggestions } from '@/app/(admin)/admin/movies/_action';
 import { MovieSchema } from '@/lib/validation/schemas';
 

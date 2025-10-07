@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { getUserById, getUsers } from '@/admin/api/user-api';
+import { getUserById, getUsers } from '@/actions/admin/user';
 import { User } from '@/lib/types';
 
 export function useUsers(id?: string) {

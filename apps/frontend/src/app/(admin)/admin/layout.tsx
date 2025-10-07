@@ -5,9 +5,13 @@ import type React from 'react';
 
 import '@/styles/admin.css';
 
+import { cookies } from 'next/headers';
+import { forbidden, unauthorized } from 'next/navigation';
+
 import { AdminSidebar } from '@/admin/components/admin-sidebar';
 import { ThemeProvider } from '@/admin/components/theme-provider';
 import { SidebarProvider } from '@/admin/components/ui/sidebar';
+import { TokenService } from '@monorepo/token';
 
 const inter = Roboto({ subsets: ['latin'] });
 
@@ -18,11 +22,20 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('accessToken');
+
+  if (!token) return forbidden();
+
+  const tokenService = new TokenService(process.env.JWT_SECRET!);
+  const isAdmin = tokenService.isUserAdmin(token.value);
+
+  if (!isAdmin) return unauthorized();
   return (
     <html lang="en">
       <body className={inter.className}>

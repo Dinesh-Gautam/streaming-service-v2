@@ -7,7 +7,7 @@ import { Edit, MoreHorizontal, Trash } from 'lucide-react';
 
 import type { User } from '@/lib/types';
 
-import { deleteUser } from '@/admin/api/user-api';
+import { deleteUser } from '@/actions/admin/user';
 import { Button } from '@/admin/components/ui/button';
 import {
   DropdownMenu,
