@@ -231,10 +231,7 @@ pnpm install
 
 ### 3. Set Up Environment Variables & API Keys
 
-You need to add `.env` to the `apps/frotend/.env`
-
-- `apps/frontend/.env.example`
-- etc.
+You need to add `.env` to the `apps/frotend/.env` their is an example env, you can just reaname the `apps/frontend/.env.example`
 
 A root `.env.example` is also provided, which you should copy to `.env` in the project root. This file contains shared credentials for external services like Google Cloud and Deepgram.
 
