@@ -1,3 +1,5 @@
+name: movie-search
+
 x-service-base: &service-base
   tty: true
   stdin_open: true
@@ -229,7 +231,9 @@ services:
 # ---------- NETWORKS ----------
 networks:
   backend:
+    name: movie-search-backend
   messaging:
+    name: movie-search-messaging
 
 # ---------- VOLUMES ----------
 volumes:

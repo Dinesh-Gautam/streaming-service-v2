@@ -11,7 +11,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
 
   auth-service:
     build:
@@ -28,7 +28,8 @@ services:
       - auth-service-migration
       - redis
     networks:
-      - app-network
+      - backend
+      - messaging
 
   job-service:
     build:
@@ -48,7 +49,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
+      - messaging
 
   thumbnail-worker:
     build:
@@ -65,7 +67,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
+      - messaging
     volumes:
       - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
@@ -84,7 +87,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
+      - messaging
     volumes:
       - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
       - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
@@ -106,7 +110,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
+      - messaging
     volumes:
       - ${LOCAL_GOOGLE_APPLICATION_CREDS_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
       - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
@@ -126,7 +131,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - app-network
+      - backend
+      - messaging
     volumes:
       - ${LOCAL_SOURCE_PATH}:${LOCAL_STORAGE_PATH}
 
@@ -143,7 +149,7 @@ services:
       retries: 5
       start_period: 40s
     networks:
-      - app-network
+      - backend
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -156,7 +162,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - app-network
+      - messaging
 
   postgres:
     image: postgres:13
@@ -176,7 +182,7 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - app-network
+      - backend
 
   redis:
     image: redis:alpine
@@ -191,11 +197,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - app-network
+      - backend
 
 networks:
-  app-network:
-    driver: bridge
+  backend:
+  messaging:
 
 volumes:
   mongo-data:
