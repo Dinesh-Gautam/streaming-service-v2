@@ -6,7 +6,7 @@ import { getAuthServiceUrl } from '@/actions/admin/utils';
 import { authorize } from '@/lib/safe-action';
 import { User } from '@/lib/types';
 
-export const getUsers = authorize(
+const _getUsers = authorize(
   (_, accessToken) => async (): Promise<User[]> => {
     const authServiceUrl = getAuthServiceUrl();
     if (!authServiceUrl) return [];
@@ -33,7 +33,12 @@ export const getUsers = authorize(
   ['ADMIN'],
 );
 
-export const getUserById = authorize(
+export async function getUsers(): Promise<User[]> {
+  const users = await _getUsers();
+  return users ?? [];
+}
+
+const _getUserById = authorize(
   (_, accessToken) =>
     async (userId: string): Promise<User | null> => {
       const authServiceUrl = getAuthServiceUrl();
@@ -61,7 +66,11 @@ export const getUserById = authorize(
   ['ADMIN'],
 );
 
-export const createUser = authorize(
+export async function getUserById(userId: string): Promise<User | null> {
+  return await _getUserById(userId);
+}
+
+const _createUser = authorize(
   (_, accessToken) =>
     async (data: UserSchemaType): Promise<User | null> => {
       const authServiceUrl = getAuthServiceUrl();
@@ -93,7 +102,11 @@ export const createUser = authorize(
   ['ADMIN'],
 );
 
-export const updateUser = authorize(
+export async function createUser(data: UserSchemaType): Promise<User | null> {
+  return await _createUser(data);
+}
+
+const _updateUser = authorize(
   (_, accessToken) =>
     async (
       userId: string,
@@ -128,7 +141,14 @@ export const updateUser = authorize(
   ['ADMIN'],
 );
 
-export const deleteUser = authorize(
+export async function updateUser(
+  userId: string,
+  data: Partial<UserSchemaType>,
+): Promise<User | null> {
+  return await _updateUser(userId, data);
+}
+
+const _deleteUser = authorize(
   (_, accessToken) =>
     async (userId: string): Promise<boolean> => {
       const authServiceUrl = getAuthServiceUrl();
@@ -158,3 +178,8 @@ export const deleteUser = authorize(
     },
   ['ADMIN'],
 );
+
+export async function deleteUser(userId: string): Promise<boolean> {
+  const success = await _deleteUser(userId);
+  return success ?? false;
+}

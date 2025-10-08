@@ -3,7 +3,7 @@
 import { getAIServiceUrl } from '@/actions/admin/utils';
 import { authorize } from '@/lib/safe-action';
 
-export const generateImage = authorize(
+const _generateImage = authorize(
   (_, accessToken) =>
     async (
       prompt: string,
@@ -39,7 +39,14 @@ export const generateImage = authorize(
   ['ADMIN'],
 );
 
-export const generateImagePrompt = authorize(
+export async function generateImage(
+  prompt: string,
+  type: 'poster' | 'backdrop',
+): Promise<{ success: boolean; path: string; id: string } | null> {
+  return _generateImage(prompt, type);
+}
+
+const _generateImagePrompt = authorize(
   (_, accessToken) =>
     async (input: {
       title: string;
@@ -78,3 +85,13 @@ export const generateImagePrompt = authorize(
     },
   ['ADMIN'],
 );
+
+export async function generateImagePrompt(input: {
+  title: string;
+  description: string;
+  genres: string[];
+  initialPrompt: string;
+  type: 'poster' | 'backdrop';
+}): Promise<string | null> {
+  return _generateImagePrompt(input);
+}

@@ -4,6 +4,8 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import type { MovieSchemaType } from '@/lib/validation/schemas';
+
 /**
  * Saves movie data to the database (create or update).
  * @param data - Movie data to save.
@@ -15,8 +17,8 @@ import { MovieSchema } from '@/lib/validation/schemas';
 import dbConnect from '@/server/db/connect';
 import { Movie } from '@/server/db/schemas/movie';
 
-export const saveMovieData = authorize(
-  () => async (data: z.infer<typeof MovieSchema>, id?: string) => {
+const _saveMovieData = authorize(
+  () => async (data: MovieSchemaType, id?: string) => {
     try {
       await dbConnect();
       const validatedData = MovieSchema.parse(data); // Validate data first
@@ -89,7 +91,20 @@ export const saveMovieData = authorize(
   ['ADMIN'],
 );
 
-export const deleteMovie = authorize(
+export async function saveMovieData(
+  data: MovieSchemaType,
+  id?: string,
+): Promise<{ success: boolean; message: string }> {
+  const result = await _saveMovieData(data, id);
+  return (
+    result ?? {
+      success: false,
+      message: 'Authentication failed or user is not authorized.',
+    }
+  );
+}
+
+const _deleteMovie = authorize(
   () => async (id: string) => {
     try {
       await dbConnect(); // Ensure DB connection
@@ -107,8 +122,20 @@ export const deleteMovie = authorize(
   ['ADMIN'],
 );
 
+export async function deleteMovie(
+  id: string,
+): Promise<{ success: boolean; message?: string }> {
+  const result = await _deleteMovie(id);
+  return (
+    result ?? {
+      success: false,
+      message: 'Authentication failed or user is not authorized.',
+    }
+  );
+}
+
 // New action to apply AI suggestions
-export const applyAISuggestions = authorize(
+const _applyAISuggestions = authorize(
   () =>
     async (
       movieId: string,
@@ -147,3 +174,20 @@ export const applyAISuggestions = authorize(
     },
   ['ADMIN'],
 );
+
+export async function applyAISuggestions(
+  movieId: string,
+  suggestions: {
+    title: string;
+    description: string;
+    genres: string[];
+  },
+): Promise<{ success: boolean; message?: string }> {
+  const result = await _applyAISuggestions(movieId, suggestions);
+  return (
+    result ?? {
+      success: false,
+      message: 'Authentication failed or user is not authorized.',
+    }
+  );
+}

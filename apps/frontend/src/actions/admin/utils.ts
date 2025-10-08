@@ -1,5 +1,3 @@
-'use server';
-
 const getServiceUrlInternal = (envVarName: string): string | null => {
   const serviceUrl = process.env[envVarName];
   if (!serviceUrl) {

@@ -5,7 +5,7 @@ import type { MediaJob } from '@monorepo/core';
 import { getJobServiceUrl } from '@/actions/admin/utils';
 import { authorize } from '@/lib/safe-action';
 
-export const initiateJob = authorize(
+const _initiateJob = authorize(
   (_, accessToken) =>
     async (
       mediaId: string,
@@ -41,7 +41,14 @@ export const initiateJob = authorize(
   ['ADMIN'],
 );
 
-export const getJobByMediaId = authorize(
+export async function initiateJob(
+  mediaId: string,
+  filePath: string,
+): Promise<{ jobId: string } | null> {
+  return _initiateJob(mediaId, filePath);
+}
+
+const _getJobByMediaId = authorize(
   (_, accessToken) =>
     async (mediaId: string): Promise<MediaJob | null> => {
       const jobServiceUrl = getJobServiceUrl();
@@ -75,7 +82,13 @@ export const getJobByMediaId = authorize(
   ['ADMIN'],
 );
 
-export const retryJob = authorize(
+export async function getJobByMediaId(
+  mediaId: string,
+): Promise<MediaJob | null> {
+  return _getJobByMediaId(mediaId);
+}
+
+const _retryJob = authorize(
   (_, accessToken) =>
     async (mediaId: string): Promise<{ success: boolean; message: string }> => {
       const jobServiceUrl = getJobServiceUrl();
@@ -117,3 +130,9 @@ export const retryJob = authorize(
     },
   ['ADMIN'],
 );
+
+export async function retryJob(
+  mediaId: string,
+): Promise<{ success: boolean; message: string } | null> {
+  return _retryJob(mediaId);
+}
