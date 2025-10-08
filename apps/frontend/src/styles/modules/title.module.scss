@@ -58,11 +58,9 @@
   from {
     // opacity: 0;
     transform: translateX(-100%);
-    pointer-events: none;
   }
   to {
     transform: translateX(0%);
-    pointer-events: initial;
   }
 }
 
@@ -96,6 +94,7 @@
 
   &::before {
     content: '';
+    pointer-events: none;
     z-index: -1;
     backdrop-filter: blur(64px);
     background: linear-gradient(
