@@ -15,7 +15,7 @@ import {
   AiImageResponseSchema,
   AiVideoAnalysisResponseSchema,
 } from '@ai-worker/domain/schemas';
-import { googleAI } from '@genkit-ai/google-genai';
+import { googleAI, vertexAI } from '@genkit-ai/google-genai';
 import { DI_TOKENS } from '@monorepo/core';
 
 export async function generateAndSaveImage(
@@ -27,7 +27,7 @@ export async function generateAndSaveImage(
   try {
     logger.info(`[GenerateMovieImagesFlow] Generating ${imageType} image...`);
 
-    const generationConfig = {
+    const { media: image } = await ai.generate({
       model: googleAI.model('imagen-4.0-generate-preview-06-06'),
       prompt: `${prompt} - ${
         imageType === 'poster' ?
@@ -36,12 +36,10 @@ export async function generateAndSaveImage(
       }`,
       config: {
         temperature: 1,
+        aspectRatio: imageType === 'poster' ? '9:16' : '16:9',
       },
-      aspectRatio: imageType === 'poster' ? '9:16' : '16:9',
-      output: { format: 'media' as const },
-    };
-
-    const { media: image } = await ai.generate(generationConfig);
+      output: { format: 'media' },
+    });
 
     if (!image) {
       throw new Error(`Failed to generate ${imageType} image.`);
