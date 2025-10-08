@@ -34,19 +34,19 @@ export function setupDI(): void {
     useClass: FFmpegAudioExtractor,
   });
 
-  // container.register(TranscriptionServiceToken, {
-  //   useClass: DeepgramTranscriptionService,
-  // });
-  // container.register(TranslationServiceToken, {
-  //   useClass: GoogleTranslationService,
-  // });
-
   container.register(TranscriptionServiceToken, {
-    useClass: MockTranscriptionService,
+    useClass: DeepgramTranscriptionService,
   });
   container.register(TranslationServiceToken, {
-    useClass: MockTranslaionService,
+    useClass: GoogleTranslationService,
   });
+
+  // container.register(TranscriptionServiceToken, {
+  //   useClass: MockTranscriptionService,
+  // });
+  // container.register(TranslationServiceToken, {
+  //   useClass: MockTranslaionService,
+  // });
 
   container.register(DI_TOKENS.Storage, {
     useClass: LocalStorage,

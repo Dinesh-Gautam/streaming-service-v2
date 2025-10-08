@@ -6,7 +6,7 @@
     "docker:dev:workers": "pnpm run docker:dev job-service thumbnail-worker transcoding-worker subtitle-worker ai-worker",
     "docker:dev:all": "pnpm run docker:dev job-service thumbnail-worker transcoding-worker subtitle-worker ai-worker auth-service",
     "dev:frontend": "pnpm --filter=frontend dev",
-    "dev:all": "npm-run-all docker:dev:all dev:frontend",
+    "dev:all": "npm-run-all --parallel docker:dev:all dev:frontend",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "dev:packages": "pnpm run dev --filter=\"./packages/**\"",
