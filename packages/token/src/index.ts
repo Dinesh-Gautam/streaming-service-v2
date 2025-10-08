@@ -10,7 +10,7 @@ interface DecodedToken {
 export class TokenService {
   private readonly secret: string;
 
-  constructor(secret: string) {
+  constructor(secret?: string) {
     if (!secret) {
       secret = process.env.JWT_SECRET || '';
     }
@@ -22,9 +22,9 @@ export class TokenService {
     this.secret = secret;
   }
 
-  verifyToken(token: string): DecodedToken | null {
+  verifyToken<T = DecodedToken>(token: string): T | null {
     try {
-      const decoded = jwt.verify(token, this.secret) as DecodedToken;
+      const decoded = jwt.verify(token, this.secret) as T;
       return decoded;
     } catch (error) {
       console.error('Token verification failed:', error);

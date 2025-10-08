@@ -1,192 +1,160 @@
 'use server';
 
-import { cookies } from 'next/headers';
-
 import type { UserSchemaType } from '@/lib/validation/schemas';
 
+import { getAuthServiceUrl } from '@/actions/admin/utils';
+import { authorize } from '@/lib/safe-action';
 import { User } from '@/lib/types';
 
-const getAuthServiceUrl = (): string | null => {
-  const authServiceUrl = process.env.NEXT_PUBLIC_USER_SERVICE_URL;
-  if (!authServiceUrl) {
-    console.error('Auth service URL is not configured.');
-    return null;
-  }
-  return authServiceUrl;
-};
+export const getUsers = authorize(
+  (_, accessToken) => async (): Promise<User[]> => {
+    const authServiceUrl = getAuthServiceUrl();
+    if (!authServiceUrl) return [];
 
-export const getUsers = async (): Promise<User[]> => {
-  const authServiceUrl = getAuthServiceUrl();
-  if (!authServiceUrl) return [];
-
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
-
-  if (!accessToken) {
-    console.error('Authentication token not found.');
-    return [];
-  }
-
-  try {
-    const response = await fetch(`${authServiceUrl}/users`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown error');
+    try {
+      const response = await fetch(`${authServiceUrl}/users`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Unknown error');
+      }
+      return (await response.json()) as User[];
+    } catch (error) {
+      console.error(
+        'Error fetching users: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      );
+      return [];
     }
-    return (await response.json()) as User[];
-  } catch (error) {
-    console.error(
-      'Error fetching users: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
-    );
-    return [];
-  }
-};
+  },
+  ['ADMIN'],
+);
 
-export const getUserById = async (userId: string): Promise<User | null> => {
-  const authServiceUrl = getAuthServiceUrl();
-  if (!authServiceUrl) return null;
+export const getUserById = authorize(
+  (_, accessToken) =>
+    async (userId: string): Promise<User | null> => {
+      const authServiceUrl = getAuthServiceUrl();
+      if (!authServiceUrl) return null;
 
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
+      try {
+        const response = await fetch(`${authServiceUrl}/users/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Unknown error');
+        }
+        return (await response.json()) as User;
+      } catch (error) {
+        console.error(
+          'Error fetching user: ' +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        );
+        return null;
+      }
+    },
+  ['ADMIN'],
+);
 
-  if (!accessToken) {
-    console.error('Authentication token not found.');
-    return null;
-  }
+export const createUser = authorize(
+  (_, accessToken) =>
+    async (data: UserSchemaType): Promise<User | null> => {
+      const authServiceUrl = getAuthServiceUrl();
+      if (!authServiceUrl) return null;
 
-  try {
-    const response = await fetch(`${authServiceUrl}/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown error');
-    }
-    return (await response.json()) as User;
-  } catch (error) {
-    console.error(
-      'Error fetching user: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
-    );
-    return null;
-  }
-};
+      try {
+        const response = await fetch(`${authServiceUrl}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(data),
+        });
 
-export const createUser = async (
-  data: UserSchemaType,
-): Promise<User | null> => {
-  const authServiceUrl = getAuthServiceUrl();
-  if (!authServiceUrl) return null;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Unknown error');
+        }
+        return (await response.json()) as User;
+      } catch (error) {
+        console.error(
+          'Error creating user: ' +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        );
+        return null;
+      }
+    },
+  ['ADMIN'],
+);
 
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
+export const updateUser = authorize(
+  (_, accessToken) =>
+    async (
+      userId: string,
+      data: Partial<UserSchemaType>,
+    ): Promise<User | null> => {
+      const authServiceUrl = getAuthServiceUrl();
+      if (!authServiceUrl) return null;
 
-  if (!accessToken) {
-    console.error('Authentication token not found.');
-    return null;
-  }
+      try {
+        const response = await fetch(`${authServiceUrl}/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(data),
+        });
 
-  try {
-    const response = await fetch(`${authServiceUrl}/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(data),
-    });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Unknown error');
+        }
+        return (await response.json()) as User;
+      } catch (error) {
+        console.error(
+          'Error updating user: ' +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        );
+        return null;
+      }
+    },
+  ['ADMIN'],
+);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown error');
-    }
-    return (await response.json()) as User;
-  } catch (error) {
-    console.error(
-      'Error creating user: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
-    );
-    return null;
-  }
-};
+export const deleteUser = authorize(
+  (_, accessToken) =>
+    async (userId: string): Promise<boolean> => {
+      const authServiceUrl = getAuthServiceUrl();
+      if (!authServiceUrl) return false;
 
-export const updateUser = async (
-  userId: string,
-  data: Partial<UserSchemaType>,
-): Promise<User | null> => {
-  const authServiceUrl = getAuthServiceUrl();
-  if (!authServiceUrl) return null;
+      try {
+        const response = await fetch(`${authServiceUrl}/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
-
-  if (!accessToken) {
-    console.error('Authentication token not found.');
-    return null;
-  }
-
-  try {
-    const response = await fetch(`${authServiceUrl}/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown error');
-    }
-    return (await response.json()) as User;
-  } catch (error) {
-    console.error(
-      'Error updating user: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
-    );
-    return null;
-  }
-};
-
-export const deleteUser = async (userId: string): Promise<boolean> => {
-  const authServiceUrl = getAuthServiceUrl();
-  if (!authServiceUrl) return false;
-
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('accessToken')?.value;
-
-  if (!accessToken) {
-    console.error('Authentication token not found.');
-    return false;
-  }
-
-  try {
-    const response = await fetch(`${authServiceUrl}/users/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (response.ok) {
-      return true;
-    } else {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown error');
-    }
-  } catch (error) {
-    console.error(
-      'Error deleting user: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
-    );
-    return false;
-  }
-};
+        if (response.ok) {
+          return true;
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Unknown error');
+        }
+      } catch (error) {
+        console.error(
+          'Error deleting user: ' +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        );
+        return false;
+      }
+    },
+  ['ADMIN'],
+);
