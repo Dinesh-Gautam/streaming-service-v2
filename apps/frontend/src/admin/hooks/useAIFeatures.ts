@@ -8,7 +8,7 @@ import type { MediaTask } from '@monorepo/core';
 import type { AIEngineOutput } from '@monorepo/workers';
 
 import { generateImage, generateImagePrompt } from '@/actions/admin/ai';
-import { applyAISuggestions } from '@/app/(admin)/admin/movies/_action';
+import { applyAISuggestions } from '@/actions/admin/movies';
 import { MovieSchema } from '@/lib/validation/schemas';
 
 export function useAIGeneratedContent(

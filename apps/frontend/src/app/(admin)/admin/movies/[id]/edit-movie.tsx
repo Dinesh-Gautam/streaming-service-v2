@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 import type { MovieSchemaType } from '@/lib/validation/schemas';
 
+import { saveMovieData } from '@/actions/admin/movies';
 import { AIImageGenerationPanel } from '@/admin/components/AIImageGenerationPanel';
 import { AiSuggestions } from '@/admin/components/AiSuggestions';
 import { MediaProcessingSection } from '@/admin/components/MediaProcessingSection';
@@ -34,7 +35,6 @@ import {
   useAIPromptGeneration,
 } from '@/admin/hooks/useAIFeatures';
 import { useMediaUpload } from '@/admin/hooks/useMediaUpload';
-import { saveMovieData } from '@/app/(admin)/admin/movies/_action';
 import { PATHS } from '@/constants/paths';
 import { MovieSchema } from '@/lib/validation/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';

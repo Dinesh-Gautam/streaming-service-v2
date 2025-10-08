@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import type { Movie } from '@/app/(admin)/admin/movies/movies-table';
 
-import { deleteMovie } from '@/app/(admin)/admin/movies/_action';
+import { deleteMovie } from '@/actions/admin/movies';
 import { getPlaybackUrl } from '@/utils/url';
 
 export function useMovieActions(initialMovies: Movie[]) {
