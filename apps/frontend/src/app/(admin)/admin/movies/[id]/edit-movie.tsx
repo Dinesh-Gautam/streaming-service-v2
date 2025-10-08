@@ -71,7 +71,10 @@ export default function EditMoviePage({
   const { processingStatus, initiateJob, handleRetryJob, isRetrying } =
     useMovieJobProcessing(form.watch('media.video.id'));
 
-  const [genreItems, setGenreItems] = useState(defaultGenreItems);
+  const [genreItems, setGenreItems] = useState([
+    ...defaultGenreItems,
+    ...(defaultValues?.genres?.map((g) => ({ id: g, label: g })) || []),
+  ]);
 
   const { aiOutput, isApplying, isApplied, handleApplySuggestions } =
     useAIGeneratedContent(
