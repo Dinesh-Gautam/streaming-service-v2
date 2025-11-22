@@ -109,6 +109,14 @@ Each microservice is built following the principles of **Clean Architecture**. T
 
 ---
 
+## 📸 Demo
+
+### Media Processing
+https://github.com/user-attachments/assets/4fb0126b-8ac5-4f4b-b29b-736604addcf9
+
+---
+
+
 ## 🔄 Asynchronous Media Processing Workflow
 
 The media processing pipeline is orchestrated by the `job-service`, which communicates with specialized worker microservices via a message queue. This decoupled architecture allows for scalability and resilience.
@@ -298,12 +306,7 @@ This command will start each service and the frontend, typically with hot-reload
 
 ---
 
-## 📸 Screenshots & Videos
-
-### Media Processing
-https://github.com/user-attachments/assets/4fb0126b-8ac5-4f4b-b29b-736604addcf9
-
-### Home Page
+## Screenshots
 <img width="1902" height="948" alt="image" src="https://github.com/user-attachments/assets/3937d2b0-1368-4f75-94bb-cef99eff336e" />
 <img width="632" height="401" alt="image" src="https://github.com/user-attachments/assets/6d6c4bf7-c0ed-45e1-822b-69784286b718" />
 <img width="1903" height="961" alt="image" src="https://github.com/user-attachments/assets/8523e01a-45bd-4ae9-bdb5-434bbb9dd2e7" />
@@ -311,6 +314,8 @@ https://github.com/user-attachments/assets/4fb0126b-8ac5-4f4b-b29b-736604addcf9
 <img width="1918" height="953" alt="image" src="https://github.com/user-attachments/assets/4862b5ef-2bbd-464f-befe-8ca1f6e77341" />
 <img width="1921" height="960" alt="image" src="https://github.com/user-attachments/assets/76a8e93c-705f-4165-a7c3-5623129e89ec" />
 <img width="1921" height="964" alt="image" src="https://github.com/user-attachments/assets/39378663-7753-42e9-b2ab-92fb9039abc1" />
+
+---
 
 ## 📜 License
 
